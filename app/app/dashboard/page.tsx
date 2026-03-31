@@ -11,30 +11,35 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      const [{ count: f }, { count: o }, { data: pres }, { data: fop }] = await Promise.all([
+      const { data: comp } = await supabase
+        .from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
+
+      const [{ count: f }, { count: o }] = await Promise.all([
         supabase.from('funcionarios').select('*', { count: 'exact', head: true }).eq('ativo', true),
         supabase.from('obras').select('*', { count: 'exact', head: true }).eq('status', 'ATIVA'),
-        supabase.from('presencas').select('fracao,fracao2,funcionarios(valor_diaria)').eq('mes_referencia' as any, mes),
-        supabase.from('funcionario_obra_passagem').select('id', { count: 'exact', head: true }),
       ])
 
-      // Contar passagens faltando
-      const { count: totalFuncObra } = await supabase
-        .from('funcionarios').select('*', { count: 'exact', head: true }).eq('ativo', true)
+      let presencas: any[] = []
+      if (comp?.id) {
+        const { data: presData } = await supabase
+          .from('presencas')
+          .select('fracao, fracao2, funcionarios(valor_diaria)')
+          .eq('competencia_id', comp.id)
+        presencas = presData || []
+      }
+
       const { count: totalFOP } = await supabase
         .from('funcionario_obra_passagem').select('*', { count: 'exact', head: true })
-      const { count: totalObras } = await supabase
-        .from('obras').select('*', { count: 'exact', head: true }).eq('status', 'ATIVA')
 
-      const alertas = Math.max(0, ((totalFuncObra || 0) * (totalObras || 0)) - (totalFOP || 0))
+      const alertas = Math.max(0, ((f || 0) * (o || 0)) - (totalFOP || 0))
 
       let totalValor = 0
-      pres?.forEach((p: any) => {
+      presencas.forEach((p: any) => {
         const soma = (p.fracao || 0) + (p.fracao2 || 0)
         totalValor += soma * (p.funcionarios?.valor_diaria || 0)
       })
 
-      setStats({ funcs: f || 0, obras: o || 0, presencas: pres?.length || 0, alertas, totalValor })
+      setStats({ funcs: f || 0, obras: o || 0, presencas: presencas.length, alertas, totalValor })
       setLoading(false)
     }
     load()
@@ -59,7 +64,6 @@ export default function DashboardPage() {
         <p className="text-gray-500 text-sm mt-0.5">{nomeMes(mes)} {mes.split('-')[0]}</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="stat">
           <div className="text-3xl">👷</div>
@@ -90,7 +94,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Total do mês */}
       {!loading && stats.totalValor > 0 && (
         <div className="card-pad mb-6 flex items-center gap-4">
           <div className="text-3xl">💰</div>
@@ -101,7 +104,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Fluxo do mês */}
       <div className="card-pad">
         <h2 className="font-semibold text-[#1a3a5c] mb-4">Fluxo do mês</h2>
         <div className="grid grid-cols-3 gap-3">
