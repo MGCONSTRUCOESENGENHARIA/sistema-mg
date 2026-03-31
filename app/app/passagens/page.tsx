@@ -26,7 +26,7 @@ export default function PassagensPage() {
     const [{ data: funcs }, { data: obrasData }, { data: pass }] = await Promise.all([
       supabase.from('funcionarios').select('id,nome,equipe,ativo').eq('equipe', equipe).eq('ativo', true).order('nome'),
       supabase.from('obras').select('id,codigo,nome,status').eq('status', 'ATIVA').order('nome'),
-      supabase.from('funcionario_obra_passagem').select('id,funcionario_id,obra_id,tipo_passagem,valor_passagem'),
+      supabase.from('funcionario_obra_passagem').select('id,funcionario_id,obra_id,tipo_passagem,valor_passagem').limit(5000),
     ])
     setFuncionarios(funcs || [])
     setObras(obrasData || [])
