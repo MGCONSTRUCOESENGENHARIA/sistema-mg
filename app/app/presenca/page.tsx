@@ -344,14 +344,20 @@ export default function PresencaPage() {
   }
 
   const funcsFiltradas = funcs.filter(f => !busca || f.nome.toLowerCase().includes(busca.toLowerCase()))
-  const btnEq = (eq: 'ARMAÇÃO'|'CARPINTARIA') => ({ padding:'7px 18px', borderRadius:8, border:'2px solid #1a3a5c', cursor:'pointer', fontWeight:700, fontSize:13, background: equipe===eq?'#1a3a5c':'#fff', color: equipe===eq?'#fff':'#1a3a5c' })
-
   return (
     <div>
       {/* BOTÕES EQUIPE */}
       <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
-        <button style={btnEq('ARMAÇÃO')} onClick={() => setEquipe('ARMAÇÃO')}>Armação ({equipe==='ARMAÇÃO'?funcs.length:'...'})</button>
-        <button style={btnEq('CARPINTARIA')} onClick={() => setEquipe('CARPINTARIA')}>Carpintaria ({equipe==='CARPINTARIA'?funcs.length:'...'})</button>
+        <button
+          onClick={() => setEquipe('ARMAÇÃO')}
+          style={{ padding:'7px 18px', borderRadius:8, border:'2px solid #1a3a5c', cursor:'pointer', fontWeight:700, fontSize:13, background: equipe==='ARMAÇÃO'?'#1a3a5c':'#fff', color: equipe==='ARMAÇÃO'?'#fff':'#1a3a5c' }}>
+          Armação ({equipe==='ARMAÇÃO'?funcs.length:'...'})
+        </button>
+        <button
+          onClick={() => setEquipe('CARPINTARIA')}
+          style={{ padding:'7px 18px', borderRadius:8, border:'2px solid #1a3a5c', cursor:'pointer', fontWeight:700, fontSize:13, background: equipe==='CARPINTARIA'?'#1a3a5c':'#fff', color: equipe==='CARPINTARIA'?'#fff':'#1a3a5c' }}>
+          Carpintaria ({equipe==='CARPINTARIA'?funcs.length:'...'})
+        </button>
         <input type="month" value={mes} onChange={e => setMes(e.target.value)}
           style={{ border:'1px solid #d1d5db', borderRadius:6, padding:'6px 10px', fontSize:13 }} />
         <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
