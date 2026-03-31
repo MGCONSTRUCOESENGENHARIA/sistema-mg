@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+
+import { useEffect, useState } from 'react'
 import { supabase, Funcionario, Obra, Presenca, PresencaTipo, Competencia } from '@/lib/supabase'
 import { diasDoMes, formatDate, formatBR, isSabado, fim1Quinzena, mesAtual, PRESENCA_LABEL, AUSENCIAS } from '@/lib/utils'
 
@@ -16,14 +17,14 @@ export default function PresencaPage() {
   const [competencia, setCompetencia] = useState<Competencia | null>(null)
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
   const [obras, setObras] = useState<Obra[]>([])
-  const [presencas, setPresencas] = useState<Record<string, Presenca>>({}) // key: funcId|data
+  const [presencas, setPresencas] = useState<Record<string, Presenca>>({})
   const [modal, setModal] = useState<CelulaModal | null>(null)
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [busca, setBusca] = useState('')
   const [filtroObra, setFiltroObra] = useState('')
 
-  // Form do modal
+  // Modal form
   const [formTipo, setFormTipo] = useState<PresencaTipo>('NORMAL')
   const [formObra, setFormObra] = useState('')
   const [formFracao, setFormFracao] = useState('1')
@@ -33,13 +34,14 @@ export default function PresencaPage() {
 
   const dias = diasDoMes(mes)
   const f1 = fim1Quinzena(dias)
+  const fechada = competencia?.status === 'FECHADA'
 
   useEffect(() => { carregarDados() }, [equipe, mes])
 
   async function carregarDados() {
     setLoading(true)
 
-    // Garantir competência existe
+    // Garantir competência
     const { data: compExist } = await supabase.from('competencias').select('*').eq('mes_ano', mes).single()
     let comp = compExist
     if (!comp) {
@@ -51,11 +53,7 @@ export default function PresencaPage() {
     const [{ data: funcs }, { data: obrasData }, { data: presData }] = await Promise.all([
       supabase.from('funcionarios').select('*').eq('equipe', equipe).eq('ativo', true).order('nome'),
       supabase.from('obras').select('*').eq('status', 'ATIVA').order('nome'),
-      supabase.from('presencas').select(`
-        *, 
-        obras:obra_id(nome,codigo),
-        obras2:obra2_id(nome,codigo)
-      `).eq('competencia_id', comp?.id || ''),
+      supabase.from('presencas').select(`*, obras:obra_id(nome,codigo), obras2:obra2_id(nome,codigo)`).eq('competencia_id', comp?.id || ''),
     ])
 
     setFuncionarios(funcs || [])
@@ -68,7 +66,7 @@ export default function PresencaPage() {
   }
 
   function abrirModal(funcId: string, funcNome: string, data: string) {
-    if (competencia?.status === 'FECHADA') return
+    if (fechada) return
     const key = `${funcId}|${data}`
     const atual = presencas[key]
     setModal({ funcId, funcNome, data, presencaAtual: atual })
@@ -97,7 +95,6 @@ export default function PresencaPage() {
     const f1n = parseFloat(formFracao) || 0
     const f2n = parseFloat(formFracao2) || 0
 
-    // Validações
     if (formTipo === 'NORMAL' || formTipo === 'SABADO_EXTRA') {
       if (!formObra) { setFormErro('Selecione a obra.'); return }
       if (f1n <= 0 || f1n > 1) { setFormErro('Fração inválida.'); return }
@@ -187,10 +184,19 @@ export default function PresencaPage() {
   })
 
   const nomeDia = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-  const fechada = competencia?.status === 'FECHADA'
 
   return (
     <div>
+      {/* Botões Equipe visíveis no topo */}
+      <div className="mb-2 flex gap-2 flex-wrap">
+        {(['ARMAÇÃO', 'CARPINTARIA'] as const).map(eq => (
+          <button key={eq} onClick={() => setEquipe(eq)}
+            className={equipe === eq ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>
+            {eq}
+          </button>
+        ))}
+      </div>
+
       {/* Header */}
       <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
         <div>
@@ -201,18 +207,12 @@ export default function PresencaPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {(['ARMAÇÃO', 'CARPINTARIA'] as const).map(eq => (
-            <button key={eq} onClick={() => setEquipe(eq)}
-              className={equipe === eq ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>
-              {eq}
-            </button>
-          ))}
           <input type="month" className="input text-sm py-1.5 w-36"
             value={mes} onChange={e => setMes(e.target.value)} />
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros e legenda */}
       <div className="card-pad mb-4 flex gap-3 flex-wrap items-center">
         <input type="text" placeholder="🔍 Buscar funcionário..." value={busca}
           onChange={e => setBusca(e.target.value)} className="input w-56" />
@@ -300,7 +300,7 @@ export default function PresencaPage() {
         </div>
       )}
 
-      {/* ── MODAL DE LANÇAMENTO ── */}
+      {/* MODAL */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
@@ -311,93 +311,4 @@ export default function PresencaPage() {
               </div>
               <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
-
-            <div className="p-5 space-y-4">
-              {formErro && <div className="alert-err text-xs">{formErro}</div>}
-
-              {/* Tipo */}
-              <div>
-                <label className="label">Tipo de presença</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['NORMAL','SABADO_EXTRA','FALTA','ATESTADO','AUSENTE','SAIU'] as PresencaTipo[]).map(t => (
-                    <button key={t} onClick={() => setFormTipo(t)}
-                      className={`text-xs py-1.5 rounded-lg border font-medium transition-colors ${formTipo === t ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
-                      {PRESENCA_LABEL[t]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Obra e fração (só para NORMAL e SABADO_EXTRA) */}
-              {(formTipo === 'NORMAL' || formTipo === 'SABADO_EXTRA') && (
-                <>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2">
-                      <label className="label">Obra *</label>
-                      <select className="select" value={formObra} onChange={e => setFormObra(e.target.value)}>
-                        <option value="">Selecione...</option>
-                        {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">Fração</label>
-                      <select className="select" value={formFracao} onChange={e => setFormFracao(e.target.value)}>
-                        <option value="1">1 (inteira)</option>
-                        <option value="0.5">0,5 (meia)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Segunda obra (opcional) */}
-                  <div>
-                    <label className="label">
-                      Segunda obra
-                      <span className="font-normal text-gray-400 ml-1">(opcional — para split de dia)</span>
-                    </label>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="col-span-2">
-                        <select className="select" value={formObra2} onChange={e => setFormObra2(e.target.value)}>
-                          <option value="">Nenhuma</option>
-                          {obras.filter(o => o.id !== formObra).map(o => (
-                            <option key={o.id} value={o.id}>{o.nome}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        {formObra2 && (
-                          <select className="select" value={formFracao2} onChange={e => setFormFracao2(e.target.value)}>
-                            <option value="">Fração...</option>
-                            <option value="0.5">0,5 (meia)</option>
-                          </select>
-                        )}
-                      </div>
-                    </div>
-                    {formObra2 && (
-                      <div className="mt-1.5 text-xs text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg">
-                        Passagem = (obra1 + obra2) ÷ 2
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-between">
-              {modal.presencaAtual && (
-                <button onClick={limparPresenca} disabled={salvando} className="btn-red btn-sm">
-                  Remover
-                </button>
-              )}
-              <div className="flex gap-2 ml-auto">
-                <button onClick={() => setModal(null)} className="btn-ghost btn-sm">Cancelar</button>
-                <button onClick={salvarPresenca} disabled={salvando} className="btn-primary btn-sm">
-                  {salvando ? 'Salvando...' : 'Confirmar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+            <div className="p
