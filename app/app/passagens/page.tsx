@@ -1,77 +1,81 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase, Funcionario, Obra, FuncionarioObraPassagem, TipoPassagem } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+
+type TipoPassagem = 'PRA FRENTE' | 'REEMBOLSO' | 'MG' | 'NÃO TEM'
+
+interface Funcionario {
+  id: string
+  nome: string
+  equipe: string
+  ativo: boolean
+}
+
+interface Obra {
+  id: string
+  codigo: string
+  nome: string
+  status: string
+}
+
+interface Passagem {
+  id: string
+  funcionario_id: string
+  obra_id: string
+  tipo_passagem: TipoPassagem
+  valor_passagem: number
+}
 
 export default function PassagensPage() {
+  const [equipe, setEquipe] = useState<'ARMAÇÃO' | 'CARPINTARIA'>('ARMAÇÃO')
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
   const [obras, setObras] = useState<Obra[]>([])
-  const [passagens, setPassagens] = useState<FuncionarioObraPassagem[]>([])
-  const [equipe, setEquipe] = useState<'ARMAÇÃO' | 'CARPINTARIA'>('ARMAÇÃO')
+  const [passagens, setPassagens] = useState<Passagem[]>([])
   const [busca, setBusca] = useState('')
-  const [editando, setEditando] = useState<Partial<FuncionarioObraPassagem> | null>(null)
+  const [editando, setEditando] = useState<Partial<Passagem> | null>(null)
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState('')
-  const [alertas, setAlertas] = useState<string[]>([])
 
   useEffect(() => { carregar() }, [equipe])
 
   async function carregar() {
     setLoading(true)
     const [{ data: funcs }, { data: obrasData }, { data: pass }] = await Promise.all([
-      supabase.from('funcionarios').select('*').eq('equipe', equipe).eq('ativo', true).order('nome'),
-      supabase.from('obras').select('*').eq('status', 'ATIVA').order('nome'),
-      supabase.from('funcionario_obra_passagem').select(`
-        *, funcionarios(nome,equipe), obras(nome,codigo)
-      `).order('funcionario_id'),
+      supabase.from('funcionarios').select('id,nome,equipe,ativo').eq('equipe', equipe).eq('ativo', true).order('nome'),
+      supabase.from('obras').select('id,codigo,nome,status').eq('status', 'ATIVA').order('nome'),
+      supabase.from('funcionario_obra_passagem').select('id,funcionario_id,obra_id,tipo_passagem,valor_passagem'),
     ])
     setFuncionarios(funcs || [])
     setObras(obrasData || [])
     setPassagens(pass || [])
-
-    // Verificar funcionários sem passagem para obras ativas
-    const erros: string[] = []
-    funcs?.forEach(f => {
-      obrasData?.forEach(o => {
-        const tem = pass?.some(p => p.funcionario_id === f.id && p.obra_id === o.id)
-        if (!tem) erros.push(`${f.nome} → ${o.nome}`)
-      })
-    })
-    setAlertas(erros)
     setLoading(false)
   }
 
-  function getPassagem(funcId: string, obraId: string): FuncionarioObraPassagem | undefined {
+  function getPassagem(funcId: string, obraId: string): Passagem | undefined {
     return passagens.find(p => p.funcionario_id === funcId && p.obra_id === obraId)
   }
 
   async function salvarPassagem() {
     if (!editando?.funcionario_id || !editando?.obra_id) return
     setSalvando(true)
-    setMsg('')
-
     const payload = {
       funcionario_id: editando.funcionario_id,
       obra_id: editando.obra_id,
       tipo_passagem: editando.tipo_passagem || 'MG',
       valor_passagem: editando.valor_passagem || 0,
     }
-
     if (editando.id) {
       await supabase.from('funcionario_obra_passagem').update(payload).eq('id', editando.id)
     } else {
       await supabase.from('funcionario_obra_passagem').insert(payload)
     }
-
-    setMsg('✅ Salvo!')
-    setTimeout(() => setMsg(''), 2000)
     setEditando(null)
     await carregar()
     setSalvando(false)
   }
 
   async function preencherMG(funcId: string) {
-    // Preenche MG (sem passagem) para todas as obras que ainda não têm
     const inserts = obras
       .filter(o => !getPassagem(funcId, o.id))
       .map(o => ({ funcionario_id: funcId, obra_id: o.id, tipo_passagem: 'MG' as TipoPassagem, valor_passagem: 0 }))
@@ -81,7 +85,7 @@ export default function PassagensPage() {
     }
   }
 
-  async function preencherTodosObrasMG() {
+  async function preencherTodosMG() {
     const inserts: any[] = []
     funcionarios.forEach(f => {
       obras.forEach(o => {
@@ -91,7 +95,10 @@ export default function PassagensPage() {
       })
     })
     if (inserts.length) {
-      await supabase.from('funcionario_obra_passagem').insert(inserts)
+      // Inserir em lotes de 100
+      for (let i = 0; i < inserts.length; i += 100) {
+        await supabase.from('funcionario_obra_passagem').insert(inserts.slice(i, i + 100))
+      }
       await carregar()
       setMsg(`✅ ${inserts.length} passagens preenchidas com MG`)
       setTimeout(() => setMsg(''), 3000)
@@ -102,20 +109,26 @@ export default function PassagensPage() {
     !busca || f.nome.toLowerCase().includes(busca.toLowerCase())
   )
 
+  const semCadastro = funcionarios.reduce((total, f) => {
+    return total + obras.filter(o => !getPassagem(f.id, o.id)).length
+  }, 0)
+
   const tipoLabel: Record<TipoPassagem, string> = {
-    'PRA FRENTE': 'Pra Frente', 'REEMBOLSO': 'Reembolso',
-    'MG': 'MG', 'NÃO TEM': 'Não Tem',
+    'PRA FRENTE': 'Pra Frente',
+    'REEMBOLSO': 'Reembolso',
+    'MG': 'MG',
+    'NÃO TEM': 'Não Tem',
   }
 
-  function corTipo(t?: TipoPassagem): string {
-    if (!t) return 'bg-red-100 text-red-700 font-bold'
-    if (t === 'MG') return 'bg-gray-100 text-gray-500'
-    if (t === 'NÃO TEM') return 'bg-gray-100 text-gray-400'
-    return 'bg-blue-50 text-blue-800'
+  function corCelula(p: Passagem | undefined): string {
+    if (!p) return 'bg-red-50 text-red-600 font-bold cursor-pointer hover:bg-red-100'
+    if (p.tipo_passagem === 'MG' || p.tipo_passagem === 'NÃO TEM') return 'bg-gray-50 text-gray-500 cursor-pointer hover:bg-gray-100'
+    return 'bg-blue-50 text-blue-800 cursor-pointer hover:bg-blue-100'
   }
 
   return (
     <div>
+      {/* HEADER */}
       <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-[#1a3a5c]">Matriz de Passagens</h1>
@@ -123,91 +136,136 @@ export default function PassagensPage() {
             Passagem é definida por funcionário + obra. <strong>Obrigatório</strong> para todos os pares.
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {(['ARMAÇÃO', 'CARPINTARIA'] as const).map(eq => (
-            <button key={eq} onClick={() => setEquipe(eq)}
-              className={equipe === eq ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>{eq}</button>
-          ))}
+        {/* BOTÕES EQUIPE */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setEquipe('ARMAÇÃO')}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '8px',
+              border: '2px solid #1a3a5c',
+              background: equipe === 'ARMAÇÃO' ? '#1a3a5c' : '#fff',
+              color: equipe === 'ARMAÇÃO' ? '#fff' : '#1a3a5c',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: 13,
+            }}
+          >
+            Armação ({equipe === 'ARMAÇÃO' ? funcionarios.length : '...'})
+          </button>
+          <button
+            onClick={() => setEquipe('CARPINTARIA')}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '8px',
+              border: '2px solid #1a3a5c',
+              background: equipe === 'CARPINTARIA' ? '#1a3a5c' : '#fff',
+              color: equipe === 'CARPINTARIA' ? '#fff' : '#1a3a5c',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: 13,
+            }}
+          >
+            Carpintaria ({equipe === 'CARPINTARIA' ? funcionarios.length : '...'})
+          </button>
         </div>
       </div>
 
-      {/* Alertas de passagens faltando */}
-      {alertas.length > 0 && (
-        <div className="alert-err mb-4">
-          <div className="font-semibold mb-1">⚠️ {alertas.length} passagens não cadastradas (bloqueiam cálculo):</div>
-          <div className="text-xs max-h-28 overflow-y-auto space-y-0.5 mt-1">
-            {alertas.slice(0, 20).map((a, i) => <div key={i}>{a}</div>)}
-            {alertas.length > 20 && <div>...e mais {alertas.length - 20}</div>}
+      {/* ALERTAS */}
+      {semCadastro > 0 && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 12 }}>
+          <div style={{ fontWeight: 600, marginBottom: 6, color: '#7f1d1d' }}>
+            ⚠️ {semCadastro} passagens não cadastradas — bloqueiam cálculo
           </div>
-          <button onClick={preencherTodosObrasMG} className="btn btn-sm bg-red-700 text-white hover:bg-red-800 mt-2">
+          <button
+            onClick={preencherTodosMG}
+            style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+          >
             Preencher todas com MG (sem passagem)
           </button>
         </div>
       )}
 
-      {msg && <div className="alert-ok mb-4">{msg}</div>}
+      {msg && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: 12, color: '#14532d' }}>
+          {msg}
+        </div>
+      )}
 
-      {/* Filtros */}
-      <div className="card-pad mb-4 flex gap-3 flex-wrap items-center">
-        <input type="text" placeholder="🔍 Buscar funcionário..." value={busca}
-          onChange={e => setBusca(e.target.value)} className="input w-56" />
-        <span className="text-xs text-gray-400 ml-auto">
-          {funcionarios.length} funcionários × {obras.length} obras = {funcionarios.length * obras.length} combinações
+      {/* FILTRO */}
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 16px', marginBottom: 12 }}>
+        <input
+          type="text"
+          placeholder="🔍 Buscar funcionário..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 10px', fontSize: 13, width: 260 }}
+        />
+        <span style={{ marginLeft: 16, fontSize: 12, color: '#9ca3af' }}>
+          {funcionarios.length} funcionários × {obras.length} obras
         </span>
       </div>
 
-      {/* Matriz */}
+      {/* TABELA */}
       {loading ? (
-        <div className="card-pad text-center py-12 text-gray-400">Carregando...</div>
+        <div style={{ textAlign: 'center', padding: 48, color: '#9ca3af' }}>Carregando...</div>
       ) : (
-        <div className="card overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-          <table className="border-collapse" style={{ minWidth: 'max-content' }}>
+        <div style={{ overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, maxHeight: 'calc(100vh - 320px)' }}>
+          <table style={{ borderCollapse: 'collapse', minWidth: 'max-content', width: '100%' }}>
             <thead>
               <tr>
-                <th className="th-left sticky left-0 z-20 bg-[#1a3a5c]" style={{ minWidth: 220 }}>Funcionário</th>
-                <th className="th sticky left-[220px] z-20 bg-[#1a3a5c]" style={{ minWidth: 100 }}>Ação</th>
+                <th style={{ background: '#1a3a5c', color: '#fff', padding: '8px 12px', textAlign: 'left', minWidth: 220, position: 'sticky', left: 0, zIndex: 20, fontSize: 11 }}>
+                  Funcionário
+                </th>
+                <th style={{ background: '#1a3a5c', color: '#fff', padding: '8px 12px', minWidth: 100, position: 'sticky', left: 220, zIndex: 20, fontSize: 11 }}>
+                  Ação
+                </th>
                 {obras.map(o => (
-                  <th key={o.id} className="th" style={{ minWidth: 110 }}>
-                    {o.codigo}<br /><span className="font-normal text-[9px] opacity-70">{o.nome.substring(0, 12)}</span>
+                  <th key={o.id} style={{ background: '#1a3a5c', color: '#fff', padding: '8px 6px', minWidth: 100, textAlign: 'center', fontSize: 10 }}>
+                    {o.codigo}<br />
+                    <span style={{ fontWeight: 400, opacity: 0.7, fontSize: 9 }}>{o.nome.substring(0, 10)}</span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {funcsFiltradas.map((func, fi) => {
-                const totalSemPass = obras.filter(o => {
-                  const p = getPassagem(func.id, o.id)
-                  return !p
-                }).length
+                const semPass = obras.filter(o => !getPassagem(func.id, o.id)).length
                 return (
-                  <tr key={func.id} className={fi % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}>
-                    <td className="td font-semibold text-[#1a3a5c] sticky left-0 z-[1] bg-inherit border-r border-gray-200" style={{ minWidth: 220 }}>
-                      <div>{func.nome}</div>
-                      {totalSemPass > 0 && (
-                        <span className="badge-err mt-0.5">{totalSemPass} sem cadastro</span>
+                  <tr key={func.id} style={{ background: fi % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1a3a5c', position: 'sticky', left: 0, background: fi % 2 === 0 ? '#fff' : '#f9fafb', zIndex: 1, borderRight: '1px solid #e5e7eb', fontSize: 12, minWidth: 220 }}>
+                      {func.nome}
+                      {semPass > 0 && (
+                        <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: 10, padding: '1px 6px', borderRadius: 8, marginLeft: 6 }}>
+                          {semPass} faltando
+                        </span>
                       )}
                     </td>
-                    <td className="td sticky left-[220px] z-[1] bg-inherit border-r border-gray-200" style={{ minWidth: 100 }}>
-                      <button onClick={() => preencherMG(func.id)}
-                        className="text-[10px] text-gray-400 hover:text-gray-600 underline">
+                    <td style={{ padding: '4px 8px', position: 'sticky', left: 220, background: fi % 2 === 0 ? '#fff' : '#f9fafb', zIndex: 1, borderRight: '1px solid #e5e7eb', minWidth: 100 }}>
+                      <button
+                        onClick={() => preencherMG(func.id)}
+                        style={{ fontSize: 10, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
                         Preencher MG
                       </button>
                     </td>
                     {obras.map(obra => {
                       const p = getPassagem(func.id, obra.id)
                       return (
-                        <td key={obra.id}
+                        <td
+                          key={obra.id}
                           onClick={() => setEditando(p
                             ? { ...p }
                             : { funcionario_id: func.id, obra_id: obra.id, tipo_passagem: 'MG', valor_passagem: 0 }
                           )}
-                          className={`td text-center text-[10px] cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset transition-all ${p ? corTipo(p.tipo_passagem) : 'bg-red-50 text-red-600 font-bold'}`}
-                          style={{ minWidth: 110 }}
-                          title={p ? `${tipoLabel[p.tipo_passagem]} — R$ ${p.valor_passagem}` : 'Não cadastrado — clique para definir'}>
+                          style={{ padding: '4px', textAlign: 'center', fontSize: 10, cursor: 'pointer', minWidth: 100, borderBottom: '1px solid #f3f4f6' }}
+                          className={corCelula(p)}
+                          title={p ? `${tipoLabel[p.tipo_passagem]} — R$ ${p.valor_passagem}` : 'Clique para cadastrar'}
+                        >
                           {p ? (
                             <div>
                               <div>{tipoLabel[p.tipo_passagem]}</div>
-                              {p.valor_passagem > 0 && <div className="font-bold">R$ {p.valor_passagem}</div>}
+                              {p.valor_passagem > 0 && <div style={{ fontWeight: 700 }}>R$ {p.valor_passagem}</div>}
                             </div>
                           ) : (
                             <div>⚠ Falta</div>
@@ -223,23 +281,26 @@ export default function PassagensPage() {
         </div>
       )}
 
-      {/* Modal de edição de passagem */}
+      {/* MODAL */}
       {editando && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <div className="font-semibold text-[#1a3a5c] text-sm">
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '100%', maxWidth: 380 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ fontWeight: 700, color: '#1a3a5c', fontSize: 14 }}>
                 {funcionarios.find(f => f.id === editando.funcionario_id)?.nome}
               </div>
-              <div className="text-gray-400 text-xs">
+              <div style={{ color: '#6b7280', fontSize: 12 }}>
                 {obras.find(o => o.id === editando.obra_id)?.nome}
               </div>
             </div>
-            <div className="p-5 space-y-4">
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label className="label">Tipo de passagem</label>
-                <select className="select" value={editando.tipo_passagem || 'MG'}
-                  onChange={e => setEditando(p => ({ ...p, tipo_passagem: e.target.value as TipoPassagem }))}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Tipo de passagem</label>
+                <select
+                  style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: 8, padding: '8px 10px', fontSize: 13 }}
+                  value={editando.tipo_passagem || 'MG'}
+                  onChange={e => setEditando(p => ({ ...p, tipo_passagem: e.target.value as TipoPassagem }))}
+                >
                   <option value="PRA FRENTE">Pra Frente (vale transporte)</option>
                   <option value="REEMBOLSO">Reembolso</option>
                   <option value="MG">MG (sem passagem)</option>
@@ -248,20 +309,26 @@ export default function PassagensPage() {
               </div>
               {(editando.tipo_passagem === 'PRA FRENTE' || editando.tipo_passagem === 'REEMBOLSO') && (
                 <div>
-                  <label className="label">Valor unitário da passagem (R$)</label>
-                  <input type="number" step="0.01" className="input"
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Valor unitário (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: 8, padding: '8px 10px', fontSize: 13 }}
                     value={editando.valor_passagem || ''}
                     onChange={e => setEditando(p => ({ ...p, valor_passagem: parseFloat(e.target.value) || 0 }))}
-                    placeholder="Ex: 17.90" />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Valor por trajeto. Para 2 obras no mesmo dia, o sistema faz (obra1 + obra2) ÷ 2.
+                    placeholder="Ex: 17.90"
+                  />
+                  <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+                    Para 2 obras no mesmo dia: (obra1 + obra2) ÷ 2
                   </p>
                 </div>
               )}
             </div>
-            <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-end">
-              <button onClick={() => setEditando(null)} className="btn-ghost btn-sm">Cancelar</button>
-              <button onClick={salvarPassagem} disabled={salvando} className="btn-primary btn-sm">
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditando(null)} style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #1a3a5c', background: '#fff', color: '#1a3a5c', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                Cancelar
+              </button>
+              <button onClick={salvarPassagem} disabled={salvando} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#1a3a5c', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                 {salvando ? 'Salvando...' : '💾 Salvar'}
               </button>
             </div>
