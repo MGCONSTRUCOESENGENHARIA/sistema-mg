@@ -23,14 +23,36 @@ export default function PassagensPage() {
 
   async function carregar() {
     setLoading(true)
-    const [{ data: funcs }, { data: obrasData }, { data: pass }] = await Promise.all([
-      supabase.from('funcionarios').select('id,nome,equipe,ativo').eq('equipe', equipe).eq('ativo', true).order('nome'),
-      supabase.from('obras').select('id,codigo,nome,status').eq('status', 'ATIVA').order('nome'),
-      supabase.from('funcionario_obra_passagem').select('id,funcionario_id,obra_id,tipo_passagem,valor_passagem').limit(5000),
-    ])
+    
+    // Buscar funcionários da equipe
+    const { data: funcs } = await supabase
+      .from('funcionarios')
+      .select('id,nome,equipe,ativo')
+      .eq('equipe', equipe)
+      .eq('ativo', true)
+      .order('nome')
+    
+    const { data: obrasData } = await supabase
+      .from('obras')
+      .select('id,codigo,nome,status')
+      .eq('status', 'ATIVA')
+      .order('nome')
+
     setFuncionarios(funcs || [])
     setObras(obrasData || [])
-    setPassagens(pass || [])
+
+    // Buscar passagens APENAS dos funcionários desta equipe
+    if (funcs && funcs.length > 0) {
+      const ids = funcs.map((f: any) => f.id)
+      const { data: pass } = await supabase
+        .from('funcionario_obra_passagem')
+        .select('id,funcionario_id,obra_id,tipo_passagem,valor_passagem')
+        .in('funcionario_id', ids)
+      setPassagens(pass || [])
+    } else {
+      setPassagens([])
+    }
+    
     setLoading(false)
   }
 
@@ -62,37 +84,26 @@ export default function PassagensPage() {
       await carregar()
       setMsg('✅ ' + inserts.length + ' passagens preenchidas com MG')
       setTimeout(() => setMsg(''), 3000)
+    } else {
+      setMsg('✅ Todas as passagens já estão cadastradas!')
+      setTimeout(() => setMsg(''), 3000)
     }
   }
 
   const funcsFiltradas = funcionarios.filter(f => !busca || f.nome.toLowerCase().includes(busca.toLowerCase()))
   const semCadastro = funcionarios.reduce((total, f) => total + obras.filter(o => !getPassagem(f.id, o.id)).length, 0)
   const tipoLabel: Record<TipoPassagem, string> = { 'PRA FRENTE': 'Pra Frente', 'REEMBOLSO': 'Reembolso', 'MG': 'MG', 'NÃO TEM': 'Não Tem' }
-
-  const btnStyle = (ativo: boolean) => ({
-    padding: '8px 20px', borderRadius: '8px', border: '2px solid #1a3a5c',
-    background: ativo ? '#1a3a5c' : '#fff', color: ativo ? '#fff' : '#1a3a5c',
-    fontWeight: 700, cursor: 'pointer', fontSize: 14,
-  })
+  const btnStyle = (ativo: boolean) => ({ padding: '8px 20px', borderRadius: '8px', border: '2px solid #1a3a5c', background: ativo ? '#1a3a5c' : '#fff', color: ativo ? '#fff' : '#1a3a5c', fontWeight: 700, cursor: 'pointer', fontSize: 14 })
 
   return (
     <div>
-      {/* BOTÕES EQUIPE — TOPO */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button style={btnStyle(equipe === 'ARMAÇÃO')} onClick={() => setEquipe('ARMAÇÃO')}>
-          Armação
-        </button>
-        <button style={btnStyle(equipe === 'CARPINTARIA')} onClick={() => setEquipe('CARPINTARIA')}>
-          Carpintaria
-        </button>
+        <button style={btnStyle(equipe === 'ARMAÇÃO')} onClick={() => setEquipe('ARMAÇÃO')}>Armação ({equipe === 'ARMAÇÃO' ? funcionarios.length : '...'})</button>
+        <button style={btnStyle(equipe === 'CARPINTARIA')} onClick={() => setEquipe('CARPINTARIA')}>Carpintaria ({equipe === 'CARPINTARIA' ? funcionarios.length : '...'})</button>
       </div>
 
-      <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1a3a5c', marginBottom: 4 }}>
-        Matriz de Passagens — {equipe}
-      </h1>
-      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
-        Passagem é definida por funcionário + obra. <strong>Obrigatório</strong> para todos os pares.
-      </p>
+      <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1a3a5c', marginBottom: 4 }}>Matriz de Passagens — {equipe}</h1>
+      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>Passagem é definida por funcionário + obra. <strong>Obrigatório</strong> para todos os pares.</p>
 
       {semCadastro > 0 && (
         <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 12 }}>
@@ -108,7 +119,7 @@ export default function PassagensPage() {
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 16px', marginBottom: 12 }}>
         <input type="text" placeholder="Buscar funcionário..." value={busca} onChange={e => setBusca(e.target.value)}
           style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 10px', fontSize: 13, width: 260 }} />
-        <span style={{ marginLeft: 16, fontSize: 12, color: '#9ca3af' }}>{funcionarios.length} funcionários × {obras.length} obras</span>
+        <span style={{ marginLeft: 16, fontSize: 12, color: '#9ca3af' }}>{funcionarios.length} funcionários × {obras.length} obras · {passagens.length} passagens carregadas</span>
       </div>
 
       {loading ? (
@@ -145,8 +156,7 @@ export default function PassagensPage() {
                       return (
                         <td key={obra.id}
                           onClick={() => setEditando(p ? { ...p } : { funcionario_id: func.id, obra_id: obra.id, tipo_passagem: 'MG', valor_passagem: 0 })}
-                          style={{ padding: '4px', textAlign: 'center', fontSize: 10, cursor: 'pointer', minWidth: 100, borderBottom: '1px solid #f3f4f6', background: p ? (p.tipo_passagem === 'MG' || p.tipo_passagem === 'NÃO TEM' ? '#f9fafb' : '#eff6ff') : '#fef2f2', color: p ? (p.tipo_passagem === 'MG' ? '#9ca3af' : '#1e40af') : '#dc2626', fontWeight: p ? 400 : 700 }}
-                          title={p ? tipoLabel[p.tipo_passagem] + ' R$ ' + p.valor_passagem : 'Clique para cadastrar'}>
+                          style={{ padding: '4px', textAlign: 'center', fontSize: 10, cursor: 'pointer', minWidth: 100, borderBottom: '1px solid #f3f4f6', background: p ? (p.tipo_passagem === 'MG' || p.tipo_passagem === 'NÃO TEM' ? '#f9fafb' : '#eff6ff') : '#fef2f2', color: p ? (p.tipo_passagem === 'MG' ? '#9ca3af' : '#1e40af') : '#dc2626', fontWeight: p ? 400 : 700 }}>
                           {p ? (<div><div>{tipoLabel[p.tipo_passagem]}</div>{p.valor_passagem > 0 && <div style={{ fontWeight: 700 }}>R$ {p.valor_passagem}</div>}</div>) : <div>⚠ Falta</div>}
                         </td>
                       )
