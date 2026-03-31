@@ -173,7 +173,8 @@ export default function PresencaPage() {
     if (!abaPresenca) { setImportMsg('❌ Aba "PRESENÇA" não encontrada na planilha.'); return }
 
     const ws = wb.Sheets[abaPresenca]
-    const data: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' })
+    // raw:true preserva números seriais de data do Excel
+    const data: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true })
 
     // Linha 2 (idx=2) = cabeçalho com datas, Coluna 1 = nome funcionário
     // Procurar linha do cabeçalho (que tem datas) — pode ser qualquer linha
@@ -182,27 +183,30 @@ export default function PresencaPage() {
     const colsDatas: { col: number; data: string }[] = []
 
     function parseDateCell(cell: any): string {
-      if (!cell) return ''
+      if (!cell && cell !== 0) return ''
       // Date object
       if (cell instanceof Date) return formatDate(cell)
+      // Número serial do Excel (ex: 46092 = 02/03/2026)
+      if (typeof cell === 'number' && cell > 40000 && cell < 50000) {
+        // Excel epoch: 1 = 01/01/1900, com bug do ano 1900
+        const d = new Date(Date.UTC(1899, 11, 30) + cell * 86400000)
+        return formatDate(d)
+      }
       const s = String(cell).trim()
       // dd/mm/yyyy
       if (s.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-        const [d, m, y] = s.split('/')
-        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+        const [dd, mm, yyyy] = s.split('/')
+        return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`
       }
       // dd/mm/yy
       if (s.match(/^\d{1,2}\/\d{1,2}\/\d{2}$/)) {
-        const [d, m, y] = s.split('/')
-        return `20${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+        const [dd, mm, yy] = s.split('/')
+        return `20${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`
       }
       // yyyy-mm-dd
       if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s
-      // Excel serial number
-      if (s.match(/^\d{5}$/)) {
-        const d = new Date(Date.UTC(1899, 11, 30) + parseInt(s) * 86400000)
-        return formatDate(d)
-      }
+      // ISO com hora: 2026-03-02T00:00:00
+      if (s.match(/^\d{4}-\d{2}-\d{2}T/)) return s.substring(0, 10)
       return ''
     }
 
