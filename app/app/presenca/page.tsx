@@ -176,33 +176,61 @@ export default function PresencaPage() {
     const data: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' })
 
     // Linha 2 (idx=2) = cabeçalho com datas, Coluna 1 = nome funcionário
-    const headerRow = data[2] || []
+    // Procurar linha do cabeçalho (que tem datas) — pode ser qualquer linha
+    let headerRow: any[] = []
+    let headerRowIdx = -1
     const colsDatas: { col: number; data: string }[] = []
-    headerRow.forEach((cell: any, ci: number) => {
-      if (!cell) return
-      let dataStr = ''
-      if (cell instanceof Date) {
-        dataStr = formatDate(cell)
-      } else if (typeof cell === 'string' && cell.includes('/')) {
-        const parts = cell.split('/')
-        if (parts.length === 2) {
-          const [ano, mesNum] = mes.split('-')
-          dataStr = `${ano}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`
-        }
-      } else if (typeof cell === 'string' && cell.match(/\d{4}-\d{2}-\d{2}/)) {
-        dataStr = cell
+
+    function parseDateCell(cell: any): string {
+      if (!cell) return ''
+      // Date object
+      if (cell instanceof Date) return formatDate(cell)
+      const s = String(cell).trim()
+      // dd/mm/yyyy
+      if (s.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        const [d, m, y] = s.split('/')
+        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
       }
-      if (dataStr && dataStr.startsWith(mes)) colsDatas.push({ col: ci, data: dataStr })
-    })
+      // dd/mm/yy
+      if (s.match(/^\d{1,2}\/\d{1,2}\/\d{2}$/)) {
+        const [d, m, y] = s.split('/')
+        return `20${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+      }
+      // yyyy-mm-dd
+      if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s
+      // Excel serial number
+      if (s.match(/^\d{5}$/)) {
+        const d = new Date(Date.UTC(1899, 11, 30) + parseInt(s) * 86400000)
+        return formatDate(d)
+      }
+      return ''
+    }
 
-    if (colsDatas.length === 0) { setImportMsg('❌ Não encontrei colunas de data para o mês ' + mes); return }
+    // Encontrar linha com datas do mês correto
+    for (let ri = 0; ri < Math.min(10, data.length); ri++) {
+      const row = data[ri] || []
+      const datasEncontradas: { col: number; data: string }[] = []
+      row.forEach((cell: any, ci: number) => {
+        const d = parseDateCell(cell)
+        if (d && d.startsWith(mes)) datasEncontradas.push({ col: ci, data: d })
+      })
+      if (datasEncontradas.length >= 5) {
+        headerRow = row
+        headerRowIdx = ri
+        datasEncontradas.forEach(d => colsDatas.push(d))
+        break
+      }
+    }
 
-    // Processar linhas de funcionários (a partir da linha 4, idx=4)
+    if (colsDatas.length === 0) { setImportMsg('❌ Não encontrei colunas de data para o mês ' + mes + '. Verifique se as datas estão no formato dd/mm/yyyy'); return }
+
+    // Processar linhas de funcionários (após o cabeçalho)
     const linhas: LinhaPrev[] = []
-    for (let ri = 4; ri < data.length; ri++) {
+    for (let ri = headerRowIdx + 2; ri < data.length; ri++) {
       const row = data[ri]
-      const nomeRaw = row[1]
+      const nomeRaw = row[1] || row[0]
       if (!nomeRaw || typeof nomeRaw !== 'string' || !nomeRaw.trim()) continue
+      if (nomeRaw.trim().toUpperCase() === 'FUNCIONÁRIO' || nomeRaw.trim().toUpperCase() === 'FUNCIONARIO') continue
 
       const nomeOrig = nomeRaw.trim()
       // Buscar funcionário mais parecido
