@@ -45,12 +45,6 @@ const MENUS = [
     ]
   },
   {
-    label: 'Engenharia',
-    items: [
-      { href: '/app/engenharia/producao', label: 'Produção' },
-    ]
-  },
-  {
     label: 'Análise',
     items: [
       { href: '/app/relatorios', label: 'Relatórios' },
