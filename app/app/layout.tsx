@@ -7,51 +7,29 @@ import { mesAtual, nomeMes } from '@/lib/utils'
 
 const NAV = [
   { section: 'Principal' },
-  { href: '/app/dashboard',    label: 'Dashboard',            icon: <IconDash /> },
-  { href: '/app/competencias', label: 'Competências',         icon: <IconCal /> },
-
+  { href: '/app/dashboard',    label: 'Dashboard',           icon: 'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z' },
+  { href: '/app/competencias', label: 'Competências',        icon: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z' },
   { section: 'Cadastro' },
-  { href: '/app/funcionarios', label: 'Funcionários',         icon: <IconUser /> },
-  { href: '/app/obras',        label: 'Obras',                icon: <IconObra /> },
-  { href: '/app/passagens',    label: 'Matriz de Passagens',  icon: <IconPass /> },
-
+  { href: '/app/funcionarios', label: 'Funcionários',        icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm7.5-1a3.5 3.5 0 000-7M23 21v-2a4 4 0 00-3-3.87' },
+  { href: '/app/obras',        label: 'Obras',               icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2zM9 22V12h6v10' },
+  { href: '/app/passagens',    label: 'Matriz de Passagens', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
   { section: 'Lançamentos' },
-  { href: '/app/presenca',     label: 'Presença',             icon: <IconPres /> },
-  { href: '/app/avulsos',      label: 'Avulsos / Vales',      icon: <IconAv /> },
-
+  { href: '/app/presenca',     label: 'Presença',            icon: 'M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11' },
+  { href: '/app/avulsos',      label: 'Avulsos / Vales',     icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
   { section: 'Financeiro' },
-  { href: '/app/adiantamento', label: 'Adiantamento',         icon: <IconMoney /> },
-  { href: '/app/passagem-cafe',label: 'Passagem & Café',      icon: <IconBus /> },
-  { href: '/app/pagamento',    label: 'Pagamento Final',      icon: <IconPag /> },
-  { href: '/app/rateio',       label: 'Rateio por Obra',      icon: <IconRat /> },
-
+  { href: '/app/adiantamento', label: 'Adiantamento',        icon: 'M2 7h20M2 11h20M2 15h10M16 17h6M19 14v6' },
+  { href: '/app/passagem-cafe',label: 'Passagem & Café',     icon: 'M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5zm11 0a2.5 2.5 0 100-5 2.5 2.5 0 000 5z' },
+  { href: '/app/pagamento',    label: 'Pagamento Final',     icon: 'M1 4h22v16H1zM1 10h22' },
+  { href: '/app/rateio',       label: 'Rateio por Obra',     icon: 'M18 20V10M12 20V4M6 20v-6' },
   { section: 'Análise' },
-  { href: '/app/relatorios',   label: 'Relatórios',           icon: <IconRel /> },
-  { href: '/app/historico',    label: 'Histórico',            icon: <IconHist /> },
+  { href: '/app/relatorios',   label: 'Relatórios',          icon: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8' },
+  { href: '/app/historico',    label: 'Histórico',           icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
 ]
-
-function IconDash()  { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> }
-function IconCal()   { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> }
-function IconUser()  { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> }
-function IconObra()  { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> }
-function IconPass()  { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> }
-function IconPres()  { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> }
-function IconAv()    { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> }
-function IconMoney() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> }
-function IconBus()   { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg> }
-function IconPag()   { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> }
-function IconRat()   { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> }
-function IconRel()   { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> }
-function IconHist()  { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg> }
-function IconBell()  { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> }
-function IconSearch() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> }
-function IconChevron() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg> }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [loading, setLoading] = useState(true)
   const [compAtiva, setCompAtiva] = useState(mesAtual())
-  const [collapsed, setCollapsed] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -68,81 +46,73 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     router.push('/login')
   }
 
-  // Título da página atual
   const paginaAtual = NAV.find(n => 'href' in n && pathname.startsWith(n.href!)) as any
-  const titulo = paginaAtual?.label || 'Sistema MG'
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid #4f46e5', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-        <div style={{ color: '#64748b', fontSize: 13 }}>Carregando...</div>
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f5f6fa' }}>
+      <div style={{ textAlign:'center' }}>
+        <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid #7c3aed', borderTopColor:'transparent', margin:'0 auto 12px', animation:'spin .8s linear infinite' }} />
+        <div style={{ color:'#9ca3af', fontSize:13 }}>Carregando...</div>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
-  const sideW = collapsed ? 64 : 220
-
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
-      {/* ── SIDEBAR ── */}
-      <aside style={{
-        width: sideW, background: '#0f172a', display: 'flex', flexDirection: 'column',
-        position: 'fixed', height: '100%', zIndex: 30, transition: 'width .2s',
-        overflow: 'hidden',
-      }}>
+    <div style={{ display:'flex', minHeight:'100vh', background:'#f5f6fa' }}>
+      {/* SIDEBAR */}
+      <aside style={{ width:260, background:'white', borderRight:'1px solid #e5e7eb', display:'flex', flexDirection:'column', position:'fixed', height:'100%', zIndex:30, overflowY:'auto' }}>
         {/* Logo */}
-        <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid #1e293b', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <div style={{ padding:'24px 20px 20px', borderBottom:'1px solid #f3f4f6' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#7c3aed,#a78bfa)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 20h20M4 20V8l8-6 8 6v12"/>
+              </svg>
             </div>
-            {!collapsed && (
-              <div>
-                <div style={{ color: 'white', fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>MG Construções</div>
-                <div style={{ color: '#475569', fontSize: 10, marginTop: 1 }}>Gestão de Obras</div>
-              </div>
-            )}
+            <div>
+              <div style={{ fontWeight:800, fontSize:16, color:'#1f2937', letterSpacing:'-0.3px' }}>MG Construções</div>
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>Gestão de Obras</div>
+            </div>
           </div>
         </div>
 
         {/* Competência */}
-        {!collapsed && (
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e293b', flexShrink: 0 }}>
-            <div style={{ color: '#475569', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Competência ativa</div>
-            <select value={compAtiva} onChange={e => setCompAtiva(e.target.value)}
-              style={{ width: '100%', background: '#1e293b', color: 'white', fontSize: 12, borderRadius: 8, padding: '6px 10px', border: '1px solid #334155', outline: 'none' }}>
-              {[-2,-1,0,1,2].map(i => {
-                const d = new Date(); d.setMonth(d.getMonth() + i)
-                const v = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
-                return <option key={v} value={v}>{nomeMes(v)} {d.getFullYear()}</option>
-              })}
-            </select>
-          </div>
-        )}
+        <div style={{ padding:'14px 20px', borderBottom:'1px solid #f3f4f6', background:'#faf9ff' }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>Competência</div>
+          <select value={compAtiva} onChange={e => setCompAtiva(e.target.value)}
+            style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:8, padding:'7px 10px', fontSize:13, color:'#1f2937', background:'white', outline:'none' }}>
+            {[-2,-1,0,1,2].map(i => {
+              const d = new Date(); d.setMonth(d.getMonth()+i)
+              const v = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+              return <option key={v} value={v}>{nomeMes(v)} {d.getFullYear()}</option>
+            })}
+          </select>
+        </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: '8px 10px', overflowY: 'auto' }}>
+        <nav style={{ flex:1, padding:'8px 12px' }}>
           {NAV.map((item, i) => {
-            if ('section' in item) {
-              if (collapsed) return <div key={i} style={{ borderTop: '1px solid #1e293b', margin: '6px 0' }} />
-              return <div key={i} style={{ padding: '14px 6px 4px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#334155' }}>{item.section}</div>
-            }
+            if ('section' in item) return (
+              <div key={i} style={{ padding:'16px 8px 4px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.08em', color:'#d1d5db' }}>
+                {item.section}
+              </div>
+            )
             const ativo = pathname.startsWith(item.href!)
             return (
               <Link key={item.href} href={item.href!}>
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '10px' : '9px 10px',
-                  borderRadius: 8, marginBottom: 2, transition: 'all .15s', cursor: 'pointer',
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                  background: ativo ? '#4f46e5' : 'transparent',
-                  color: ativo ? 'white' : '#64748b',
-                }}
-                  onMouseEnter={e => { if (!ativo) (e.currentTarget as HTMLElement).style.background = '#1e293b'; (e.currentTarget as HTMLElement).style.color = '#e2e8f0' }}
-                  onMouseLeave={e => { if (!ativo) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#64748b' } }}>
-                  <span style={{ flexShrink: 0 }}>{item.icon}</span>
-                  {!collapsed && <span style={{ fontSize: 13, fontWeight: ativo ? 600 : 400, whiteSpace: 'nowrap' }}>{item.label}</span>}
+                  display:'flex', alignItems:'center', gap:12, padding:'10px 12px',
+                  borderRadius:8, marginBottom:2, cursor:'pointer', transition:'all .15s',
+                  background: ativo ? '#ede9fe' : 'transparent',
+                  color: ativo ? '#7c3aed' : '#6b7280',
+                  fontWeight: ativo ? 600 : 400, fontSize:14,
+                }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={(item as any).icon} />
+                  </svg>
+                  {item.label}
+                  {ativo && <div style={{ marginLeft:'auto', width:6, height:6, borderRadius:'50%', background:'#7c3aed' }} />}
                 </div>
               </Link>
             )
@@ -150,64 +120,52 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User */}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #1e293b', flexShrink: 0 }}>
-          {collapsed ? (
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }} onClick={sair}>
+        <div style={{ padding:'16px 20px', borderTop:'1px solid #f3f4f6' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+            <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#7c3aed,#a78bfa)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14, fontWeight:700, flexShrink:0 }}>
               {perfil?.nome?.charAt(0).toUpperCase()}
             </div>
-          ) : (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                  {perfil?.nome?.charAt(0).toUpperCase()}
-                </div>
-                <div style={{ overflow: 'hidden' }}>
-                  <div style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{perfil?.nome}</div>
-                  <div style={{ color: '#475569', fontSize: 10, textTransform: 'capitalize' }}>{perfil?.perfil}</div>
-                </div>
-              </div>
-              <button onClick={sair} style={{ width: '100%', background: '#1e293b', border: '1px solid #334155', color: '#64748b', borderRadius: 6, padding: '6px 10px', fontSize: 11, cursor: 'pointer', transition: 'all .15s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#e2e8f0' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64748b' }}>
-                Sair da conta
-              </button>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontWeight:600, fontSize:13, color:'#1f2937', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{perfil?.nome}</div>
+              <div style={{ fontSize:11, color:'#9ca3af', textTransform:'capitalize' }}>{perfil?.perfil}</div>
             </div>
-          )}
+          </div>
+          <button onClick={sair} style={{ width:'100%', border:'1.5px solid #e5e7eb', background:'white', color:'#6b7280', borderRadius:8, padding:'7px', fontSize:12, cursor:'pointer', transition:'all .15s', fontWeight:500 }}>
+            Sair da conta
+          </button>
         </div>
-
-        {/* Toggle collapse */}
-        <button onClick={() => setCollapsed(c => !c)}
-          style={{ position: 'absolute', top: 20, right: -12, width: 24, height: 24, borderRadius: '50%', background: '#4f46e5', border: '2px solid #0f172a', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform .2s' }}>
-          <IconChevron />
-        </button>
       </aside>
 
-      {/* ── MAIN ── */}
-      <main style={{ flex: 1, marginLeft: sideW, minHeight: '100vh', background: '#f8fafc', transition: 'margin-left .2s', display: 'flex', flexDirection: 'column' }}>
+      {/* MAIN */}
+      <main style={{ flex:1, marginLeft:260, minHeight:'100vh', background:'#f5f6fa', display:'flex', flexDirection:'column' }}>
         {/* Topbar */}
-        <div style={{ background: 'white', borderBottom: '1px solid #e2e8f0', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 20, boxShadow: '0 1px 3px rgba(0,0,0,.04)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#94a3b8', fontSize: 13 }}>MG Construções</span>
-            <span style={{ color: '#cbd5e1' }}>/</span>
-            <span style={{ color: '#0f172a', fontSize: 13, fontWeight: 600 }}>{titulo}</span>
+        <div style={{ background:'white', borderBottom:'1px solid #e5e7eb', padding:'0 28px', height:64, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:20 }}>
+          <div>
+            <div style={{ fontWeight:700, fontSize:20, color:'#1f2937' }}>{paginaAtual?.label || 'Dashboard'}</div>
+            <div style={{ fontSize:12, color:'#9ca3af', display:'flex', alignItems:'center', gap:4 }}>
+              <span>Home</span>
+              <span>/</span>
+              <span style={{ color:'#7c3aed' }}>{paginaAtual?.label || 'Dashboard'}</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ background: '#f1f5f9', borderRadius: 8, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: 12 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span style={{ fontWeight: 600, color: '#475569' }}>{nomeMes(compAtiva)}</span>
-              <span style={{ color: '#94a3b8' }}>{compAtiva.split('-')[0]}</span>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ background:'#f5f6fa', border:'1px solid #e5e7eb', borderRadius:8, padding:'6px 14px', fontSize:13, color:'#6b7280', display:'flex', alignItems:'center', gap:6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              <span style={{ color:'#7c3aed', fontWeight:600 }}>{nomeMes(compAtiva)}</span>
+              <span>{compAtiva.split('-')[0]}</span>
             </div>
-            <div style={{ background: '#eef2ff', color: '#4f46e5', borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 600 }}>
-              {new Date().toLocaleDateString('pt-BR')}
-            </div>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 12, fontWeight: 700 }}>
-              {perfil?.nome?.charAt(0).toUpperCase()}
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#7c3aed,#a78bfa)', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:700 }}>
+                {perfil?.nome?.charAt(0).toUpperCase()}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Conteúdo */}
-        <div style={{ padding: 24, flex: 1 }}>
+        {/* Content */}
+        <div style={{ padding:28, flex:1 }}>
           {children}
         </div>
       </main>
