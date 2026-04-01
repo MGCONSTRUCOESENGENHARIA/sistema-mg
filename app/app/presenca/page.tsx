@@ -290,7 +290,17 @@ export default function PresencaPage() {
           obra_id: d.obra_id || null, fracao: d.fracao || null,
           obra2_id: d.obra2_id || null, fracao2: d.fracao2 || null,
         }
-        const { error } = await supabase.from('presencas').upsert(payload, { onConflict: 'funcionario_id,data' })
+        // Verificar se já existe
+      const { data: existing } = await supabase.from('presencas')
+        .select('id').eq('funcionario_id', linha.funcId!).eq('data', d.data).maybeSingle()
+      let error = null
+      if (existing) {
+        const { error: e } = await supabase.from('presencas').update(payload).eq('id', existing.id)
+        error = e
+      } else {
+        const { error: e } = await supabase.from('presencas').insert(payload)
+        error = e
+      }
         if (error) erros++
         else total++
       }
