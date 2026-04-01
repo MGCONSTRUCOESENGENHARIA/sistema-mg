@@ -1,192 +1,285 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase, Pagamento } from '@/lib/supabase'
-import { mesAtual, nomeMes, formatR$ } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
+import { mesAtual, nomeMes, formatR$, diasDoMes, formatDate, fim1Quinzena, AUSENCIAS } from '@/lib/utils'
+
+interface Linha {
+  func_id: string
+  nome: string
+  equipe: string
+  valor_diaria: number
+  salario_base: number
+  total_diarias: number
+  extras_folha: number
+  extra_folha_valor: number
+  adiantamento: number
+  hora_extra: number
+  complemento: number
+  descontos: number
+  total_pagamento: number
+}
 
 export default function AdiantamentoPage() {
   const [equipe, setEquipe] = useState<'ARMAÇÃO' | 'CARPINTARIA'>('ARMAÇÃO')
   const [mes, setMes] = useState(mesAtual())
-  const [pagamentos, setPagamentos] = useState<(Pagamento & { funcionarios: any })[]>([])
+  const [linhas, setLinhas] = useState<Linha[]>([])
   const [loading, setLoading] = useState(true)
-  const [calculando, setCalculando] = useState(false)
-  const [editandoId, setEditandoId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<Partial<Pagamento>>({})
+  const [editando, setEditando] = useState<Record<string, { hora_extra: number; complemento: number; descontos: number }>>({})
+  const [salvando, setSalvando] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
-  const [alertas, setAlertas] = useState<string[]>([])
 
   useEffect(() => { carregar() }, [equipe, mes])
 
   async function carregar() {
     setLoading(true)
-    const { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).single()
-    if (!comp) { setPagamentos([]); setLoading(false); return }
-    const { data } = await supabase.from('pagamentos')
-      .select('*, funcionarios(nome,equipe,valor_diaria,salario_base)')
-      .eq('competencia_id', comp.id)
-      .eq('tipo', 'adiantamento')
-    const filtrado = (data || []).filter((p: any) => p.funcionarios?.equipe === equipe)
-    setPagamentos(filtrado)
-    setAlertas([...new Set(filtrado.flatMap((p: any) => p.alertas || []))])
+
+    const { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
+    const { data: funcs } = await supabase.from('funcionarios')
+      .select('id,nome,equipe,valor_diaria,salario_base')
+      .eq('equipe', equipe).eq('ativo', true).order('nome')
+
+    if (!funcs || funcs.length === 0) { setLinhas([]); setLoading(false); return }
+
+    const diasMes = diasDoMes(mes)
+    const f1 = fim1Quinzena(diasMes)
+    const dias1Q = diasMes.slice(0, f1 + 1)
+
+    // Presenças apenas da 1ª quinzena
+    let presencas: any[] = []
+    if (comp?.id) {
+      const { data: pres } = await supabase.from('presencas')
+        .select('funcionario_id,tipo,fracao,fracao2,data')
+        .eq('competencia_id', comp.id)
+        .in('data', dias1Q.map(d => formatDate(d)))
+        .in('funcionario_id', funcs.map((f: any) => f.id))
+      presencas = pres || []
+    }
+
+    // Avulsos da 1ª quinzena (descontar no adiantamento)
+    let avulsos: any[] = []
+    if (comp?.id) {
+      const { data: av } = await supabase.from('avulsos')
+        .select('funcionario_id,valor,quando_descontar')
+        .eq('competencia_id', comp.id)
+        .eq('quando_descontar', 'adiantamento')
+        .in('funcionario_id', funcs.map((f: any) => f.id))
+      avulsos = av || []
+    }
+
+    // Calcular por funcionário
+    const resultado: Linha[] = funcs.map((func: any) => {
+      const presFunci = presencas.filter(p => p.funcionario_id === func.id)
+      let totalDiarias = 0, extrasfolha = 0
+
+      presFunci.forEach(p => {
+        if (['FALTA', ...AUSENCIAS].includes(p.tipo)) return
+        const soma = (p.fracao || 0) + (p.fracao2 || 0)
+        if (p.tipo === 'SABADO_EXTRA') extrasfolha += soma
+        else totalDiarias += soma
+      })
+
+      const adiantamento = func.salario_base * 0.5
+      const extraFolhaValor = extrasfolha * func.valor_diaria
+      const descFunci = avulsos.filter(a => a.funcionario_id === func.id).reduce((s, a) => s + a.valor, 0)
+      const editFunci = editando[func.id] || { hora_extra: 0, complemento: 0, descontos: descFunci }
+
+      const total = adiantamento + extraFolhaValor + editFunci.hora_extra + editFunci.complemento - editFunci.descontos
+
+      return {
+        func_id: func.id, nome: func.nome, equipe: func.equipe,
+        valor_diaria: func.valor_diaria, salario_base: func.salario_base,
+        total_diarias: totalDiarias, extras_folha: extrasfolha,
+        extra_folha_valor: extraFolhaValor, adiantamento,
+        hora_extra: editFunci.hora_extra, complemento: editFunci.complemento,
+        descontos: editFunci.descontos, total_pagamento: total,
+      }
+    })
+
+    setLinhas(resultado)
+    // Inicializar editando com descontos do banco
+    const newEdit: typeof editando = {}
+    resultado.forEach(l => {
+      if (!editando[l.func_id]) {
+        newEdit[l.func_id] = { hora_extra: 0, complemento: 0, descontos: l.descontos }
+      }
+    })
+    setEditando(ed => ({ ...newEdit, ...ed }))
     setLoading(false)
   }
 
-  async function calcularTodos() {
-    setCalculando(true); setMsg('')
-    let { data: comp } = await supabase.from('competencias').select('id,status').eq('mes_ano', mes).single()
-    if (!comp) {
-      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
-      comp = nova
-    }
-    if (comp?.status === 'FECHADA') { setMsg('⚠️ Competência fechada.'); setCalculando(false); return }
-    const { data: funcs } = await supabase.from('funcionarios').select('id').eq('equipe', equipe).eq('ativo', true)
-    let erros = 0
-    for (const f of funcs || []) {
-      const { error } = await supabase.rpc('calcular_pagamento', {
-        p_competencia_id: comp!.id, p_funcionario_id: f.id, p_tipo: 'adiantamento'
-      })
-      if (error) erros++
-    }
-    await carregar()
-    setMsg(erros > 0 ? `⚠️ Calculado com ${erros} erros — verifique as passagens.` : '✅ Adiantamentos calculados!')
-    setTimeout(() => setMsg(''), 4000)
-    setCalculando(false)
+  function setEdit(funcId: string, field: 'hora_extra' | 'complemento' | 'descontos', val: number) {
+    setEditando(ed => ({ ...ed, [funcId]: { ...(ed[funcId] || { hora_extra: 0, complemento: 0, descontos: 0 }), [field]: val } }))
   }
 
-  async function salvarEdicao() {
-    if (!editandoId) return
-    const pag = pagamentos.find(p => p.id === editandoId)!
-    const somaDesc = (editForm.outros_desc || 0)
-    const extras = (editForm.hora_extra || 0) + (editForm.complemento || 0)
-    const totalPag = pag.valor_diarias + pag.total_passagem + pag.total_cafe + extras - pag.total_avulsos - somaDesc
-    await supabase.from('pagamentos').update({
-      hora_extra: editForm.hora_extra || 0,
-      complemento: editForm.complemento || 0,
-      outros_desc: editForm.outros_desc || 0,
-      observacao: editForm.observacao || null,
-      total_pagamento: totalPag,
-      total_contra_cheque: totalPag,
-    }).eq('id', editandoId)
-    setEditandoId(null)
-    await carregar()
+  function recalcular(linha: Linha) {
+    const ed = editando[linha.func_id] || { hora_extra: 0, complemento: 0, descontos: linha.descontos }
+    return linha.adiantamento + linha.extra_folha_valor + ed.hora_extra + ed.complemento - ed.descontos
   }
 
-  function edI(field: keyof Pagamento, w = 70) {
-    return (
-      <input type="number" step="0.01"
-        className="text-right text-xs border border-yellow-400 rounded px-1 py-0.5 bg-yellow-50"
-        style={{ width: w }}
-        value={(editForm[field] as number) || 0}
-        onChange={e => setEditForm(f => ({ ...f, [field]: parseFloat(e.target.value) || 0 }))}
-      />
-    )
-  }
+  const totalDiarias = linhas.reduce((s, l) => s + l.total_diarias, 0)
+  const totalExtras = linhas.reduce((s, l) => s + l.extras_folha, 0)
+  const totalAdiant = linhas.reduce((s, l) => s + l.adiantamento, 0)
+  const totalExtraFolha = linhas.reduce((s, l) => s + l.extra_folha_valor, 0)
+  const totalDesc = linhas.reduce((s, l) => s + (editando[l.func_id]?.descontos ?? l.descontos), 0)
+  const totalGeral = linhas.reduce((s, l) => s + recalcular(l), 0)
 
-  const totalGeral = pagamentos.reduce((s, p) => s + p.total_pagamento, 0)
-  const totalCC = pagamentos.reduce((s, p) => s + p.total_contra_cheque, 0)
+  const btnEq = (eq: 'ARMAÇÃO' | 'CARPINTARIA') => ({
+    padding: '7px 18px', borderRadius: 8, border: '2px solid #1a3a5c', cursor: 'pointer', fontWeight: 700, fontSize: 13,
+    background: equipe === eq ? '#1a3a5c' : '#fff', color: equipe === eq ? '#fff' : '#1a3a5c',
+  })
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold text-[#1a3a5c]">Adiantamento — Dia 20</h1>
-          <p className="text-gray-500 text-sm mt-0.5">1ª quinzena · Campos em amarelo são editáveis</p>
-        </div>
-        <div className="flex gap-2 flex-wrap items-center">
-          {(['ARMAÇÃO', 'CARPINTARIA'] as const).map(eq => (
-            <button key={eq} onClick={() => setEquipe(eq)}
-              className={equipe === eq ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>{eq}</button>
-          ))}
-          <input type="month" className="input text-sm py-1.5 w-36" value={mes} onChange={e => setMes(e.target.value)} />
-          <button onClick={calcularTodos} disabled={calculando} className="btn-green btn-sm">
-            {calculando ? 'Calculando...' : '▶ Calcular'}
-          </button>
-          <button onClick={() => window.print()} className="btn-ghost btn-sm">🖨 Imprimir</button>
-        </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button style={btnEq('ARMAÇÃO')} onClick={() => setEquipe('ARMAÇÃO')}>Armação</button>
+        <button style={btnEq('CARPINTARIA')} onClick={() => setEquipe('CARPINTARIA')}>Carpintaria</button>
+        <select value={mes} onChange={e => { setMes(e.target.value); setEditando({}) }}
+          style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 10px', fontSize: 13 }}>
+          {['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => {
+            const v = `2026-${m}`
+            const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+            return <option key={v} value={v}>{nomes[+m-1]} 2026</option>
+          })}
+        </select>
+        <button onClick={() => window.print()}
+          style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #6b7280', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
+          🖨 Imprimir
+        </button>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: '#6b7280' }}>
+          Campos em amarelo são editáveis · Pressione Enter para confirmar
+        </span>
       </div>
 
-      {alertas.length > 0 && (
-        <div className="alert-err mb-4">
-          <strong>⚠️ Passagens não cadastradas ({alertas.length}):</strong>
-          <div className="text-xs mt-1 space-y-0.5 max-h-20 overflow-y-auto">
-            {alertas.map((a, i) => <div key={i}>{a}</div>)}
-          </div>
-        </div>
-      )}
-      {msg && <div className={msg.includes('⚠') ? 'alert-warn mb-4' : 'alert-ok mb-4'}>{msg}</div>}
+      <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1a3a5c', marginBottom: 2 }}>
+        Adiantamento — Dia 20 · {equipe}
+      </h1>
+      <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>
+        1ª Quinzena de {nomeMes(mes)} · Adiantamento = 50% do salário base
+      </p>
+
+      {msg && <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: 12, color: '#14532d', fontSize: 13 }}>{msg}</div>}
 
       {loading ? (
-        <div className="card-pad text-center py-12 text-gray-400">Carregando...</div>
-      ) : pagamentos.length === 0 ? (
-        <div className="card-pad text-center py-12">
-          <p className="text-gray-400 mb-3">Nenhum adiantamento calculado ainda para {nomeMes(mes)}.</p>
-          <button onClick={calcularTodos} className="btn-primary">▶ Calcular Agora</button>
-        </div>
+        <div style={{ textAlign: 'center', padding: 48, color: '#9ca3af' }}>Carregando...</div>
       ) : (
-        <div className="card overflow-auto">
-          <table className="border-collapse" style={{ minWidth: 'max-content' }}>
+        <div style={{ overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <table style={{ borderCollapse: 'collapse', minWidth: 'max-content', width: '100%' }}>
             <thead>
               <tr>
-                <th className="th-left sticky left-0 z-10" style={{ minWidth: 200 }}>FUNCIONÁRIO</th>
-                <th className="th">TOTAL DIÁRIAS</th>
-                <th className="th">EXTRA FOLHA</th>
-                <th className="th">VL DIÁRIA</th>
-                <th className="th">SALÁRIO BASE</th>
-                <th className="th">ADIANTAMENTO</th>
-                <th className="th">PASSAGEM</th>
-                <th className="th">CAFÉ</th>
-                <th className="th" style={{ background: '#7c3aed' }}>HORA EXTRA</th>
-                <th className="th" style={{ background: '#7c3aed' }}>COMPLEMENTO</th>
-                <th className="th" style={{ background: '#991b1b' }}>OUTROS DESC.</th>
-                <th className="th bg-green-900">TOTAL PAGAMENTO</th>
-                <th className="th bg-green-900">CONTRA CHEQUE</th>
-                <th className="th">STATUS</th>
-                <th className="th">AÇÃO</th>
+                {/* Cabeçalhos */}
+                {[
+                  { label: 'FUNCIONÁRIO', bg: '#1a3a5c', min: 220, sticky: true },
+                  { label: 'TOTAL DIÁRIAS', bg: '#1e4d2b' },
+                  { label: 'DIÁRIAS EXTRA FOLHA', bg: '#4c1d95' },
+                  { label: 'VALOR DA DIÁRIA', bg: '#1a3a5c' },
+                  { label: 'SALÁRIO BASE', bg: '#1a3a5c' },
+                  { label: 'ADIANTAMENTO', bg: '#065f46' },
+                  { label: 'EXTRA FOLHA', bg: '#4c1d95' },
+                  { label: 'HORA EXTRA', bg: '#7c2d12' },
+                  { label: 'COMPLEMENTO', bg: '#7c2d12' },
+                  { label: 'DESCONTOS', bg: '#991b1b' },
+                  { label: 'TOTAL DO PAGAMENTO', bg: '#064e3b' },
+                ].map((h, i) => (
+                  <th key={i} style={{
+                    background: h.bg, color: '#fff', padding: '8px 10px',
+                    textAlign: i === 0 ? 'left' : 'center', fontSize: 10, fontWeight: 700,
+                    minWidth: h.min || 110, whiteSpace: 'nowrap',
+                    position: h.sticky ? 'sticky' : undefined,
+                    left: h.sticky ? 0 : undefined, zIndex: h.sticky ? 20 : undefined,
+                  }}>{h.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {pagamentos.map((pag, i) => {
-                const ed = editandoId === pag.id
-                const func = pag.funcionarios
-                const adiant = func ? func.salario_base * 0.5 : 0
+              {linhas.map((l, fi) => {
+                const ed = editando[l.func_id] || { hora_extra: 0, complemento: 0, descontos: l.descontos }
+                const total = recalcular(l)
+                const bg = fi % 2 === 0 ? '#fff' : '#f9fafb'
+                const inputStyle = {
+                  width: 90, textAlign: 'right' as const, border: '1px solid #fbbf24',
+                  borderRadius: 4, padding: '3px 6px', fontSize: 12,
+                  background: '#fefce8', fontWeight: 600,
+                }
                 return (
-                  <tr key={pag.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}>
-                    <td className="td font-semibold text-[#1a3a5c] sticky left-0 bg-inherit border-r-2 border-gray-200" style={{ minWidth: 200 }}>
-                      {func?.nome}
+                  <tr key={l.func_id} style={{ background: bg }}>
+                    <td style={{ padding: '7px 12px', fontWeight: 600, color: '#1a3a5c', fontSize: 12, position: 'sticky', left: 0, background: bg, zIndex: 1, borderRight: '2px solid #e5e7eb', whiteSpace: 'nowrap', minWidth: 220 }}>
+                      {l.nome}
                     </td>
-                    <td className="td-center">{pag.total_diarias}</td>
-                    <td className="td-center">{pag.total_extras}</td>
-                    <td className="td-num">{formatR$(func?.valor_diaria)}</td>
-                    <td className="td-num">{formatR$(func?.salario_base)}</td>
-                    <td className="td-num font-bold text-blue-800 bg-blue-50">{formatR$(adiant)}</td>
-                    <td className="td-num">{formatR$(pag.total_passagem)}</td>
-                    <td className="td-num">{formatR$(pag.total_cafe)}</td>
-                    <td className="td text-center bg-purple-50">{ed ? edI('hora_extra') : formatR$(pag.hora_extra)}</td>
-                    <td className="td text-center bg-purple-50">{ed ? edI('complemento') : formatR$(pag.complemento)}</td>
-                    <td className="td text-center bg-red-50">{ed ? edI('outros_desc') : formatR$(pag.outros_desc)}</td>
-                    <td className="td-num font-bold text-green-800 bg-green-50">{formatR$(pag.total_pagamento)}</td>
-                    <td className="td-num font-bold text-green-900 bg-green-100">{formatR$(pag.total_contra_cheque)}</td>
-                    <td className="td-center">
-                      <span className={pag.status === 'CALCULADO' ? 'badge-ok' : 'badge-warn'}>{pag.status}</span>
+                    <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 700, color: '#166534', fontSize: 13 }}>
+                      {l.total_diarias.toFixed(1)}
                     </td>
-                    <td className="td-center">
-                      {ed ? (
-                        <div className="flex gap-1">
-                          <button onClick={salvarEdicao} className="btn btn-sm bg-green-700 text-white">✓</button>
-                          <button onClick={() => setEditandoId(null)} className="btn btn-sm bg-gray-200 text-gray-600">✕</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => { setEditandoId(pag.id); setEditForm({ ...pag }) }} className="btn-ghost btn-sm">Editar</button>
-                      )}
+                    <td style={{ padding: '7px 10px', textAlign: 'center', color: '#6d28d9', fontSize: 13 }}>
+                      {l.extras_folha.toFixed(1)}
+                    </td>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', fontSize: 12 }}>
+                      {formatR$(l.valor_diaria)}
+                    </td>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', fontSize: 12 }}>
+                      {formatR$(l.salario_base)}
+                    </td>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: '#065f46', background: '#f0fdf4', fontSize: 13 }}>
+                      {formatR$(l.adiantamento)}
+                    </td>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', color: '#6d28d9', background: '#f5f3ff', fontSize: 12 }}>
+                      {l.extra_folha_valor > 0 ? formatR$(l.extra_folha_valor) : '—'}
+                    </td>
+                    {/* Hora Extra editável */}
+                    <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
+                      <input type="number" step="0.01" style={inputStyle}
+                        value={ed.hora_extra || ''}
+                        placeholder="0,00"
+                        onChange={e => setEdit(l.func_id, 'hora_extra', parseFloat(e.target.value) || 0)}
+                      />
+                    </td>
+                    {/* Complemento editável */}
+                    <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
+                      <input type="number" step="0.01" style={inputStyle}
+                        value={ed.complemento || ''}
+                        placeholder="0,00"
+                        onChange={e => setEdit(l.func_id, 'complemento', parseFloat(e.target.value) || 0)}
+                      />
+                    </td>
+                    {/* Descontos editável */}
+                    <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fef2f2' }}>
+                      <input type="number" step="0.01" style={{ ...inputStyle, border: '1px solid #fca5a5', background: '#fef2f2' }}
+                        value={ed.descontos || ''}
+                        placeholder="0,00"
+                        onChange={e => setEdit(l.func_id, 'descontos', parseFloat(e.target.value) || 0)}
+                      />
+                    </td>
+                    {/* Total */}
+                    <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: '#065f46', background: '#dcfce7', fontSize: 14 }}>
+                      {formatR$(total)}
                     </td>
                   </tr>
                 )
               })}
-              <tr className="bg-green-50 font-bold">
-                <td className="td sticky left-0 bg-green-50">TOTAL {equipe}</td>
-                {Array(10).fill(null).map((_, i) => <td key={i} className="td"></td>)}
-                <td className="td-num text-green-900">{formatR$(totalGeral)}</td>
-                <td className="td-num text-green-900">{formatR$(totalCC)}</td>
-                <td className="td" colSpan={2}></td>
+
+              {/* Totais */}
+              <tr style={{ background: '#1a3a5c', fontWeight: 700 }}>
+                <td style={{ padding: '9px 12px', color: '#fff', fontSize: 12, position: 'sticky', left: 0, background: '#1a3a5c', zIndex: 1 }}>
+                  TOTAL {equipe}
+                </td>
+                <td style={{ padding: '9px 10px', textAlign: 'center', color: '#86efac', fontSize: 13 }}>
+                  {totalDiarias.toFixed(1)}
+                </td>
+                <td style={{ padding: '9px 10px', textAlign: 'center', color: '#c4b5fd', fontSize: 13 }}>
+                  {totalExtras.toFixed(1)}
+                </td>
+                <td colSpan={2} style={{ padding: '9px 10px' }}></td>
+                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#86efac', fontSize: 13 }}>
+                  {formatR$(totalAdiant)}
+                </td>
+                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#c4b5fd', fontSize: 12 }}>
+                  {totalExtraFolha > 0 ? formatR$(totalExtraFolha) : '—'}
+                </td>
+                <td colSpan={2} style={{ padding: '9px 10px' }}></td>
+                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#fca5a5', fontSize: 12 }}>
+                  -{formatR$(totalDesc)}
+                </td>
+                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#86efac', fontSize: 14 }}>
+                  {formatR$(totalGeral)}
+                </td>
               </tr>
             </tbody>
           </table>
