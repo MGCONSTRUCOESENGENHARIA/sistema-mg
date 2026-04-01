@@ -146,7 +146,7 @@ export default function PassagemCafePage() {
     setLoading(false)
   }
 
-  function atualizar(funcId: string, field: 'recebido_anterior' | 'dias_projetados' | 'adicional', val: number) {
+  function atualizar(funcId: string, field: 'recebido_anterior' | 'dias_projetados' | 'adicional' | 'valor_fixo', val: number) {
     setLinhas(prev => prev.map(l => {
       if (l.func_id !== funcId) return l
       const upd = { ...l, [field]: val }
@@ -318,9 +318,17 @@ export default function PassagemCafePage() {
                         {l.tipo_passagem}
                       </span>
                     </td>
-                    {/* Valor fixo/dia */}
-                    <td style={{ padding: '6px 10px', textAlign: 'right', fontSize: 12, color: isPraFrente ? '#1e40af' : '#9ca3af' }}>
-                      {isPraFrente ? formatR$(l.valor_fixo) : '—'}
+                    {/* Valor fixo/dia — editável */}
+                    <td style={{ padding: '4px 6px', textAlign: 'center', background: isPraFrente ? '#fefce8' : '#f9fafb' }}>
+                      {isPraFrente ? (
+                        <input type="number" step="0.01" style={inputStyle}
+                          value={l.valor_fixo || ''}
+                          placeholder="0,00"
+                          onChange={e => atualizar(l.func_id, 'valor_fixo', parseFloat(e.target.value) || 0)}
+                        />
+                      ) : (
+                        <span style={{ fontSize: 12, color: '#9ca3af' }}>—</span>
+                      )}
                     </td>
                     {/* Valor gasto quinzena */}
                     <td style={{ padding: '6px 10px', textAlign: 'right', fontSize: 12, background: '#f5f3ff', fontWeight: 600 }}>
