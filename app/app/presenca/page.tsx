@@ -137,6 +137,7 @@ export default function PresencaPage() {
   const [sugestoes, setSugestoes] = useState<string[]>([])
   const [clipCell, setClipCell] = useState<Pres | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const clicandoSugestao = useRef(false)
   const copiadoRef = useRef<Pres | null>(null)
   const selecionadasRef = useRef<Set<string>>(new Set())
   const presMapRef = useRef<Record<string, Pres>>({})
@@ -713,7 +714,12 @@ export default function PresencaPage() {
                                   }
                                   if (e.key === 'Escape') { setEditandoCell(null); setSugestoes([]) }
                                 }}
-                                onBlur={async () => { await salvarCelulaTexto(func.id, key, editVal); setEditandoCell(null); setSugestoes([]) }}
+                                onBlur={async () => {
+                                  if (clicandoSugestao.current) return
+                                  await salvarCelulaTexto(func.id, key, editVal)
+                                  setEditandoCell(null)
+                                  setSugestoes([])
+                                }}
                                 style={{ width:'100%', border:'2px solid #7c3aed', borderRadius:0, padding:'2px 4px', fontSize:10, outline:'none', background:'white', textAlign:'center' }}
                               />
                               {sugestoes.length > 0 && (
@@ -723,10 +729,14 @@ export default function PresencaPage() {
                                       onPointerDown={async e => {
                                         e.preventDefault()
                                         e.stopPropagation()
+                                        clicandoSugestao.current = true
                                         setSugestoes([])
                                         setEditVal(s)
                                         setEditandoCell(null)
                                         await salvarCelulaTexto(func.id, key, s)
+                                        setTimeout(() => {
+                                          clicandoSugestao.current = false
+                                        }, 100)
                                       }}
                                       style={{ padding:'6px 10px', fontSize:11, cursor:'pointer', borderBottom:'1px solid #f3f4f6', color:'#1f2937', userSelect:'none' }}
                                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='#f5f3ff'}
