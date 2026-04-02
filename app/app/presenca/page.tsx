@@ -117,8 +117,6 @@ export default function PresencaPage() {
   const [obras, setObras] = useState<Obra[]>([])
   const [presMap, setPresMap] = useState<Record<string, Pres>>({})
   const [modal, setModal] = useState<Modal | null>(null)
-  const [copiado, setCopiado] = useState<Pres | null>(null)
-  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [formTipo, setFormTipo] = useState<PresencaTipo>('NORMAL')
@@ -131,63 +129,15 @@ export default function PresencaPage() {
   const [preview, setPreview] = useState<LinhaPrev[] | null>(null)
   const [importando, setImportando] = useState(false)
   const [importMsg, setImportMsg] = useState('')
-  const [msg, setMsg] = useState('')
-  const [editandoCell, setEditandoCell] = useState<string | null>(null)
-  const [editVal, setEditVal] = useState('')
-  const [sugestoes, setSugestoes] = useState<string[]>([])
-  const [clipCell, setClipCell] = useState<Pres | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const clicandoSugestao = useRef(false)
-  const copiadoRef = useRef<Pres | null>(null)
-  const selecionadasRef = useRef<Set<string>>(new Set())
-  const presMapRef = useRef<Record<string, Pres>>({})
-  const compIdRef = useRef<string | null>(null)
 
   const dias = diasDoMes(mes)
   const nomeDia = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
   const fim1Q = dias.findIndex(d => d.getDate() > 15) - 1
 
   useEffect(() => { carregar() }, [equipe, mes])
-  useEffect(() => { copiadoRef.current = copiado }, [copiado])
-  useEffect(() => { selecionadasRef.current = selecionadas }, [selecionadas])
-  useEffect(() => { presMapRef.current = presMap }, [presMap])
-  useEffect(() => { compIdRef.current = compId }, [compId])
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
-        const sels = selecionadasRef.current
-        const pmap = presMapRef.current
-        if (sels.size >= 1) {
-          const cellKey = Array.from(sels)[0]
-          const [funcId, data] = cellKey.split('|')
-          const p = pmap[`${funcId}|${data}`]
-          if (p) {
-            setCopiado(p)
-            copiadoRef.current = p
-            setMsg(`📋 Copiado! Agora selecione as células e pressione Ctrl+V`)
-            setTimeout(() => setMsg(''), 4000)
-          } else {
-            setMsg('⚠️ Célula vazia, nada para copiar.')
-            setTimeout(() => setMsg(''), 2000)
-          }
-        }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-        const cop = copiadoRef.current
-        const sels = selecionadasRef.current
-        if (!cop || sels.size === 0) return
-        colarEmSelecionadas()
-      }
-      if (e.key === 'Escape') {
-        setSelecionadas(new Set())
-        setCopiado(null)
-        copiadoRef.current = null
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+
 
   async function carregar() {
     setLoading(true)
@@ -419,123 +369,6 @@ export default function PresencaPage() {
 
 
 
-  async function colarEmSelecionadas() {
-    const cop = copiadoRef.current
-    const sels = selecionadasRef.current
-    const pmap = presMapRef.current
-    if (!cop || sels.size === 0) return
-    setSalvando(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    // Buscar competência do banco sempre fresquinha
-    let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
-    if (!comp) {
-      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
-      comp = nova
-    }
-    const compAtual = comp?.id
-    if (!compAtual) { setSalvando(false); return }
-    let count = 0
-    let erros = 0
-    for (const cellKey of Array.from(sels)) {
-      const [funcId, data] = cellKey.split('|')
-      const existing = pmap[`${funcId}|${data}`]
-      if (existing) {
-        const { error } = await supabase.from('presencas').update({
-          tipo: cop.tipo, obra_id: cop.obra_id || null,
-          fracao: cop.fracao || null, obra2_id: cop.obra2_id || null,
-          fracao2: cop.fracao2 || null,
-        }).eq('id', existing.id)
-        if (error) erros++; else count++
-      } else {
-        const { error } = await supabase.from('presencas').insert({
-          competencia_id: compAtual, funcionario_id: funcId, data,
-          tipo: cop.tipo, obra_id: cop.obra_id || null,
-          fracao: cop.fracao || null, obra2_id: cop.obra2_id || null,
-          fracao2: cop.fracao2 || null, registrado_por: user?.id,
-        })
-        if (error) erros++; else count++
-      }
-    }
-    setSelecionadas(new Set())
-    selecionadasRef.current = new Set()
-    if (erros > 0) setMsg(`⚠️ Colado ${count}, ${erros} erro(s).`)
-    else setMsg(`✅ Colado em ${count} célula(s)!`)
-    setTimeout(() => setMsg(''), 3000)
-    await carregar()
-    setSalvando(false)
-  }
-
-  // Calcula sugestões baseadas no que digitou
-  function calcSugestoes(val: string): string[] {
-    if (!val || val.length < 1) return []
-    const v = val.toUpperCase()
-    const especiais = ['FALTA', 'ATESTADO', 'AUSENTE', 'SAIU', 'SAB']
-    const nomes = obras.map(o => o.nome)
-    const todas = [...especiais, ...nomes]
-    return todas.filter(s => s.toUpperCase().includes(v)).slice(0, 8)
-  }
-
-  async function salvarCelulaTexto(funcId: string, data: string, texto: string) {
-    const txt = texto.trim()
-    if (!txt) {
-      // Vazio = remover presença
-      const ex = getPres(funcId, data)
-      if (ex) await supabase.from('presencas').delete().eq('id', ex.id)
-      await carregar()
-      return
-    }
-    // Parse do texto
-    const upper = txt.toUpperCase()
-    let tipo: any = 'NORMAL'
-    let obra_id = null
-    let fracao = 1
-    
-    if (upper === 'FALTA' || upper === 'F') tipo = 'FALTA'
-    else if (upper === 'ATESTADO' || upper === 'AT') tipo = 'ATESTADO'
-    else if (upper === 'AUSENTE' || upper === 'AUS') tipo = 'AUSENTE'
-    else if (upper === 'SAIU') tipo = 'SAIU'
-    else if (upper === 'SAB' || upper === 'SÁBADO') tipo = 'SABADO_EXTRA'
-    else {
-      // Tenta achar obra - busca flexível
-      const obra = obras.find(o => 
-        o.nome.toUpperCase().includes(upper) || 
-        upper.includes(o.nome.toUpperCase()) ||
-        o.codigo.toUpperCase().includes(upper) ||
-        upper.includes(o.codigo.toUpperCase()) ||
-        o.nome.toUpperCase().split(' ').some((p: string) => upper.includes(p) && p.length > 2)
-      )
-      if (obra) { obra_id = obra.id; tipo = 'NORMAL' }
-      else { 
-        setMsg(`⚠️ "${txt}" não encontrado. Obras: ${obras.slice(0,3).map(o=>o.nome).join(', ')}...`)
-        setTimeout(()=>setMsg(''),4000)
-        return 
-      }
-    }
-
-    let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
-    if (!comp) {
-      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
-      comp = nova
-    }
-    const { data: { user } } = await supabase.auth.getUser()
-    const payload = { competencia_id: comp!.id, funcionario_id: funcId, data, tipo, obra_id, fracao, registrado_por: user?.id }
-    const ex = getPres(funcId, data)
-    if (ex) await supabase.from('presencas').update(payload).eq('id', ex.id)
-    else await supabase.from('presencas').insert(payload)
-    await carregar()
-  }
-
-  function labelParaTexto(p?: Pres): string {
-    if (!p) return ''
-    if (p.tipo === 'FALTA') return 'FALTA'
-    if (p.tipo === 'ATESTADO') return 'ATESTADO'
-    if (p.tipo === 'AUSENTE') return 'AUSENTE'
-    if (p.tipo === 'SAIU') return 'SAIU'
-    if (p.tipo === 'SABADO_EXTRA') return 'SAB'
-    const obraName = (p.obras as any)?.nome || obras.find(o => o.id === p.obra_id)?.nome || ''
-    return obraName
-  }
-
   async function remover() {
     if (!modal?.atual) return
     await supabase.from('presencas').delete().eq('id', modal.atual.id)
@@ -581,13 +414,6 @@ export default function PresencaPage() {
           </button>
         </div>
       </div>
-
-      {/* Hint bar */}
-      <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, padding:'8px 14px', marginBottom:10, fontSize:12, color:'#1e40af', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-        <span>💡 <strong>Clique</strong> = editar célula · digite a obra e selecione · <strong>Enter/Tab</strong> = salvar · <strong>Duplo clique</strong> = editar fração · <strong>Esc</strong> = cancelar</span>
-      </div>
-
-      {msg && <div style={{ background: msg.includes('✅') ? '#f0fdf4' : msg.includes('⚠') ? '#fffbeb' : '#eff6ff', border:`1px solid ${msg.includes('✅')?'#bbf7d0':msg.includes('⚠')?'#fde68a':'#bfdbfe'}`, borderRadius:8, padding:'8px 14px', marginBottom:10, fontSize:13, color: msg.includes('✅')?'#166534':msg.includes('⚠')?'#92400e':'#1e40af' }}>{msg}</div>}
 
       <div style={{ marginBottom:10, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
         <h1 style={{ fontSize:18, fontWeight:700, color:'#1a3a5c' }}>Grade de Presença — {equipe}</h1>
@@ -693,65 +519,11 @@ export default function PresencaPage() {
                       const label = celLabel(p)
                       return (
                         <td key={di}
-                          style={{ padding:0, textAlign:'center', fontSize:11, minWidth:65, maxWidth:65, background: editandoCell===`${func.id}|${key}` ? '#fff' : celBg(p,sab), borderBottom:'1px solid #f3f4f6', verticalAlign:'middle', position:'relative' }}
-                          onDoubleClick={() => { setEditandoCell(null); abrirModal(func.id, func.nome, key) }}>
-                          {editandoCell === `${func.id}|${key}` ? (
-                            <div style={{ position:'relative' }}>
-                              <input
-                                autoFocus
-                                value={editVal}
-                                onChange={e => { setEditVal(e.target.value); setSugestoes(calcSugestoes(e.target.value)) }}
-                                onKeyDown={async e => {
-                                  if (e.key === 'Enter' || e.key === 'Tab') {
-                                    e.preventDefault()
-                                    await salvarCelulaTexto(func.id, key, editVal)
-                                    setEditandoCell(null); setSugestoes([])
-                                    if (e.key === 'Tab' && !e.shiftKey && fi < funcsFiltradas.length - 1) {
-                                      const nextFunc = funcsFiltradas[fi+1]
-                                      setEditandoCell(`${nextFunc.id}|${key}`)
-                                      setEditVal(labelParaTexto(getPres(nextFunc.id, key)))
-                                    }
-                                  }
-                                  if (e.key === 'Escape') { setEditandoCell(null); setSugestoes([]) }
-                                }}
-                                onBlur={async () => {
-                                  if (clicandoSugestao.current) return
-                                  await salvarCelulaTexto(func.id, key, editVal)
-                                  setEditandoCell(null)
-                                  setSugestoes([])
-                                }}
-                                style={{ width:'100%', border:'2px solid #7c3aed', borderRadius:0, padding:'2px 4px', fontSize:10, outline:'none', background:'white', textAlign:'center' }}
-                              />
-                              {sugestoes.length > 0 && (
-                                <div style={{ position:'absolute', top:'100%', left:0, zIndex:100, background:'white', border:'1px solid #e5e7eb', borderRadius:6, boxShadow:'0 4px 12px rgba(0,0,0,.15)', minWidth:140, maxWidth:200 }}>
-                                  {sugestoes.map((s,si) => (
-                                    <div key={si}
-                                      onMouseDown={async (e) => {
-                                        e.preventDefault()
-                                        clicandoSugestao.current = true
-                                        await salvarCelulaTexto(func.id, key, s)
-                                        setEditandoCell(null)
-                                        setSugestoes([])
-                                        setTimeout(() => {
-                                          clicandoSugestao.current = false
-                                        }, 150)
-                                      }}
-                                      style={{ padding:'6px 10px', fontSize:11, cursor:'pointer', borderBottom:'1px solid #f3f4f6', color:'#1f2937', userSelect:'none' }}
-                                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='#f5f3ff'}
-                                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='white'}>
-                                      {s}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span
-                              onClick={() => { setEditandoCell(`${func.id}|${key}`); setEditVal(labelParaTexto(p)); setSugestoes([]) }}
-                              style={{ display:'block', padding:'4px 2px', cursor:'text', fontWeight:p?600:400, color:p&&p.tipo==='FALTA'?'#dc2626':p&&p.tipo==='ATESTADO'?'#854d0e':p&&['AUSENTE','SAIU'].includes(p.tipo)?'#6b7280':p?'#166534':'#d1d5db', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', minHeight:24, lineHeight:'24px' }}>
-                              {celLabel(p)||(sab?'·':'')}
-                            </span>
-                          )}
+                          onClick={() => abrirModal(func.id, func.nome, key)}
+                          style={{ padding:'3px 2px', textAlign:'center', fontSize:9, cursor:'pointer', minWidth:65, maxWidth:65, background:celBg(p,sab), borderBottom:'1px solid #f3f4f6', verticalAlign:'middle' }}>
+                          <span style={{ display:'block', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', padding:'0 2px', fontWeight:p?600:400, color:p&&p.tipo==='FALTA'?'#dc2626':p&&p.tipo==='ATESTADO'?'#854d0e':p&&['AUSENTE','SAIU'].includes(p.tipo)?'#6b7280':p?'#166534':'#d1d5db' }}>
+                            {label||(sab?'·':'')}
+                          </span>
                         </td>
                       )
                     })}

@@ -22,26 +22,33 @@ export default function LancamentoRapidoPage() {
   }, [])
 
   useEffect(() => {
+    const dataAtual = data
     supabase.from('funcionarios').select('id,nome,equipe').eq('equipe', equipe).eq('ativo', true).order('nome')
-      .then(({ data: d }) => { setFuncs(d || []); carregarExistentes(d || []) })
+      .then(({ data: d }) => { 
+        const lista = d || []
+        setFuncs(lista)
+        setMarcacoes({})
+        carregarExistentes(lista, dataAtual)
+      })
   }, [equipe, data])
 
-  async function carregarExistentes(fs: Func[]) {
+  async function carregarExistentes(fs: Func[], dataAtual: string) {
     if (!fs.length) return
-    const mes = data.slice(0, 7)
+    const mes = dataAtual.slice(0, 7)
     const { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
-    if (!comp) return
+    if (!comp?.id) { setMarcacoes({}); return }
     const { data: pres } = await supabase.from('presencas')
       .select('funcionario_id,tipo,obra_id')
-      .eq('competencia_id', comp.id).eq('data', data)
+      .eq('competencia_id', comp.id)
+      .eq('data', dataAtual)
       .in('funcionario_id', fs.map(f => f.id))
     const map: Record<string, Status> = {}
-    pres?.forEach((p: any) => {
+    ;(pres || []).forEach((p: any) => {
       if (p.tipo === 'FALTA') map[p.funcionario_id] = 'FALTA'
       else if (p.tipo === 'ATESTADO') map[p.funcionario_id] = 'ATESTADO'
       else if (p.tipo === 'AUSENTE') map[p.funcionario_id] = 'AUSENTE'
       else if (p.tipo === 'SAIU') map[p.funcionario_id] = 'SAIU'
-      else map[p.funcionario_id] = 'PRESENTE'
+      else if (p.obra_id) map[p.funcionario_id] = 'PRESENTE'
     })
     setMarcacoes(map)
   }
@@ -57,34 +64,55 @@ export default function LancamentoRapidoPage() {
   }
 
   async function salvar() {
-    if (!obraId && Object.values(marcacoes).some(s => s === 'PRESENTE')) {
-      setMsg('⚠️ Selecione a obra antes de salvar.'); setTimeout(() => setMsg(''), 3000); return
+    const marcacoesAtivas = Object.entries(marcacoes).filter(([_, s]) => s !== null)
+    if (marcacoesAtivas.length === 0) { setMsg('⚠️ Nenhuma marcação feita.'); setTimeout(() => setMsg(''), 3000); return }
+    if (!obraId && marcacoesAtivas.some(([_, s]) => s === 'PRESENTE')) {
+      setMsg('⚠️ Selecione a obra para os presentes.'); setTimeout(() => setMsg(''), 3000); return
     }
     setSalvando(true)
+    
     const mes = data.slice(0, 7)
-    let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
+    let { data: comp } = await supabase.from('competencias').select('id,status').eq('mes_ano', mes).maybeSingle()
     if (!comp) {
       const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
       comp = nova
     }
+    if (!comp?.id) { setMsg('⚠️ Erro ao obter competência.'); setSalvando(false); return }
+    
     const { data: { user } } = await supabase.auth.getUser()
     let count = 0
-    for (const [funcId, status] of Object.entries(marcacoes)) {
-      if (!status) continue
+    let erros = 0
+    
+    for (const [funcId, status] of marcacoesAtivas) {
       const tipo = status === 'PRESENTE' ? 'NORMAL' : status
       const payload = {
-        competencia_id: comp!.id, funcionario_id: funcId, data,
-        tipo, obra_id: status === 'PRESENTE' ? obraId : null,
-        fracao: 1, registrado_por: user?.id,
+        competencia_id: comp.id,
+        funcionario_id: funcId,
+        data,
+        tipo,
+        obra_id: status === 'PRESENTE' ? obraId : null,
+        fracao: 1,
+        registrado_por: user?.id || null,
       }
+      
       const { data: ex } = await supabase.from('presencas').select('id')
-        .eq('competencia_id', comp!.id).eq('funcionario_id', funcId).eq('data', data).maybeSingle()
-      if (ex) await supabase.from('presencas').update(payload).eq('id', ex.id)
-      else await supabase.from('presencas').insert(payload)
-      count++
+        .eq('competencia_id', comp.id).eq('funcionario_id', funcId).eq('data', data).maybeSingle()
+      
+      if (ex?.id) {
+        const { error } = await supabase.from('presencas').update(payload).eq('id', ex.id)
+        if (error) { console.error('Update error:', error); erros++ } else count++
+      } else {
+        const { error } = await supabase.from('presencas').insert(payload)
+        if (error) { console.error('Insert error:', error); erros++ } else count++
+      }
     }
-    setMsg(`✅ ${count} lançamentos salvos na grade!`)
+    
+    if (erros > 0) setMsg(`⚠️ Salvos: ${count}, Erros: ${erros}. Verifique o console.`)
+    else setMsg(`✅ ${count} lançamentos salvos na grade!`)
     setTimeout(() => setMsg(''), 4000)
+    
+    // Recarregar marcações do banco para confirmar
+    await carregarExistentes(funcs, data)
     setSalvando(false)
   }
 
