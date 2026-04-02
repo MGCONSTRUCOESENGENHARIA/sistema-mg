@@ -29,7 +29,7 @@ export default function LancamentoRapidoPage() {
         const lista = d || []
         setFuncs(lista)
         setMarcacoes({})
-        carregarExistentes(lista, dataAtual)
+        // carregarExistentes(lista, dataAtual)
       })
   }, [equipe, data])
 
