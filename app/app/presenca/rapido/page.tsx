@@ -16,6 +16,7 @@ export default function LancamentoRapidoPage() {
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState('')
   const [busca, setBusca] = useState('')
+  const [tipoDiaria, setTipoDiaria] = useState<'NORMAL' | 'CONTA_MG' | 'CONTA_OBRA'>('NORMAL')
 
   useEffect(() => {
     supabase.from('obras').select('id,nome,codigo').eq('status', 'ATIVA').order('nome').then(({ data: d }) => setObras(d || []))
@@ -99,11 +100,29 @@ export default function LancamentoRapidoPage() {
       if (error) { console.error('Upsert error:', error.message, error.details); erros++ } else count++
     }
     
+    // Salvar diárias extras se for conta MG ou conta Obra
+    if (tipoDiaria !== 'NORMAL' && obraId && count > 0) {
+      for (const [funcId, status] of marcacoesAtivas) {
+        if (status !== 'PRESENTE') continue
+        // Buscar valor_diaria do funcionário
+        const func = funcs.find(f => f.id === funcId)
+        await supabase.from('diarias_extras').insert({
+          obra_id: obraId,
+          funcionario_id: funcId,
+          data,
+          tipo: tipoDiaria,
+          quantidade: 1,
+          servico: '',
+          descontada_producao: false,
+          recebida_medicao: false,
+        })
+      }
+    }
+
     if (erros > 0) setMsg(`⚠️ Salvos: ${count}, Erros: ${erros}. Verifique o console.`)
-    else setMsg(`✅ ${count} lançamentos salvos na grade!`)
+    else setMsg(`✅ ${count} lançamentos salvos na grade!${tipoDiaria !== 'NORMAL' ? ` (${tipoDiaria === 'CONTA_MG' ? 'Conta MG' : 'Conta Obra'} registrado em Engenharia)` : ''}`)
     setTimeout(() => setMsg(''), 4000)
     
-    // Recarregar marcações do banco para confirmar
     await carregarExistentes(funcs, data)
     setSalvando(false)
   }
@@ -161,6 +180,26 @@ export default function LancamentoRapidoPage() {
               {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
             </select>
           </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 6 }}>Tipo de Diária</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {([
+              { val: 'NORMAL', label: '✅ Normal', bg: '#f0fdf4', color: '#166534', border: '#059669' },
+              { val: 'CONTA_MG', label: '🏢 Conta MG', bg: '#eff6ff', color: '#1e40af', border: '#3b82f6' },
+              { val: 'CONTA_OBRA', label: '🏗 Conta Obra', bg: '#fef3c7', color: '#92400e', border: '#d97706' },
+            ] as const).map(t => (
+              <button key={t.val} onClick={() => setTipoDiaria(t.val)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: `2px solid ${tipoDiaria === t.val ? t.border : '#e5e7eb'}`, background: tipoDiaria === t.val ? t.bg : 'white', color: tipoDiaria === t.val ? t.color : '#9ca3af', cursor: 'pointer', fontSize: 13, fontWeight: tipoDiaria === t.val ? 700 : 400 }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {tipoDiaria !== 'NORMAL' && (
+            <div style={{ marginTop: 8, background: tipoDiaria === 'CONTA_MG' ? '#eff6ff' : '#fef3c7', border: `1px solid ${tipoDiaria === 'CONTA_MG' ? '#bfdbfe' : '#fde68a'}`, borderRadius: 8, padding: '8px 12px', fontSize: 12, color: tipoDiaria === 'CONTA_MG' ? '#1e40af' : '#92400e' }}>
+              {tipoDiaria === 'CONTA_MG' ? '🏢 Diária por conta da MG — será registrada em Engenharia para desconto na produção' : '🏗 Diária por conta da Obra — será registrada em Engenharia para desconto na produção e cobrança na medição'}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>

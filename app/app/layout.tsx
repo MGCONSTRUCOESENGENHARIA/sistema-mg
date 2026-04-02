@@ -43,6 +43,7 @@ const MENUS = [
     label: 'Engenharia',
     items: [
       { href: '/app/engenharia', label: 'Produção por Obra' },
+      { href: '/app/engenharia/diarias', label: 'Diárias Extras' },
     ]
   },
   {
