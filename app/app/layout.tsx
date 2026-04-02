@@ -24,7 +24,8 @@ const MENUS = [
   {
     label: 'Lançamentos',
     items: [
-      { href: '/app/presenca', label: 'Presença' },
+      { href: '/app/presenca/rapido', label: 'Lançamento Rápido' },
+      { href: '/app/presenca', label: 'Grade de Presença' },
       { href: '/app/avulsos',  label: 'Descontos / Vales' },
     ]
   },

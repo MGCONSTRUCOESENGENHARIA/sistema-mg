@@ -1,0 +1,207 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+
+interface Func { id: string; nome: string; equipe: string }
+interface Obra { id: string; nome: string; codigo: string }
+type Status = 'PRESENTE' | 'FALTA' | 'AUSENTE' | 'ATESTADO' | 'SAIU' | null
+
+export default function LancamentoRapidoPage() {
+  const [obras, setObras] = useState<Obra[]>([])
+  const [funcs, setFuncs] = useState<Func[]>([])
+  const [obraId, setObraId] = useState('')
+  const [equipe, setEquipe] = useState<'ARMAÇÃO' | 'CARPINTARIA'>('ARMAÇÃO')
+  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [marcacoes, setMarcacoes] = useState<Record<string, Status>>({})
+  const [salvando, setSalvando] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [busca, setBusca] = useState('')
+
+  useEffect(() => {
+    supabase.from('obras').select('id,nome,codigo').eq('status', 'ATIVA').order('nome').then(({ data: d }) => setObras(d || []))
+  }, [])
+
+  useEffect(() => {
+    supabase.from('funcionarios').select('id,nome,equipe').eq('equipe', equipe).eq('ativo', true).order('nome')
+      .then(({ data: d }) => { setFuncs(d || []); carregarExistentes(d || []) })
+  }, [equipe, data])
+
+  async function carregarExistentes(fs: Func[]) {
+    if (!fs.length) return
+    const mes = data.slice(0, 7)
+    const { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
+    if (!comp) return
+    const { data: pres } = await supabase.from('presencas')
+      .select('funcionario_id,tipo,obra_id')
+      .eq('competencia_id', comp.id).eq('data', data)
+      .in('funcionario_id', fs.map(f => f.id))
+    const map: Record<string, Status> = {}
+    pres?.forEach((p: any) => {
+      if (p.tipo === 'FALTA') map[p.funcionario_id] = 'FALTA'
+      else if (p.tipo === 'ATESTADO') map[p.funcionario_id] = 'ATESTADO'
+      else if (p.tipo === 'AUSENTE') map[p.funcionario_id] = 'AUSENTE'
+      else if (p.tipo === 'SAIU') map[p.funcionario_id] = 'SAIU'
+      else map[p.funcionario_id] = 'PRESENTE'
+    })
+    setMarcacoes(map)
+  }
+
+  function toggle(funcId: string, status: Status) {
+    setMarcacoes(prev => ({ ...prev, [funcId]: prev[funcId] === status ? null : status }))
+  }
+
+  function marcarTodos(status: Status) {
+    const novo: Record<string, Status> = {}
+    funcsFiltradas.forEach(f => { novo[f.id] = status })
+    setMarcacoes(prev => ({ ...prev, ...novo }))
+  }
+
+  async function salvar() {
+    if (!obraId && Object.values(marcacoes).some(s => s === 'PRESENTE')) {
+      setMsg('⚠️ Selecione a obra antes de salvar.'); setTimeout(() => setMsg(''), 3000); return
+    }
+    setSalvando(true)
+    const mes = data.slice(0, 7)
+    let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
+    if (!comp) {
+      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
+      comp = nova
+    }
+    const { data: { user } } = await supabase.auth.getUser()
+    let count = 0
+    for (const [funcId, status] of Object.entries(marcacoes)) {
+      if (!status) continue
+      const tipo = status === 'PRESENTE' ? 'NORMAL' : status
+      const payload = {
+        competencia_id: comp!.id, funcionario_id: funcId, data,
+        tipo, obra_id: status === 'PRESENTE' ? obraId : null,
+        fracao: 1, registrado_por: user?.id,
+      }
+      const { data: ex } = await supabase.from('presencas').select('id')
+        .eq('competencia_id', comp!.id).eq('funcionario_id', funcId).eq('data', data).maybeSingle()
+      if (ex) await supabase.from('presencas').update(payload).eq('id', ex.id)
+      else await supabase.from('presencas').insert(payload)
+      count++
+    }
+    setMsg(`✅ ${count} lançamentos salvos na grade!`)
+    setTimeout(() => setMsg(''), 4000)
+    setSalvando(false)
+  }
+
+  const funcsFiltradas = funcs.filter(f => !busca || f.nome.toLowerCase().includes(busca.toLowerCase()))
+  const presentes = Object.values(marcacoes).filter(s => s === 'PRESENTE').length
+  const faltas = Object.values(marcacoes).filter(s => s === 'FALTA').length
+  const outros = Object.values(marcacoes).filter(s => s && s !== 'PRESENTE' && s !== 'FALTA').length
+  const semMarcacao = funcs.length - Object.values(marcacoes).filter(Boolean).length
+
+  const Btn = ({ funcId, status, label, bg, color, border }: any) => {
+    const ativo = marcacoes[funcId] === status
+    return (
+      <button onClick={() => toggle(funcId, status)} style={{
+        padding: '7px 14px', borderRadius: 8, border: `2px solid ${ativo ? border : '#e5e7eb'}`,
+        background: ativo ? bg : 'white', color: ativo ? color : '#9ca3af',
+        cursor: 'pointer', fontSize: 12, fontWeight: ativo ? 700 : 400, transition: 'all .1s', whiteSpace: 'nowrap',
+      }}>{label}</button>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1f2937', marginBottom: 4 }}>Lançamento Rápido</h1>
+        <p style={{ fontSize: 13, color: '#9ca3af' }}>Selecione data e obra, marque cada funcionário com um clique e salve tudo de uma vez</p>
+      </div>
+
+      {/* Configuração */}
+      <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: 18, marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto auto 1fr', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Data</label>
+            <input type="date" value={data} onChange={e => setData(e.target.value)}
+              style={{ border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '9px 12px', fontSize: 14, outline: 'none' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Equipe</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['ARMAÇÃO', 'CARPINTARIA'] as const).map(eq => (
+                <button key={eq} onClick={() => setEquipe(eq)} style={{
+                  padding: '9px 14px', borderRadius: 8, border: '1.5px solid', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  borderColor: equipe === eq ? '#7c3aed' : '#e5e7eb',
+                  background: equipe === eq ? '#7c3aed' : 'white',
+                  color: equipe === eq ? 'white' : '#6b7280',
+                }}>{eq === 'ARMAÇÃO' ? 'Armação' : 'Carpintaria'}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Obra (para presentes)</label>
+            <select value={obraId} onChange={e => setObraId(e.target.value)}
+              style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '9px 12px', fontSize: 13, outline: 'none' }}>
+              <option value="">Selecione a obra...</option>
+              {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Marcar todos:</span>
+          <button onClick={() => marcarTodos('PRESENTE')} style={{ padding: '5px 14px', borderRadius: 8, border: '1.5px solid #059669', background: '#f0fdf4', color: '#059669', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>✅ Todos Presentes</button>
+          <button onClick={() => marcarTodos('FALTA')} style={{ padding: '5px 14px', borderRadius: 8, border: '1.5px solid #dc2626', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>❌ Todos Faltaram</button>
+          <button onClick={() => setMarcacoes({})} style={{ padding: '5px 14px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: 'white', color: '#6b7280', cursor: 'pointer', fontSize: 12 }}>🔄 Limpar tudo</button>
+        </div>
+      </div>
+
+      {/* Resumo */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        {[
+          { label: 'Presentes', val: presentes, color: '#059669', bg: '#f0fdf4' },
+          { label: 'Faltas', val: faltas, color: '#dc2626', bg: '#fef2f2' },
+          { label: 'Outros', val: outros, color: '#92400e', bg: '#fffbeb' },
+          { label: 'Sem marcação', val: semMarcacao, color: '#9ca3af', bg: '#f9fafb' },
+        ].map((s, i) => (
+          <div key={i} style={{ background: s.bg, borderRadius: 8, padding: '8px 16px', display: 'flex', gap: 8, alignItems: 'center', border: `1px solid ${s.color}22` }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.val}</span>
+            <span style={{ fontSize: 12, color: s.color }}>{s.label}</span>
+          </div>
+        ))}
+        <div style={{ marginLeft: 'auto' }}>
+          <input placeholder="🔍 Buscar..." value={busca} onChange={e => setBusca(e.target.value)}
+            style={{ border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, outline: 'none', width: 220 }} />
+        </div>
+      </div>
+
+      {msg && <div style={{ background: msg.includes('✅') ? '#f0fdf4' : '#fffbeb', border: `1px solid ${msg.includes('✅') ? '#bbf7d0' : '#fde68a'}`, borderRadius: 10, padding: '10px 16px', marginBottom: 12, fontSize: 13, color: msg.includes('✅') ? '#166534' : '#92400e' }}>{msg}</div>}
+
+      {/* Lista */}
+      <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', marginBottom: 80 }}>
+        {funcsFiltradas.map((func, fi) => {
+          const status = marcacoes[func.id]
+          const bgRow = status === 'PRESENTE' ? '#f0fdf4' : status === 'FALTA' ? '#fee2e2' : status ? '#fffbeb' : fi % 2 === 0 ? 'white' : '#f9fafb'
+          return (
+            <div key={func.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid #f3f4f6', background: bgRow, transition: 'background .1s' }}>
+              <div style={{ flex: 1, fontWeight: 600, fontSize: 14, color: '#1f2937' }}>{func.nome}</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Btn funcId={func.id} status="PRESENTE" label="✅ Presente" bg="#dcfce7" color="#166534" border="#059669" />
+                <Btn funcId={func.id} status="FALTA" label="❌ Falta" bg="#fee2e2" color="#991b1b" border="#dc2626" />
+                <Btn funcId={func.id} status="ATESTADO" label="🏥 Atestado" bg="#fef3c7" color="#92400e" border="#d97706" />
+                <Btn funcId={func.id} status="AUSENTE" label="⚪ Ausente" bg="#f3f4f6" color="#374151" border="#9ca3af" />
+                <Btn funcId={func.id} status="SAIU" label="🚪 Saiu" bg="#fce7f3" color="#9d174d" border="#db2777" />
+              </div>
+            </div>
+          )
+        })}
+        {funcsFiltradas.length === 0 && (
+          <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>Nenhum funcionário encontrado.</div>
+        )}
+      </div>
+
+      {/* Botão salvar fixo no bottom */}
+      <div style={{ position: 'fixed', bottom: 20, right: 28, zIndex: 50 }}>
+        <button onClick={salvar} disabled={salvando || Object.values(marcacoes).filter(Boolean).length === 0}
+          style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: 14, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 20px rgba(124,58,237,.5)', opacity: salvando ? .7 : 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+          {salvando ? '⏳ Salvando...' : `💾 Salvar ${Object.values(marcacoes).filter(Boolean).length} lançamentos`}
+        </button>
+      </div>
+    </div>
+  )
+}
