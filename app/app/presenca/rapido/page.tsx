@@ -80,7 +80,6 @@ export default function LancamentoRapidoPage() {
     }
     if (!comp?.id) { setMsg('⚠️ Erro ao obter competência.'); setSalvando(false); return }
     
-    const { data: { user } } = await supabase.auth.getUser()
     let count = 0
     let erros = 0
     
@@ -96,7 +95,6 @@ export default function LancamentoRapidoPage() {
         tipo,
         obra_id: obraParaSalvar || null,
         fracao: 1,
-        registrado_por: user?.id || null,
       }, { onConflict: 'funcionario_id,data,competencia_id' })
       if (error) { console.error('Upsert error:', error.message, error.details); erros++ } else count++
     }
