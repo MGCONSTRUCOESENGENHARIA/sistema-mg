@@ -412,34 +412,51 @@ export default function PresencaPage() {
     await carregar(); setSalvando(false); setModal(null)
   }
 
+
+
   async function colarEmSelecionadas() {
-    if (!copiado) return
+    const cop = copiadoRef.current
+    const sels = selecionadasRef.current
+    const pmap = presMapRef.current
+    if (!cop || sels.size === 0) return
     setSalvando(true)
     const { data: { user } } = await supabase.auth.getUser()
-    let { data: comp } = await supabase.from('competencias').select('id,status').eq('mes_ano', mes).maybeSingle()
+    // Buscar competência do banco sempre fresquinha
+    let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
     if (!comp) {
       const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
       comp = nova
     }
-    for (const key of Array.from(selecionadas)) {
-      const [funcId, data] = key.split('|')
-      const payload = {
-        competencia_id: comp!.id, funcionario_id: funcId, data,
-        tipo: copiado.tipo, obra_id: copiado.obra_id || null,
-        fracao: copiado.fracao || null, obra2_id: copiado.obra2_id || null,
-        fracao2: copiado.fracao2 || null, registrado_por: user?.id,
-      }
-      const existing = getPres(funcId, data)
+    const compAtual = comp?.id
+    if (!compAtual) { setSalvando(false); return }
+    let count = 0
+    let erros = 0
+    for (const cellKey of Array.from(sels)) {
+      const [funcId, data] = cellKey.split('|')
+      const existing = pmap[`${funcId}|${data}`]
       if (existing) {
-        await supabase.from('presencas').update(payload).eq('id', existing.id)
+        const { error } = await supabase.from('presencas').update({
+          tipo: cop.tipo, obra_id: cop.obra_id || null,
+          fracao: cop.fracao || null, obra2_id: cop.obra2_id || null,
+          fracao2: cop.fracao2 || null,
+        }).eq('id', existing.id)
+        if (error) erros++; else count++
       } else {
-        await supabase.from('presencas').insert(payload)
+        const { error } = await supabase.from('presencas').insert({
+          competencia_id: compAtual, funcionario_id: funcId, data,
+          tipo: cop.tipo, obra_id: cop.obra_id || null,
+          fracao: cop.fracao || null, obra2_id: cop.obra2_id || null,
+          fracao2: cop.fracao2 || null, registrado_por: user?.id,
+        })
+        if (error) erros++; else count++
       }
     }
-    await carregar()
-    setMsg(`✅ Colado em ${selecionadas.size} célula(s)!`)
-    setTimeout(() => setMsg(''), 2500)
     setSelecionadas(new Set())
+    selecionadasRef.current = new Set()
+    if (erros > 0) setMsg(`⚠️ Colado ${count}, ${erros} erro(s).`)
+    else setMsg(`✅ Colado em ${count} célula(s)!`)
+    setTimeout(() => setMsg(''), 3000)
+    await carregar()
     setSalvando(false)
   }
 
