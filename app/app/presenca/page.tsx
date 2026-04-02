@@ -131,6 +131,7 @@ export default function PresencaPage() {
   const [preview, setPreview] = useState<LinhaPrev[] | null>(null)
   const [importando, setImportando] = useState(false)
   const [importMsg, setImportMsg] = useState('')
+  const [msg, setMsg] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const dias = diasDoMes(mes)
@@ -162,7 +163,7 @@ export default function PresencaPage() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selecionadas, copiado, presencas])
+  }, [selecionadas, copiado, presMap])
 
   async function carregar() {
     setLoading(true)
@@ -409,7 +410,7 @@ export default function PresencaPage() {
         fracao: copiado.fracao || null, obra2_id: copiado.obra2_id || null,
         fracao2: copiado.fracao2 || null, registrado_por: user?.id,
       }
-      const existing = presencas.find(p => p.funcionario_id === funcId && p.data === data)
+      const existing = getPres(funcId, data)
       if (existing) {
         await supabase.from('presencas').update(payload).eq('id', existing.id)
       } else {
