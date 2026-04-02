@@ -726,17 +726,15 @@ export default function PresencaPage() {
                                 <div style={{ position:'absolute', top:'100%', left:0, zIndex:100, background:'white', border:'1px solid #e5e7eb', borderRadius:6, boxShadow:'0 4px 12px rgba(0,0,0,.15)', minWidth:140, maxWidth:200 }}>
                                   {sugestoes.map((s,si) => (
                                     <div key={si}
-                                      onPointerDown={async e => {
+                                      onMouseDown={async (e) => {
                                         e.preventDefault()
-                                        e.stopPropagation()
                                         clicandoSugestao.current = true
-                                        setSugestoes([])
-                                        setEditVal(s)
-                                        setEditandoCell(null)
                                         await salvarCelulaTexto(func.id, key, s)
+                                        setEditandoCell(null)
+                                        setSugestoes([])
                                         setTimeout(() => {
                                           clicandoSugestao.current = false
-                                        }, 100)
+                                        }, 150)
                                       }}
                                       style={{ padding:'6px 10px', fontSize:11, cursor:'pointer', borderBottom:'1px solid #f3f4f6', color:'#1f2937', userSelect:'none' }}
                                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='#f5f3ff'}
