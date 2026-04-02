@@ -133,24 +133,34 @@ export default function PresencaPage() {
   const [importMsg, setImportMsg] = useState('')
   const [msg, setMsg] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const copiadoRef = useRef<Pres | null>(null)
+  const selecionadasRef = useRef<Set<string>>(new Set())
+  const presMapRef = useRef<Record<string, Pres>>({})
+  const compIdRef = useRef<string | null>(null)
 
   const dias = diasDoMes(mes)
   const nomeDia = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
   const fim1Q = dias.findIndex(d => d.getDate() > 15) - 1
 
   useEffect(() => { carregar() }, [equipe, mes])
+  useEffect(() => { copiadoRef.current = copiado }, [copiado])
+  useEffect(() => { selecionadasRef.current = selecionadas }, [selecionadas])
+  useEffect(() => { presMapRef.current = presMap }, [presMap])
+  useEffect(() => { compIdRef.current = compId }, [compId])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
-        // Copiar — pega a primeira célula selecionada
-        if (selecionadas.size >= 1) {
-          const key = Array.from(selecionadas)[0]
-          const [funcId, data] = key.split('|')
-          const p = getPres(funcId, data)
+        const sels = selecionadasRef.current
+        const pmap = presMapRef.current
+        if (sels.size >= 1) {
+          const cellKey = Array.from(sels)[0]
+          const [funcId, data] = cellKey.split('|')
+          const p = pmap[`${funcId}|${data}`]
           if (p) {
             setCopiado(p)
-            setMsg(`📋 Copiado: ${celLabel(p)} — agora selecione as células e pressione Ctrl+V`)
+            copiadoRef.current = p
+            setMsg(`📋 Copiado! Agora selecione as células e pressione Ctrl+V`)
             setTimeout(() => setMsg(''), 4000)
           } else {
             setMsg('⚠️ Célula vazia, nada para copiar.')
@@ -159,17 +169,20 @@ export default function PresencaPage() {
         }
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-        if (!copiado || selecionadas.size === 0) return
+        const cop = copiadoRef.current
+        const sels = selecionadasRef.current
+        if (!cop || sels.size === 0) return
         colarEmSelecionadas()
       }
       if (e.key === 'Escape') {
         setSelecionadas(new Set())
         setCopiado(null)
+        copiadoRef.current = null
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selecionadas, copiado, presMap])
+  }, [])
 
   async function carregar() {
     setLoading(true)
