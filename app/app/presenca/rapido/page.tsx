@@ -83,6 +83,12 @@ export default function LancamentoRapidoPage() {
     let count = 0
     let erros = 0
     
+    // Buscar presenças já existentes nesta data/competência de uma vez
+    const { data: existentes } = await supabase.from('presencas').select('id,funcionario_id')
+      .eq('competencia_id', comp.id).eq('data', data)
+    const existMap: Record<string, string> = {}
+    ;(existentes || []).forEach((e: any) => { existMap[e.funcionario_id] = e.id })
+
     for (const [funcId, status] of marcacoesAtivas) {
       const tipo = status === 'PRESENTE' ? 'NORMAL' : status
       const payload = {
@@ -90,16 +96,14 @@ export default function LancamentoRapidoPage() {
         funcionario_id: funcId,
         data,
         tipo,
-        obra_id: status === 'PRESENTE' ? obraId : null,
+        obra_id: status === 'PRESENTE' ? (obraId || null) : null,
         fracao: 1,
         registrado_por: user?.id || null,
       }
       
-      const { data: ex } = await supabase.from('presencas').select('id')
-        .eq('competencia_id', comp.id).eq('funcionario_id', funcId).eq('data', data).maybeSingle()
-      
-      if (ex?.id) {
-        const { error } = await supabase.from('presencas').update(payload).eq('id', ex.id)
+      const existId = existMap[funcId]
+      if (existId) {
+        const { error } = await supabase.from('presencas').update(payload).eq('id', existId)
         if (error) { console.error('Update error:', error); erros++ } else count++
       } else {
         const { error } = await supabase.from('presencas').insert(payload)
