@@ -468,10 +468,10 @@ export default function PresencaPage() {
   function calcSugestoes(val: string): string[] {
     if (!val || val.length < 1) return []
     const v = val.toUpperCase()
-    const especiais = ['FALTA', 'ATESTADO', 'AUSENTE', 'SAIU']
+    const especiais = ['FALTA', 'ATESTADO', 'AUSENTE', 'SAIU', 'SAB']
     const nomes = obras.map(o => o.nome)
     const todas = [...especiais, ...nomes]
-    return todas.filter(s => s.toUpperCase().includes(v)).slice(0, 6)
+    return todas.filter(s => s.toUpperCase().includes(v)).slice(0, 8)
   }
 
   async function salvarCelulaTexto(funcId: string, data: string, texto: string) {
@@ -495,10 +495,20 @@ export default function PresencaPage() {
     else if (upper === 'SAIU') tipo = 'SAIU'
     else if (upper === 'SAB' || upper === 'SÁBADO') tipo = 'SABADO_EXTRA'
     else {
-      // Tenta achar obra
-      const obra = obras.find(o => o.nome.toUpperCase().includes(upper) || upper.includes(o.codigo.toUpperCase()))
+      // Tenta achar obra - busca flexível
+      const obra = obras.find(o => 
+        o.nome.toUpperCase().includes(upper) || 
+        upper.includes(o.nome.toUpperCase()) ||
+        o.codigo.toUpperCase().includes(upper) ||
+        upper.includes(o.codigo.toUpperCase()) ||
+        o.nome.toUpperCase().split(' ').some((p: string) => upper.includes(p) && p.length > 2)
+      )
       if (obra) { obra_id = obra.id; tipo = 'NORMAL' }
-      else { setMsg(`⚠️ Obra não encontrada: "${txt}"`); setTimeout(()=>setMsg(''),3000); return }
+      else { 
+        setMsg(`⚠️ "${txt}" não encontrado. Obras: ${obras.slice(0,3).map(o=>o.nome).join(', ')}...`)
+        setTimeout(()=>setMsg(''),4000)
+        return 
+      }
     }
 
     let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
@@ -710,8 +720,15 @@ export default function PresencaPage() {
                                 <div style={{ position:'absolute', top:'100%', left:0, zIndex:100, background:'white', border:'1px solid #e5e7eb', borderRadius:6, boxShadow:'0 4px 12px rgba(0,0,0,.15)', minWidth:140, maxWidth:200 }}>
                                   {sugestoes.map((s,si) => (
                                     <div key={si}
-                                      onMouseDown={async e => { e.preventDefault(); setEditVal(s); setSugestoes([]); await salvarCelulaTexto(func.id, key, s); setEditandoCell(null) }}
-                                      style={{ padding:'6px 10px', fontSize:11, cursor:'pointer', borderBottom:'1px solid #f3f4f6', color:'#1f2937' }}
+                                      onPointerDown={async e => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        setSugestoes([])
+                                        setEditVal(s)
+                                        setEditandoCell(null)
+                                        await salvarCelulaTexto(func.id, key, s)
+                                      }}
+                                      style={{ padding:'6px 10px', fontSize:11, cursor:'pointer', borderBottom:'1px solid #f3f4f6', color:'#1f2937', userSelect:'none' }}
                                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='#f5f3ff'}
                                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='white'}>
                                       {s}
