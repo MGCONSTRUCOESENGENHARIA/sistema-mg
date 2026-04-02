@@ -66,8 +66,9 @@ export default function LancamentoRapidoPage() {
   async function salvar() {
     const marcacoesAtivas = Object.entries(marcacoes).filter(([_, s]) => s !== null)
     if (marcacoesAtivas.length === 0) { setMsg('⚠️ Nenhuma marcação feita.'); setTimeout(() => setMsg(''), 3000); return }
-    if (!obraId && marcacoesAtivas.some(([_, s]) => s === 'PRESENTE')) {
-      setMsg('⚠️ Selecione a obra para os presentes.'); setTimeout(() => setMsg(''), 3000); return
+    const temPresente = marcacoesAtivas.some(([_, s]) => s === 'PRESENTE')
+    if (temPresente && !obraId) {
+      setMsg('⚠️ Selecione a obra — obrigatório para presentes.'); setTimeout(() => setMsg(''), 4000); return
     }
     setSalvando(true)
     
@@ -83,18 +84,21 @@ export default function LancamentoRapidoPage() {
     let count = 0
     let erros = 0
     
+    console.log('Salvando - obraId:', obraId, 'comp.id:', comp.id, 'data:', data)
     for (const [funcId, status] of marcacoesAtivas) {
       const tipo = status === 'PRESENTE' ? 'NORMAL' : status
+      const obraParaSalvar = status === 'PRESENTE' ? obraId : null
+      console.log('Func:', funcId, 'tipo:', tipo, 'obra:', obraParaSalvar)
       const { error } = await supabase.from('presencas').upsert({
         competencia_id: comp.id,
         funcionario_id: funcId,
         data,
         tipo,
-        obra_id: status === 'PRESENTE' ? (obraId || null) : null,
+        obra_id: obraParaSalvar || null,
         fracao: 1,
         registrado_por: user?.id || null,
       }, { onConflict: 'funcionario_id,data,competencia_id' })
-      if (error) { console.error('Upsert error:', error); erros++ } else count++
+      if (error) { console.error('Upsert error:', error.message, error.details); erros++ } else count++
     }
     
     if (erros > 0) setMsg(`⚠️ Salvos: ${count}, Erros: ${erros}. Verifique o console.`)
