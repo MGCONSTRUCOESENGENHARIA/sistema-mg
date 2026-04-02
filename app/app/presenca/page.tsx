@@ -144,12 +144,18 @@ export default function PresencaPage() {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         // Copiar — pega a primeira célula selecionada
-        if (selecionadas.size === 1) {
+        if (selecionadas.size >= 1) {
           const key = Array.from(selecionadas)[0]
           const [funcId, data] = key.split('|')
           const p = getPres(funcId, data)
-          if (p) { setCopiado(p); setMsg(`📋 Copiado: ${celLabel(p)}`) }
-          else { setCopiado(null) }
+          if (p) {
+            setCopiado(p)
+            setMsg(`📋 Copiado: ${celLabel(p)} — agora selecione as células e pressione Ctrl+V`)
+            setTimeout(() => setMsg(''), 4000)
+          } else {
+            setMsg('⚠️ Célula vazia, nada para copiar.')
+            setTimeout(() => setMsg(''), 2000)
+          }
         }
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
@@ -470,6 +476,21 @@ export default function PresencaPage() {
         </div>
       </div>
 
+      {/* Hint bar copiar/colar */}
+      <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, padding:'8px 14px', marginBottom:10, fontSize:12, color:'#1e40af', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+        <span>💡 <strong>Clique</strong> = selecionar · <strong>Shift+Clique</strong> = selecionar múltiplas · <strong>Ctrl+C</strong> = copiar · <strong>Ctrl+V</strong> = colar · <strong>Duplo clique</strong> = editar · <strong>Esc</strong> = limpar seleção</span>
+        {copiado && <span style={{ background:'#dbeafe', color:'#1e40af', padding:'2px 10px', borderRadius:20, fontWeight:700 }}>📋 {celLabel(copiado)}</span>}
+        {selecionadas.size > 0 && <span style={{ background:'#dcfce7', color:'#166534', padding:'2px 10px', borderRadius:20, fontWeight:600 }}>{selecionadas.size} selecionada(s)</span>}
+        {selecionadas.size > 0 && copiado && (
+          <button onClick={colarEmSelecionadas} disabled={salvando} style={{ background:'#2563eb', color:'white', border:'none', borderRadius:6, padding:'4px 12px', cursor:'pointer', fontSize:12, fontWeight:600 }}>
+            Colar ({selecionadas.size})
+          </button>
+        )}
+        {selecionadas.size > 0 && <button onClick={() => { setSelecionadas(new Set()); setCopiado(null) }} style={{ background:'none', border:'1px solid #93c5fd', color:'#1e40af', borderRadius:6, padding:'4px 10px', cursor:'pointer', fontSize:11 }}>✕ Limpar</button>}
+      </div>
+
+      {msg && <div style={{ background: msg.includes('✅') ? '#f0fdf4' : msg.includes('⚠') ? '#fffbeb' : '#eff6ff', border:`1px solid ${msg.includes('✅')?'#bbf7d0':msg.includes('⚠')?'#fde68a':'#bfdbfe'}`, borderRadius:8, padding:'8px 14px', marginBottom:10, fontSize:13, color: msg.includes('✅')?'#166534':msg.includes('⚠')?'#92400e':'#1e40af' }}>{msg}</div>}
+
       <div style={{ marginBottom:10, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
         <h1 style={{ fontSize:18, fontWeight:700, color:'#1a3a5c' }}>Grade de Presença — {equipe}</h1>
         <span style={{ fontSize:12, color:'#9ca3af' }}>{funcsFiltradas.length} funcionários · {dias.length} dias úteis</span>
@@ -577,24 +598,25 @@ export default function PresencaPage() {
                           onClick={(e) => {
                             const cellKey = `${func.id}|${key}`
                             if (e.shiftKey) {
+                              // Shift+clique: adiciona/remove da seleção
                               setSelecionadas(prev => {
                                 const next = new Set(prev)
                                 if (next.has(cellKey)) next.delete(cellKey)
                                 else next.add(cellKey)
                                 return next
                               })
-                            } else if (copiado && selecionadas.size > 0) {
-                              setSelecionadas(prev => {
-                                const next = new Set(prev)
-                                next.add(cellKey)
-                                return next
-                              })
                             } else {
-                              setSelecionadas(new Set())
-                              abrirModal(func.id, func.nome, key)
+                              // Clique normal: seleciona só essa célula
+                              setSelecionadas(new Set([cellKey]))
+                              setCopiado(null)
                             }
                           }}
-                          style={{ padding:'3px 2px', textAlign:'center', fontSize:9, cursor:'pointer', minWidth:65, maxWidth:65, background: selecionadas.has(`${func.id}|${key}`) ? '#dbeafe' : celBg(p,sab), borderBottom:'1px solid #f3f4f6', verticalAlign:'middle', outline: selecionadas.has(`${func.id}|${key}`) ? '2px solid #3b82f6' : 'none', outlineOffset:'-2px' }}>
+                          onDoubleClick={() => {
+                            // Duplo clique: abre modal
+                            setSelecionadas(new Set())
+                            abrirModal(func.id, func.nome, key)
+                          }}
+                          style={{ padding:'3px 2px', textAlign:'center', fontSize:9, cursor:'pointer', minWidth:65, maxWidth:65, background: selecionadas.has(`${func.id}|${key}`) ? '#bfdbfe' : celBg(p,sab), borderBottom:'1px solid #f3f4f6', verticalAlign:'middle', outline: selecionadas.has(`${func.id}|${key}`) ? '2px solid #2563eb' : 'none', outlineOffset:'-2px' }}>
                           <span style={{ display:'block', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', padding:'0 2px', fontWeight:p?600:400, color:p&&p.tipo==='FALTA'?'#dc2626':p&&p.tipo==='ATESTADO'?'#854d0e':p&&['AUSENTE','SAIU'].includes(p.tipo)?'#6b7280':p?'#166534':'#d1d5db' }}>
                             {label||(sab?'·':'')}
                           </span>
