@@ -117,6 +117,8 @@ export default function PresencaPage() {
   const [obras, setObras] = useState<Obra[]>([])
   const [presMap, setPresMap] = useState<Record<string, Pres>>({})
   const [modal, setModal] = useState<Modal | null>(null)
+  const [copiado, setCopiado] = useState<Pres | null>(null)
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [formTipo, setFormTipo] = useState<PresencaTipo>('NORMAL')
@@ -136,6 +138,31 @@ export default function PresencaPage() {
   const fim1Q = dias.findIndex(d => d.getDate() > 15) - 1
 
   useEffect(() => { carregar() }, [equipe, mes])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        // Copiar — pega a primeira célula selecionada
+        if (selecionadas.size === 1) {
+          const key = Array.from(selecionadas)[0]
+          const [funcId, data] = key.split('|')
+          const p = getPres(funcId, data)
+          if (p) { setCopiado(p); setMsg(`📋 Copiado: ${celLabel(p)}`) }
+          else { setCopiado(null) }
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        if (!copiado || selecionadas.size === 0) return
+        colarEmSelecionadas()
+      }
+      if (e.key === 'Escape') {
+        setSelecionadas(new Set())
+        setCopiado(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selecionadas, copiado, presencas])
 
   async function carregar() {
     setLoading(true)
@@ -365,6 +392,37 @@ export default function PresencaPage() {
     await carregar(); setSalvando(false); setModal(null)
   }
 
+  async function colarEmSelecionadas() {
+    if (!copiado) return
+    setSalvando(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    let { data: comp } = await supabase.from('competencias').select('id,status').eq('mes_ano', mes).maybeSingle()
+    if (!comp) {
+      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
+      comp = nova
+    }
+    for (const key of Array.from(selecionadas)) {
+      const [funcId, data] = key.split('|')
+      const payload = {
+        competencia_id: comp!.id, funcionario_id: funcId, data,
+        tipo: copiado.tipo, obra_id: copiado.obra_id || null,
+        fracao: copiado.fracao || null, obra2_id: copiado.obra2_id || null,
+        fracao2: copiado.fracao2 || null, registrado_por: user?.id,
+      }
+      const existing = presencas.find(p => p.funcionario_id === funcId && p.data === data)
+      if (existing) {
+        await supabase.from('presencas').update(payload).eq('id', existing.id)
+      } else {
+        await supabase.from('presencas').insert(payload)
+      }
+    }
+    await carregar()
+    setMsg(`✅ Colado em ${selecionadas.size} célula(s)!`)
+    setTimeout(() => setMsg(''), 2500)
+    setSelecionadas(new Set())
+    setSalvando(false)
+  }
+
   async function remover() {
     if (!modal?.atual) return
     await supabase.from('presencas').delete().eq('id', modal.atual.id)
@@ -514,8 +572,28 @@ export default function PresencaPage() {
                       const p = getPres(func.id, key)
                       const label = celLabel(p)
                       return (
-                        <td key={di} onClick={() => abrirModal(func.id, func.nome, key)}
-                          style={{ padding:'3px 2px', textAlign:'center', fontSize:9, cursor:'pointer', minWidth:65, maxWidth:65, background:celBg(p,sab), borderBottom:'1px solid #f3f4f6', verticalAlign:'middle' }}>
+                        <td key={di}
+                          onClick={(e) => {
+                            const cellKey = `${func.id}|${key}`
+                            if (e.shiftKey) {
+                              setSelecionadas(prev => {
+                                const next = new Set(prev)
+                                if (next.has(cellKey)) next.delete(cellKey)
+                                else next.add(cellKey)
+                                return next
+                              })
+                            } else if (copiado && selecionadas.size > 0) {
+                              setSelecionadas(prev => {
+                                const next = new Set(prev)
+                                next.add(cellKey)
+                                return next
+                              })
+                            } else {
+                              setSelecionadas(new Set())
+                              abrirModal(func.id, func.nome, key)
+                            }
+                          }}
+                          style={{ padding:'3px 2px', textAlign:'center', fontSize:9, cursor:'pointer', minWidth:65, maxWidth:65, background: selecionadas.has(`${func.id}|${key}`) ? '#dbeafe' : celBg(p,sab), borderBottom:'1px solid #f3f4f6', verticalAlign:'middle', outline: selecionadas.has(`${func.id}|${key}`) ? '2px solid #3b82f6' : 'none', outlineOffset:'-2px' }}>
                           <span style={{ display:'block', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', padding:'0 2px', fontWeight:p?600:400, color:p&&p.tipo==='FALTA'?'#dc2626':p&&p.tipo==='ATESTADO'?'#854d0e':p&&['AUSENTE','SAIU'].includes(p.tipo)?'#6b7280':p?'#166534':'#d1d5db' }}>
                             {label||(sab?'·':'')}
                           </span>

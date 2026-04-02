@@ -141,9 +141,20 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
       inseridos++
     }
 
+    // Auto-preencher distribuição com os funcionários encontrados
+    for (const [funcId, info] of Object.entries(mapa)) {
+      const { data: exDist } = await supabase.from('fechamento_distribuicao')
+        .select('id').eq('fechamento_id', id).eq('funcionario_id', funcId).maybeSingle()
+      if (!exDist) {
+        await supabase.from('fechamento_distribuicao').insert({
+          fechamento_id: id, funcionario_id: funcId, nome: info.nome, valor: 0, observacao: ''
+        })
+      }
+    }
+
     await carregar()
-    setMsg(`✅ ${inseridos} funcionários carregados!`)
-    setTimeout(()=>setMsg(''),3000)
+    setMsg(`✅ ${inseridos} funcionários carregados! Distribuição preenchida automaticamente.`)
+    setTimeout(()=>setMsg(''),4000)
     setSalvando(false)
     setAba('diarias')
   }
