@@ -83,15 +83,9 @@ export default function LancamentoRapidoPage() {
     let count = 0
     let erros = 0
     
-    // Buscar presenças já existentes nesta data/competência de uma vez
-    const { data: existentes } = await supabase.from('presencas').select('id,funcionario_id')
-      .eq('competencia_id', comp.id).eq('data', data)
-    const existMap: Record<string, string> = {}
-    ;(existentes || []).forEach((e: any) => { existMap[e.funcionario_id] = e.id })
-
     for (const [funcId, status] of marcacoesAtivas) {
       const tipo = status === 'PRESENTE' ? 'NORMAL' : status
-      const payload = {
+      const { error } = await supabase.from('presencas').upsert({
         competencia_id: comp.id,
         funcionario_id: funcId,
         data,
@@ -99,16 +93,8 @@ export default function LancamentoRapidoPage() {
         obra_id: status === 'PRESENTE' ? (obraId || null) : null,
         fracao: 1,
         registrado_por: user?.id || null,
-      }
-      
-      const existId = existMap[funcId]
-      if (existId) {
-        const { error } = await supabase.from('presencas').update(payload).eq('id', existId)
-        if (error) { console.error('Update error:', error); erros++ } else count++
-      } else {
-        const { error } = await supabase.from('presencas').insert(payload)
-        if (error) { console.error('Insert error:', error); erros++ } else count++
-      }
+      }, { onConflict: 'funcionario_id,data,competencia_id' })
+      if (error) { console.error('Upsert error:', error); erros++ } else count++
     }
     
     if (erros > 0) setMsg(`⚠️ Salvos: ${count}, Erros: ${erros}. Verifique o console.`)
