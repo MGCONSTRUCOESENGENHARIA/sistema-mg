@@ -298,30 +298,6 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
             ))}
           </div>
         </div>
-
-        {/* ASSINATURAS MELHORADAS */}
-        <div style={{ marginTop: 60 }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3,1fr)',
-            gap: 40,
-            textAlign: 'center'
-          }}>
-            {['Encarregado', 'Responsável Técnico', 'Aprovação'].map((label, i) => (
-              <div key={i}>
-                <div style={{
-                  borderTop: '2px solid #374151',
-                  marginBottom: 6,
-                  height: 20
-                }}></div>
-                <div style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>
-                  {label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* ══ SEÇÃO 1: LEVANTAMENTO DE PRODUÇÃO ══ */}
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1e3a8a', marginBottom: 8, marginTop: 0, borderLeft: '4px solid #1e3a8a', paddingLeft: 10 }}>1. Levantamento de Produção</h2>
         <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'visible', marginBottom: 20 }}>
@@ -645,3 +621,18 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
             )}
           </table>
         </div>
+
+        {/* ASSINATURAS */}
+        <div style={{ marginTop: 60, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 40, textAlign: 'center' }}>
+          {['Encarregado', 'Responsável Técnico', 'Aprovação'].map((label, i) => (
+            <div key={i}>
+              <div style={{ borderTop: '2px solid #374151', marginBottom: 6, height: 20 }}></div>
+              <div style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </>
+  )
+}
