@@ -74,43 +74,110 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
   }
 
   async function carregarDiarias() {
-    if (!fechamento) return
-    setSalvando(true); setMsg('Buscando presenças...')
+  if (!fechamento) return
+
+  try {
+    setSalvando(true)
+    setMsg('Buscando presenças...')
+
     const obraId = (fechamento.obras as any)?.id || fechamento.obra_id
-    const { data: presencas } = await supabase.from('presencas')
+    console.log('obraId:', obraId)
+    console.log('periodo:', fechamento.periodo_inicio, fechamento.periodo_fim)
+
+    if (!obraId) {
+      setMsg('⚠️ Obra não encontrada no fechamento.')
+      setSalvando(false)
+      return
+    }
+    const { data: presencas } = await supabase
+      .from('presencas')
       .select('funcionario_id, fracao, fracao2, tipo, obra_id, funcionarios(nome, valor_diaria)')
-      .gte('data', fechamento.periodo_inicio).lte('data', fechamento.periodo_fim)
-    const presObra = (presencas || []).filter((p: any) => p.obra_id === obraId)
-    if (!presObra.length) { setMsg('⚠️ Nenhuma presença nesta obra no período.'); setSalvando(false); setTimeout(() => setMsg(''), 4000); return }
-    const mapa: Record<string, { nome: string; dias: number; diaria: number }> = {}
-    presObra.forEach((p: any) => {
+      .eq('obra_id', obraId)
+      .gte('data', fechamento.periodo_inicio)
+      .lte('data', fechamento.periodo_fim)
+
+    if (!presencas || presencas.length === 0) {
+      setMsg('⚠️ Nenhuma presença encontrada.')
+      setSalvando(false)
+      return
+    }
+
+    const mapa: any = {}
+
+    presencas.forEach((p: any) => {
       if (['FALTA', 'ATESTADO', 'AUSENTE', 'SAIU'].includes(p.tipo)) return
-      const soma = (p.fracao || 0) + (p.fracao2 || 0)
-      if (!mapa[p.funcionario_id]) mapa[p.funcionario_id] = { nome: (p.funcionarios as any)?.nome || '', dias: 0, diaria: (p.funcionarios as any)?.valor_diaria || 0 }
-      mapa[p.funcionario_id].dias += soma
+
+      const dias = (p.fracao || 0) + (p.fracao2 || 0)
+
+      if (!mapa[p.funcionario_id]) {
+        mapa[p.funcionario_id] = {
+          nome: p.funcionarios?.nome || '',
+          dias: 0,
+          diaria: p.funcionarios?.valor_diaria || 0,
+        }
+      }
+
+      mapa[p.funcionario_id].dias += dias
     })
+
     const funcIds = Object.keys(mapa)
-    const { data: passagens } = await supabase.from('funcionario_obra_passagem').select('funcionario_id,valor_passagem,tipo_passagem').eq('obra_id', obraId).in('funcionario_id', funcIds)
-    passagens?.forEach((p: any) => { 
-  passMap[p.funcionario_id] = p.valor_passagem || 0
-})
-    let count = 0
-    for (const [funcId, info] of Object.entries(mapa)) {
+
+    const { data: passagens } = await supabase
+      .from('funcionario_obra_passagem')
+      .select('funcionario_id,valor_passagem,tipo_passagem')
+      .eq('obra_id', obraId)
+      .in('funcionario_id', funcIds)
+
+    const passMap: any = {}
+    passagens?.forEach((p: any) => {
+      passMap[p.funcionario_id] = p.tipo_passagem === 'PRA FRENTE' ? (p.valor_passagem || 0) : 0
+    })
+
+    // limpa antes de inserir
+    await supabase.from('fechamento_diarias').delete().eq('fechamento_id', id)
+    await supabase.from('fechamento_distribuicao').delete().eq('fechamento_id', id)
+
+    const diariasInsert = Object.entries(mapa).map(([funcId, info]: any) => {
       const passagem = passMap[funcId] || 0
       const total = info.dias * (info.diaria + passagem)
-      const { data: ex } = await supabase.from('fechamento_diarias').select('id').eq('fechamento_id', id).eq('funcionario_id', funcId).maybeSingle()
-      if (ex) await supabase.from('fechamento_diarias').update({ qtd_total: info.dias, valor_diaria: info.diaria, valor_passagem: passagem, total }).eq('id', ex.id)
-      else await supabase.from('fechamento_diarias').insert({ fechamento_id: id, funcionario_id: funcId, qtd_total: info.dias, diarias_descontadas: 0, valor_diaria: info.diaria, valor_passagem: passagem, complemento_passagem: 0, total })
-      // Auto-preencher distribuição
-      const { data: exDist } = await supabase.from('fechamento_distribuicao').select('id').eq('fechamento_id', id).eq('funcionario_id', funcId).maybeSingle()
-      if (!exDist) await supabase.from('fechamento_distribuicao').insert({ fechamento_id: id, funcionario_id: funcId, nome: info.nome, valor: 0, observacao: '' })
-      count++
+
+      return {
+        fechamento_id: id,
+        funcionario_id: funcId,
+        qtd_total: info.dias,
+        diarias_descontadas: 0,
+        valor_diaria: info.diaria,
+        valor_passagem: passagem,
+        complemento_passagem: 0,
+        total,
+      }
+    })
+
+    const distribuicaoInsert = Object.entries(mapa).map(([funcId, info]: any) => ({
+      fechamento_id: id,
+      funcionario_id: funcId,
+      nome: info.nome,
+      valor: 0,
+      observacao: '',
+    }))
+
+    if (diariasInsert.length) {
+      await supabase.from('fechamento_diarias').insert(diariasInsert)
     }
+
+    if (distribuicaoInsert.length) {
+      await supabase.from('fechamento_distribuicao').insert(distribuicaoInsert)
+    }
+
     await carregar()
-    setMsg(`✅ ${count} funcionários carregados!`); setTimeout(() => setMsg(''), 3000)
+
+    setMsg(`✅ ${diariasInsert.length} funcionários carregados!`)
+  } catch (err) {
+    setMsg('❌ Erro ao carregar dados')
+  } finally {
     setSalvando(false)
   }
-
+}
   async function updateDiaria(did: string, field: string, val: number) {
     const d = diarias.find(d => d.id === did); if (!d) return
     const upd: any = { ...d, [field]: val }
