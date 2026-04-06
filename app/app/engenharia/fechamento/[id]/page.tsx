@@ -130,7 +130,7 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
 
     const passMap: any = {}
     passagens?.forEach((p: any) => {
-      passMap[p.funcionario_id] = p.tipo_passagem === 'PRA FRENTE' ? (p.valor_passagem || 0) : 0
+      passMap[p.funcionario_id] = p.valor_passagem || 0
     })
 
     // limpa antes de inserir
