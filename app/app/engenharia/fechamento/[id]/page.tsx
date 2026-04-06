@@ -91,8 +91,9 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
     })
     const funcIds = Object.keys(mapa)
     const { data: passagens } = await supabase.from('funcionario_obra_passagem').select('funcionario_id,valor_passagem,tipo_passagem').eq('obra_id', obraId).in('funcionario_id', funcIds)
-    const passMap: Record<string, number> = {}
-    passagens?.forEach((p: any) => { passMap[p.funcionario_id] = p.tipo_passagem === 'PRA FRENTE' ? (p.valor_passagem || 0) : 0 })
+    passagens?.forEach((p: any) => { 
+  passMap[p.funcionario_id] = p.valor_passagem || 0
+})
     let count = 0
     for (const [funcId, info] of Object.entries(mapa)) {
       const passagem = passMap[funcId] || 0
@@ -249,20 +250,33 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
                     style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px', fontSize: 12, width: '100%' }}
                   >
                     <option value="">Serviço...</option>
-                    <option value="Lajes">Lajes</option>
-                    <option value="Pilares">Pilares</option>
-                    <option value="Vigas">Vigas</option>
-                    <option value="Escada">Escada</option>
-                    <option value="Blocos">Blocos</option>
-                    <option value="Cintas">Cintas</option>
-                    <option value="Contenção">Contenção</option>
-                    <option value="Cortinas">Cortinas</option>
-                    <option value="Tela soldada">Tela soldada</option>
-                    <option value="Tapume">Tapume</option>
-                    <option value="Tabeira">Tabeira</option>
-                    <option value="Guarda-corpo">Guarda-corpo</option>
-                    <option value="Linha de vida">Linha de vida</option>
-                    <option value="Estacas">Estacas</option>
+                    <option>Acréscimo pé direito alto (3,21 a 4,50 metros)</option>
+                    <option>Acréscimo pé direito duplo (4,51 a 6,50 metros)</option>
+                    <option>Acréscimo pé direito mais que duplo (acima de 6,51)</option>
+                    <option>Acréscimo retenção desforma fechamento anterior</option>
+                    <option>Aparalixo</option>
+                    <option>Área de vivência</option>
+                    <option>Blocos</option>
+                    <option>Cintas</option>
+                    <option>Contenção</option>
+                    <option>Cortinas</option>
+                    <option>Diárias</option>
+                    <option>Escada</option>
+                    <option>Estacas</option>
+                    <option>Forma retrabalho</option>
+                    <option>Guarda-corpo</option>
+                    <option>Lajes</option>
+                    <option>Linha de vida</option>
+                    <option>Pilar (redondo)</option>
+                    <option>Pilares</option>
+                    <option>Proteção de borda para concretagem</option>
+                    <option>Retenção aço</option>
+                    <option>Retenção desforma</option>
+                    <option>Tabeira</option>
+                    <option>Tapume</option>
+                    <option>Tela soldada</option>
+                    <option>Vale de forma</option>
+                    <option>Vigas</option>
                   </select>
                 </td>
                 <td style={{ padding: '4px 8px' }}>
@@ -272,13 +286,39 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
                     style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px', fontSize: 12, width: '100%' }}
                   >
                     <option value="">Pavimento...</option>
-                    <option value="Térreo">Térreo</option>
-                    <option value="1º Pavimento">1º Pavimento</option>
-                    <option value="2º Pavimento">2º Pavimento</option>
-                    <option value="3º Pavimento">3º Pavimento</option>
-                    <option value="Cobertura">Cobertura</option>
-                    <option value="Fundação">Fundação</option>
-                    <option value="Subsolo">Subsolo</option>
+                    <option>Barrilete</option>
+                    <option>Caixa d'água</option>
+                    <option>Casa de máquinas</option>
+                    <option>Cobertura</option>
+                    <option>Deck</option>
+                    <option>Elevador</option>
+                    <option>Fundação</option>
+                    <option>Piscina</option>
+                    <option>Pergolado</option>
+                    <option>Piso cobertura</option>
+                    <option>Rampa</option>
+                    <option>Reservatório</option>
+                    <option>Subsolo</option>
+                    <option>Teto cobertura</option>
+                    <option>Térreo</option>
+                    <option>1º Subsolo</option>
+                    <option>2º Subsolo</option>
+                    <option>1º Pavimento</option>
+                    <option>2º Pavimento</option>
+                    <option>3º Pavimento</option>
+                    <option>4º Pavimento</option>
+                    <option>5º Pavimento</option>
+                    <option>6º Pavimento</option>
+                    <option>7º Pavimento</option>
+                    <option>8º Pavimento</option>
+                    <option>9º Pavimento</option>
+                    <option>10º Pavimento</option>
+                    <option>11º Pavimento</option>
+                    <option>12º Pavimento</option>
+                    <option>13º Pavimento</option>
+                    <option>14º Pavimento</option>
+                    <option>Pavimento inferior</option>
+                    <option>Pavimento superior</option>
                   </select>
                 </td>
                 <td style={{ padding: '4px 8px' }}>
