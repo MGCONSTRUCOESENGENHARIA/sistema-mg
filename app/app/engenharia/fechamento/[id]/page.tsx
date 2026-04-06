@@ -246,31 +246,85 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
         </div>
 
         {/* Cabeçalho de impressão */}
-        <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid #1e3a8a' }}>
-          <h1 style={{ fontSize: 18, fontWeight: 800, color: '#1e3a8a', margin: 0 }}>FECHAMENTO DE PRODUÇÃO #{String(fechamento.numero).padStart(2, '0')}</h1>
-          <div style={{ display: 'flex', gap: 32, marginTop: 6, fontSize: 13, color: '#374151', flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: 20, paddingBottom: 14, borderBottom: '3px solid #1e3a8a' }}>
+          <div style={{ textAlign: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#1e3a8a', letterSpacing: 1 }}>
+              MG CONSTRUÇÕES
+            </div>
+            <div style={{ fontSize: 13, color: '#6b7280' }}>
+              RELATÓRIO DE PRODUÇÃO E BONIFICAÇÃO
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', fontSize: 13, color: '#374151' }}>
             <span><strong>Obra:</strong> {(fechamento.obras as any)?.nome}</span>
             <span><strong>Período:</strong> {dataI} a {dataF}</span>
-            {fechamento.encarregado && <span><strong>Encarregado:</strong> {fechamento.encarregado}</span>}
-            {fechamento.descricao && <span><strong>Descrição:</strong> {fechamento.descricao}</span>}
+            <span><strong>Fechamento:</strong>                             #{String(fechamento.numero).padStart(2, '0')}</span>
+              </div>
+              {(fechamento.encarregado || fechamento.descricao) && (
+                <div style={{ marginTop: 6, fontSize: 12, color: '#6b7280' }}>
+                  {fechamento.encarregado && <span><strong>Encarregado:</strong> {fechamento.encarregado} </span>}
+      {fechamento.descricao && <span> | <strong>Obs:</strong>{fechamento.descricao}</span>}
+            </div>
+          )}
+        </div>
+
+{/* RESUMO FINANCEIRO DESTACADO */}
+        <div style={{
+          background: '#f9fafb',
+          border: '2px solid #e5e7eb',
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 20
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 10 }}>
+            💰 RESUMO FINANCEIRO
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+            {[
+              { label: 'Produção', val: saldoProducao, color: '#1e3a8a' },
+              { label: '(-) Diárias', val: totalDiarias, color: '#dc2626', neg: true },
+              { label: 'Distribuir', val: saldoDistribuir, color: saldoDistribuir >= 0 ? '#059669' : '#dc2626' },
+              { label: 'Restante', val: saldoRestante, color: saldoRestante >= 0 ? '#059669' : '#dc2626' },
+            ].map((c, i) => (
+              <div key={i} style={{
+                background: '#fff',
+                borderRadius: 10,
+                padding: '10px 12px',
+                border: '1px solid #e5e7eb',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>{c.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: c.color }}>
+                  {(c as any).neg && totalDiarias > 0 ? '-' : ''}
+                  {formatR$(Math.abs(c.val))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {msg && <div className="no-print" style={{ background: msg.includes('✅') ? '#f0fdf4' : '#fffbeb', border: `1px solid ${msg.includes('✅') ? '#bbf7d0' : '#fde68a'}`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, fontSize: 13, color: msg.includes('✅') ? '#166534' : '#92400e' }}>{msg}</div>}
-
-        {/* Cards resumo */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 20 }}>
-          {[
-            { label: 'Saldo da Produção', val: saldoProducao, color: '#1e3a8a', bg: '#eff6ff' },
-            { label: 'Total das Diárias', val: totalDiarias, color: '#dc2626', bg: '#fef2f2', neg: true },
-            { label: 'Saldo p/ Distribuir', val: saldoDistribuir, color: saldoDistribuir >= 0 ? '#059669' : '#dc2626', bg: saldoDistribuir >= 0 ? '#f0fdf4' : '#fef2f2' },
-            { label: 'Saldo Restante', val: saldoRestante, color: saldoRestante >= 0 ? '#059669' : '#dc2626', bg: saldoRestante >= 0 ? '#f0fdf4' : '#fef2f2' },
-          ].map((c, i) => (
-            <div key={i} style={{ background: c.bg, borderRadius: 10, padding: '12px 16px', border: `1px solid ${c.color}22` }}>
-              <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>{c.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: c.color }}>{(c as any).neg && totalDiarias > 0 ? '-' : ''}{formatR$(Math.abs(c.val))}</div>
-            </div>
-          ))}
+        {/* ASSINATURAS MELHORADAS */}
+        <div style={{ marginTop: 60 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3,1fr)',
+            gap: 40,
+            textAlign: 'center'
+          }}>
+            {['Encarregado', 'Responsável Técnico', 'Aprovação'].map((label, i) => (
+              <div key={i}>
+                <div style={{
+                  borderTop: '2px solid #374151',
+                  marginBottom: 6,
+                  height: 20
+                }}></div>
+                <div style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>
+                  {label}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ══ SEÇÃO 1: LEVANTAMENTO DE PRODUÇÃO ══ */}
@@ -596,16 +650,3 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
             )}
           </table>
         </div>
-
-        {/* Assinaturas para impressão */}
-        <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 32 }}>
-          {['Encarregado', 'Responsável Técnico', 'Aprovação'].map((label, i) => (
-            <div key={i} style={{ borderTop: '1px solid #374151', paddingTop: 8, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280' }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
-  )
-}
