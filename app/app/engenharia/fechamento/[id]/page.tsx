@@ -248,26 +248,21 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
         {/* Cabeçalho de impressão */}
         <div style={{ marginBottom: 20, paddingBottom: 14, borderBottom: '3px solid #1e3a8a' }}>
           <div style={{ textAlign: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#1e3a8a', letterSpacing: 1 }}>
-              MG CONSTRUÇÕES
-            </div>
-            <div style={{ fontSize: 13, color: '#6b7280' }}>
-              RELATÓRIO DE PRODUÇÃO E BONIFICAÇÃO
-            </div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#1e3a8a', letterSpacing: 1 }}>MG CONSTRUÇÕES</div>
+            <div style={{ fontSize: 13, color: '#6b7280' }}>RELATÓRIO DE PRODUÇÃO E BONIFICAÇÃO</div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', fontSize: 13, color: '#374151' }}>
             <span><strong>Obra:</strong> {(fechamento.obras as any)?.nome}</span>
             <span><strong>Período:</strong> {dataI} a {dataF}</span>
-            <span><strong>Fechamento:</strong>                             #{String(fechamento.numero).padStart(2, '0')}</span>
-              </div>
-              {(fechamento.encarregado || fechamento.descricao) && (
-                <div style={{ marginTop: 6, fontSize: 12, color: '#6b7280' }}>
-                  {fechamento.encarregado && <span><strong>Encarregado:</strong> {fechamento.encarregado} </span>}
-      {fechamento.descricao && <span> | <strong>Obs:</strong>{fechamento.descricao}</span>}
+            <span><strong>Fechamento:</strong> #{String(fechamento.numero).padStart(2, '0')}</span>
+          </div>
+          {(fechamento.encarregado || fechamento.descricao) && (
+            <div style={{ marginTop: 6, fontSize: 12, color: '#6b7280' }}>
+              {fechamento.encarregado && <span><strong>Encarregado:</strong> {fechamento.encarregado} </span>}
+              {fechamento.descricao && <span> | <strong>Obs:</strong> {fechamento.descricao}</span>}
             </div>
           )}
         </div>
-
 {/* RESUMO FINANCEIRO DESTACADO */}
         <div style={{
           background: '#f9fafb',
