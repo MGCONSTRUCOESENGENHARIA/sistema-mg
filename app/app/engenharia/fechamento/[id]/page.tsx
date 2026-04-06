@@ -207,7 +207,7 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
 
         {/* ══ SEÇÃO 1: LEVANTAMENTO DE PRODUÇÃO ══ */}
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1e3a8a', marginBottom: 8, marginTop: 0, borderLeft: '4px solid #1e3a8a', paddingLeft: 10 }}>1. Levantamento de Produção</h2>
-        <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'auto', marginBottom: 20 }}>
+        <div style={{ background: 'white',
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#1e3a8a' }}>
@@ -355,7 +355,7 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
             {salvando ? '⏳ Carregando...' : '🔄 Carregar do sistema'}
           </button>
         </div>
-        <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'auto', marginBottom: 20 }}>
+        <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'visible', marginBottom: 20 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#dc2626' }}>
