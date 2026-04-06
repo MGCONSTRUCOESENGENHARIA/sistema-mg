@@ -207,9 +207,9 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
 
         {/* ══ SEÇÃO 1: LEVANTAMENTO DE PRODUÇÃO ══ */}
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1e3a8a', marginBottom: 8, marginTop: 0, borderLeft: '4px solid #1e3a8a', paddingLeft: 10 }}>1. Levantamento de Produção</h2>
-        <div style={{ background: 'white',
+        <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'visible', marginBottom: 20 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
+                     <thead>
               <tr style={{ background: '#1e3a8a' }}>
                 {['Item', 'Serviço Executado', 'Pavimento', 'Un.', '% Med.', 'Quantidade', 'Valor Unit.', 'Valor Parcial', ''].map((h, i) => (
                   <th key={i} className={i >= 8 ? 'no-print' : ''} style={{ color: 'white', padding: '9px 12px', textAlign: i >= 4 && i <= 7 ? 'right' : 'left', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
