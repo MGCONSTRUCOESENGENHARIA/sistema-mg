@@ -240,86 +240,102 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
               ))}
               {/* Nova linha */}
               <tr className="no-print" style={{ background: '#f0f9ff', borderTop: '2px dashed #bfdbfe' }}>
-                <td style={{ padding: '6px 12px', fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>+</td>
+                <td style={{ padding: '6px 12px', textAlign: 'center' }}>+</td>
+
                 <td style={{ padding: '4px 8px' }}>
                   <select
                     value={novaLinha.servico}
                     onChange={e => setNovaLinha(n => ({ ...n, servico: e.target.value }))}
-                    style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 8px', fontSize: 12, width: '100%', outline: 'none' }}
+                    style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px', fontSize: 12, width: '100%' }}
                   >
                     <option value="">Serviço...</option>
-                    <option value="Acréscimo pé direito alto (3,21 a 4,50 metros)">Acréscimo pé direito alto (3,21 a 4,50 metros)</option>
-                    <option value="Acréscimo pé direito duplo (4,51 a 6,50 metros)">Acréscimo pé direito duplo (4,51 a 6,50 metros)</option>
-                    <option value="Acréscimo pé direito mais que duplo (acima de 6,51)">Acréscimo pé direito mais que duplo (acima de 6,51)</option>
-                    <option value="Acréscimo retenção desforma fechamento anterior">Acréscimo retenção desforma fechamento anterior</option>
-                    <option value="Aparalixo">Aparalixo</option>
-                    <option value="Área de vivência">Área de vivência</option>
+                    <option value="Lajes">Lajes</option>
+                    <option value="Pilares">Pilares</option>
+                    <option value="Vigas">Vigas</option>
+                    <option value="Escada">Escada</option>
                     <option value="Blocos">Blocos</option>
                     <option value="Cintas">Cintas</option>
                     <option value="Contenção">Contenção</option>
                     <option value="Cortinas">Cortinas</option>
-                    <option value="Diárias">Diárias</option>
-                    <option value="Escada">Escada</option>
-                    <option value="Estacas">Estacas</option>
-                    <option value="Forma retrabalho">Forma retrabalho</option>
-                    <option value="Guarda-corpo">Guarda-corpo</option>
-                    <option value="Lajes">Lajes</option>
-                    <option value="Linha de vida">Linha de vida</option>
-                    <option value="Pilar (redondo)">Pilar (redondo)</option>
-                    <option value="Pilares">Pilares</option>
-                    <option value="Proteção de borda para concretagem">Proteção de borda para concretagem</option>
-                    <option value="Retenção aço">Retenção aço</option>
-                    <option value="Retenção desforma">Retenção desforma</option>
-                    <option value="Tabeira">Tabeira</option>
-                    <option value="Tapume">Tapume</option>
                     <option value="Tela soldada">Tela soldada</option>
-                    <option value="Vale de forma">Vale de forma</option>
-                    <option value="Vigas">Vigas</option>
+                    <option value="Tapume">Tapume</option>
+                    <option value="Tabeira">Tabeira</option>
+                    <option value="Guarda-corpo">Guarda-corpo</option>
+                    <option value="Linha de vida">Linha de vida</option>
+                    <option value="Estacas">Estacas</option>
                   </select>
                 </td>
-
                 <td style={{ padding: '4px 8px' }}>
                   <select
                     value={novaLinha.pavimento}
                     onChange={e => setNovaLinha(n => ({ ...n, pavimento: e.target.value }))}
-                    style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 8px', fontSize: 12, width: '100%', outline: 'none' }}
+                    style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px', fontSize: 12, width: '100%' }}
                   >
                     <option value="">Pavimento...</option>
-                    <option value="Barrilete">Barrilete</option>
-                    <option value="Caixa d'água">Caixa d'água</option>
-                    <option value="Casa de máquinas">Casa de máquinas</option>
-                    <option value="Cobertura">Cobertura</option>
-                    <option value="Deck">Deck</option>
-                    <option value="Elevador">Elevador</option>
-                    <option value="Fundação">Fundação</option>
-                    <option value="Piscina">Piscina</option>
-                    <option value="Pergolado">Pergolado</option>
-                    <option value="Piso cobertura">Piso cobertura</option>
-                    <option value="Rampa">Rampa</option>
-                    <option value="Reservatório">Reservatório</option>
-                    <option value="Subsolo">Subsolo</option>
-                    <option value="Teto cobertura">Teto cobertura</option>
                     <option value="Térreo">Térreo</option>
-                    <option value="1º Subsolo">1º Subsolo</option>
-                    <option value="2º Subsolo">2º Subsolo</option>
                     <option value="1º Pavimento">1º Pavimento</option>
                     <option value="2º Pavimento">2º Pavimento</option>
                     <option value="3º Pavimento">3º Pavimento</option>
-                    <option value="4º Pavimento">4º Pavimento</option>
-                    <option value="5º Pavimento">5º Pavimento</option>
-                    <option value="6º Pavimento">6º Pavimento</option>
-                    <option value="7º Pavimento">7º Pavimento</option>
-                    <option value="8º Pavimento">8º Pavimento</option>
-                    <option value="9º Pavimento">9º Pavimento</option>
-                    <option value="10º Pavimento">10º Pavimento</option>
-                    <option value="11º Pavimento">11º Pavimento</option>
-                    <option value="12º Pavimento">12º Pavimento</option>
-                    <option value="13º Pavimento">13º Pavimento</option>
-                    <option value="14º Pavimento">14º Pavimento</option>
-                    <option value="Pavimento inferior">Pavimento inferior</option>
-                    <option value="Pavimento superior">Pavimento superior</option>
+                    <option value="Cobertura">Cobertura</option>
+                    <option value="Fundação">Fundação</option>
+                    <option value="Subsolo">Subsolo</option>
                   </select>
                 </td>
+                <td style={{ padding: '4px 8px' }}>
+                  <select
+                    value={novaLinha.unidade}
+                    onChange={e => setNovaLinha(n => ({ ...n, unidade: e.target.value }))}
+                    style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px', fontSize: 12, width: '100%' }}
+                  >
+                    <option>KG</option>
+                    <option>M²</option>
+                    <option>M³</option>
+                    <option>M</option>
+                    <option>UN</option>
+                  </select>
+                </td>
+  <td style={{ padding: '4px 8px' }}>
+    <input
+      type="number"
+      placeholder="%"
+      value={novaLinha.percentual_medido}
+      onChange={e => setNovaLinha(n => ({ ...n, percentual_medido: e.target.value }))}
+      style={{ width: '100%', padding: '5px', fontSize: 12 }}
+    />
+  </td>
+
+  <td style={{ padding: '4px 8px' }}>
+    <input
+      type="number"
+      placeholder="0"
+      value={novaLinha.quantidade}
+      onChange={e => setNovaLinha(n => ({ ...n, quantidade: e.target.value }))}
+      style={{ width: '100%', padding: '5px', fontSize: 12 }}
+    />
+  </td>
+
+  <td style={{ padding: '4px 8px' }}>
+    <input
+      type="number"
+      placeholder="0,00"
+      value={novaLinha.valor_unitario}
+      onChange={e => setNovaLinha(n => ({ ...n, valor_unitario: e.target.value }))}
+      style={{ width: '100%', padding: '5px', fontSize: 12 }}
+    />
+  </td>
+
+  <td style={{ padding: '6px 12px', textAlign: 'right' }}>
+    {novaLinha.quantidade && novaLinha.valor_unitario
+      ? formatR$(parseFloat(novaLinha.quantidade) * parseFloat(novaLinha.valor_unitario))
+      : '—'}
+  </td>
+
+  <td style={{ padding: '4px 8px' }}>
+    <button onClick={addProducao} style={{ background: '#1e3a8a', color: 'white', border: 'none', padding: '6px 10px', borderRadius: 6 }}>
+      + Add
+    </button>
+  </td>
+</tr>
                 <td style={{ padding: '4px 8px' }}><input placeholder="Pavimento..." style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 8px', fontSize: 12, width: '100%', outline: 'none' }} value={novaLinha.pavimento} onChange={e => setNovaLinha(n => ({ ...n, pavimento: e.target.value }))} /></td>
                 <td style={{ padding: '4px 8px' }}>
                   <select style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 4px', fontSize: 12, width: '100%' }} value={novaLinha.unidade} onChange={e => setNovaLinha(n => ({ ...n, unidade: e.target.value }))}>
