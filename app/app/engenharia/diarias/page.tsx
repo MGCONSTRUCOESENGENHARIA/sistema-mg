@@ -279,11 +279,17 @@ export default function DiariasExtrasPage() {
 
             {/* Tabela */}
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                    {['Data', 'Funcionário', 'Tipo', 'Qtd', 'Serviço executado', 'Desc. Produção', 'Receb. Medição', ''].map((h, i) => (
-                      <th key={i} style={{ padding: '9px 14px', textAlign: i >= 5 ? 'center' : 'left', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.4px', whiteSpace: 'nowrap' }}>{h}</th>
+                    {['Data', 'Funcionário', 'Tipo', 'Qtd', 'Serviço Executado', 'Desc. Produção', 'Receb. Medição', ''].map((h, i) => (
+                      <th key={i} style={{
+                        padding: '9px 14px',
+                        textAlign: i >= 5 ? 'center' : 'left',
+                        fontSize: 11, fontWeight: 700, color: '#6b7280',
+                        textTransform: 'uppercase', letterSpacing: '.4px', whiteSpace: 'nowrap',
+                        width: i === 0 ? 90 : i === 1 ? 180 : i === 2 ? 120 : i === 3 ? 80 : i === 4 ? '100%' : i === 7 ? 40 : 130,
+                      }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -333,7 +339,7 @@ export default function DiariasExtrasPage() {
                           </div>
                         </td>
                         {/* Serviço editável */}
-                        <td style={{ padding: '10px 14px', minWidth: 200 }}>
+                        <td style={{ padding: '10px 14px', minWidth: 320 }}>
                           <input
                             type="text"
                             value={editando[keySvc] !== undefined ? editando[keySvc] : (d.servico || '')}
