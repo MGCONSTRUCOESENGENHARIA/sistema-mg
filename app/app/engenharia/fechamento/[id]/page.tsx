@@ -331,23 +331,11 @@ export default function FechamentoPage({ params }: { params: { id: string } }) {
   </td>
 
   <td style={{ padding: '4px 8px' }}>
-    <button onClick={addProducao} style={{ background: '#1e3a8a', color: 'white', border: 'none', padding: '6px 10px', borderRadius: 6 }}>
-      + Add
-    </button>
-  </td>
-</tr>
-                <td style={{ padding: '4px 8px' }}><input placeholder="Pavimento..." style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 8px', fontSize: 12, width: '100%', outline: 'none' }} value={novaLinha.pavimento} onChange={e => setNovaLinha(n => ({ ...n, pavimento: e.target.value }))} /></td>
-                <td style={{ padding: '4px 8px' }}>
-                  <select style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 4px', fontSize: 12, width: '100%' }} value={novaLinha.unidade} onChange={e => setNovaLinha(n => ({ ...n, unidade: e.target.value }))}>
-                    <option>KG</option><option>M²</option><option>M³</option><option>M</option><option>UN</option>
-                  </select>
-                </td>
-                <td style={{ padding: '4px 8px' }}><input type="number" placeholder="%" style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 8px', fontSize: 12, width: '100%', textAlign: 'right', outline: 'none' }} value={novaLinha.percentual_medido} onChange={e => setNovaLinha(n => ({ ...n, percentual_medido: e.target.value }))} /></td>
-                <td style={{ padding: '4px 8px' }}><input type="number" placeholder="0" style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 8px', fontSize: 12, width: '100%', textAlign: 'right', outline: 'none' }} value={novaLinha.quantidade} onChange={e => setNovaLinha(n => ({ ...n, quantidade: e.target.value }))} /></td>
-                <td style={{ padding: '4px 8px' }}><input type="number" placeholder="0,00" style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 8px', fontSize: 12, width: '100%', textAlign: 'right', outline: 'none' }} value={novaLinha.valor_unitario} onChange={e => setNovaLinha(n => ({ ...n, valor_unitario: e.target.value }))} /></td>
-                <td style={{ padding: '6px 12px', textAlign: 'right', fontSize: 12, color: '#9ca3af' }}>{novaLinha.quantidade && novaLinha.valor_unitario ? formatR$(parseFloat(novaLinha.quantidade) * parseFloat(novaLinha.valor_unitario)) : '—'}</td>
-                <td style={{ padding: '4px 8px' }}><button onClick={addProducao} style={{ background: '#1e3a8a', color: 'white', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>+ Add</button></td>
-              </tr>
+      <button onClick={addProducao} style={{ background: '#1e3a8a', color: 'white', border: 'none', padding: '6px 10px', borderRadius: 6 }}>
+        + Add
+      </button>
+    </td>
+  </tr>
             </tbody>
             <tfoot>
               <tr style={{ background: '#1e3a8a' }}>
