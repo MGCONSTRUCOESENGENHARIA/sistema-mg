@@ -37,7 +37,7 @@ Instruções:
 
     const apiKey = process.env.GEMINI_API_KEY
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,4 +69,13 @@ Instruções:
   } catch (err: any) {
     return NextResponse.json({ ok: false, erro: err.message }, { status: 500 })
   }
+}
+
+
+export async function GET(req: NextRequest) {
+  const apiKey = process.env.GEMINI_API_KEY
+  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`)
+  const data = await resp.json()
+  const models = data.models?.map((m: any) => m.name) || []
+  return NextResponse.json({ models })
 }
