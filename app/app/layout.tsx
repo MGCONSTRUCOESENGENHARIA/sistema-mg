@@ -27,6 +27,7 @@ const MENUS = [
       { href: '/app/presenca/rapido', label: 'Lançamento Rápido' },
       { href: '/app/presenca', label: 'Grade de Presença' },
       { href: '/app/avulsos',  label: 'Descontos / Vales' },
+      { href: '/app/folhas',    label: 'Folhas de Ponto' },
     ]
   },
   {
