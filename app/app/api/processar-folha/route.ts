@@ -4,8 +4,11 @@ export async function POST(req: NextRequest) {
   try {
     const { imageUrl, funcionarios } = await req.json()
 
+    console.log('Processando imagem:', imageUrl)
+    console.log('API Key presente:', !!process.env.ANTHROPIC_API_KEY)
     const imgResp = await fetch(imageUrl)
-    if (!imgResp.ok) throw new Error('Erro ao baixar imagem')
+    console.log('Status download imagem:', imgResp.status)
+    if (!imgResp.ok) throw new Error('Erro ao baixar imagem: ' + imgResp.status)
     const imgBuffer = await imgResp.arrayBuffer()
     const base64 = Buffer.from(imgBuffer).toString('base64')
     const contentType = imgResp.headers.get('content-type') || 'image/jpeg'
