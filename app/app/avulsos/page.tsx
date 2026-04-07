@@ -95,10 +95,23 @@ export default function AvulsosPage() {
   async function salvar() {
     if (!form.funcionario_id || !form.valor_total) { setMsg('⚠️ Preencha funcionário e valor.'); setTimeout(() => setMsg(''), 3000); return }
     setSalvando(true)
+    // Buscar ou criar competência do mês atual
+    const mes = form.data_lancamento.slice(0, 7)
+    let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
+    if (!comp) {
+      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
+      comp = nova
+    }
+
     const { data: desc, error } = await supabase.from('avulsos').insert({
-      funcionario_id: form.funcionario_id, tipo: form.tipo,
+      competencia_id: comp!.id,
+      funcionario_id: form.funcionario_id,
+      tipo: form.tipo,
+      data: form.data_lancamento,
+      valor: parseFloat(form.valor_total),
       valor_total: parseFloat(form.valor_total),
-      observacao: form.observacao, data_lancamento: form.data_lancamento,
+      observacao: form.observacao,
+      data_lancamento: form.data_lancamento,
     }).select().single()
     if (error || !desc) { setMsg('⚠️ Erro ao salvar.'); setSalvando(false); return }
     // Salvar parcelas
