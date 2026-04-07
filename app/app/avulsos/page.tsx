@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatR$ } from '@/lib/utils'
 
-type Tipo = 'vale' | 'empréstimo' | 'desconto' | 'adiantamento'
-type Quando = 'adiantamento' | 'pagamento_final'
+type Tipo = 'Vale' | 'Empréstimo' | 'Desconto' | 'Adiantamento'
+type Quando = 'Adiantamento' | 'pagamento_final'
 
 interface Desconto {
   id: string; funcionario_id: string; tipo: Tipo; valor_total: number
@@ -17,12 +17,12 @@ interface Parcela {
 }
 interface Func { id: string; nome: string; equipe: string }
 
-const TIPOS: Tipo[] = ['vale', 'adiantamento', 'empréstimo', 'desconto']
+const TIPOS: Tipo[] = ['Vale', 'Adiantamento', 'Empréstimo', 'Desconto']
 const COR_TIPO: Record<string, { bg: string; color: string; border: string; label: string }> = {
-  'vale':        { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe', label: 'Vale' },
-  'adiantamento':{ bg: '#f0fdf4', color: '#166534', border: '#bbf7d0', label: 'Adiantamento' },
-  'empréstimo':  { bg: '#fef3c7', color: '#92400e', border: '#fde68a', label: 'Empréstimo' },
-  'desconto':    { bg: '#fce7f3', color: '#9d174d', border: '#fbcfe8', label: 'Desconto' },
+  'Vale':        { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe', label: 'Vale' },
+  'Adiantamento':{ bg: '#f0fdf4', color: '#166534', border: '#bbf7d0', label: 'Adiantamento' },
+  'Empréstimo':  { bg: '#fef3c7', color: '#92400e', border: '#fde68a', label: 'Empréstimo' },
+  'Desconto':    { bg: '#fce7f3', color: '#9d174d', border: '#fbcfe8', label: 'Desconto' },
 }
 
 function meses() {
@@ -52,7 +52,7 @@ export default function AvulsosPage() {
   const [expandido, setExpandido] = useState<string | null>(null)
 
   const [form, setForm] = useState({
-    funcionario_id: '', tipo: 'vale' as Tipo,
+    funcionario_id: '', tipo: 'Vale' as Tipo,
     valor_total: '', observacao: '', data_lancamento: new Date().toISOString().slice(0,10),
     parcelas: [{ valor: '', quando: 'pagamento_final' as Quando, mes_ano: new Date().toISOString().slice(0,7), obs: '' }]
   })
@@ -128,7 +128,7 @@ export default function AvulsosPage() {
     setMsg('✅ Desconto salvo!')
     setTimeout(() => setMsg(''), 3000)
     setShowForm(false)
-    setForm({ funcionario_id: '', tipo: 'vale', valor_total: '', observacao: '', data_lancamento: new Date().toISOString().slice(0,10), parcelas: [{ valor: '', quando: 'pagamento_final', mes_ano: new Date().toISOString().slice(0,7), obs: '' }] })
+    setForm({ funcionario_id: '', tipo: 'Vale', valor_total: '', observacao: '', data_lancamento: new Date().toISOString().slice(0,10), parcelas: [{ valor: '', quando: 'pagamento_final', mes_ano: new Date().toISOString().slice(0,7), obs: '' }] })
     await carregar()
     setSalvando(false)
   }
@@ -374,8 +374,8 @@ export default function AvulsosPage() {
                             <tr key={p.id} style={{ background: p.descontado ? '#f0fdf4' : '#fffbeb', borderBottom: '1px solid #f3f4f6' }}>
                               <td colSpan={1} style={{ padding: '6px 14px 6px 28px', fontSize: 11, color: '#9ca3af' }}>└ Parcela {p.numero}</td>
                               <td style={{ padding: '6px 14px', fontSize: 11 }}>
-                                <span style={{ background: p.quando === 'adiantamento' ? '#eff6ff' : '#f5f3ff', color: p.quando === 'adiantamento' ? '#1e40af' : '#6d28d9', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10 }}>
-                                  {p.quando === 'adiantamento' ? 'Adiantamento' : 'Pgto Final'}
+                                <span style={{ background: p.quando === 'Adiantamento' ? '#eff6ff' : '#f5f3ff', color: p.quando === 'Adiantamento' ? '#1e40af' : '#6d28d9', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10 }}>
+                                  {p.quando === 'Adiantamento' ? 'Adiantamento' : 'Pgto Final'}
                                 </span>
                                 <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 6 }}>{nomeMes(p.mes_ano)}</span>
                               </td>
