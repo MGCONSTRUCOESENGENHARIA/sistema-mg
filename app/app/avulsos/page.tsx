@@ -63,7 +63,7 @@ export default function AvulsosPage() {
     setLoading(true)
     const [{ data: fs }, { data: ds }] = await Promise.all([
       supabase.from('funcionarios').select('id,nome,equipe').eq('ativo', true).order('nome'),
-      supabase.from('avulsos').select('*, funcionarios(nome,equipe)').order('data_lancamento', { ascending: false }),
+      supabase.from('avulsos').select('*').order('criado_em', { ascending: false }),
     ])
     // Buscar parcelas
     const ids = (ds || []).map((d: any) => d.id)
