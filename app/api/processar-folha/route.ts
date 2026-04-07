@@ -4,10 +4,7 @@ export async function POST(req: NextRequest) {
   try {
     const { imageUrl, funcionarios } = await req.json()
 
-    console.log('Processando imagem:', imageUrl)
-    console.log('API Key presente:', !!process.env.ANTHROPIC_API_KEY)
     const imgResp = await fetch(imageUrl)
-    console.log('Status download imagem:', imgResp.status)
     if (!imgResp.ok) throw new Error('Erro ao baixar imagem: ' + imgResp.status)
     const imgBuffer = await imgResp.arrayBuffer()
     const base64 = Buffer.from(imgBuffer).toString('base64')
@@ -25,8 +22,8 @@ Extraia e retorne APENAS um JSON válido com esta estrutura exata:
   "data": "DD/MM/AAAA",
   "obra": "nome da obra",
   "presentes": [{"nome": "nome como está na folha"}],
-  "diarias_obra": [{"nome": "nome", "servico": "serviço executado"}],
-  "diarias_mg": [{"nome": "nome", "servico": "serviço executado"}],
+  "diarias_obra": [{"nome": "nome", "servico": "servico executado"}],
+  "diarias_mg": [{"nome": "nome", "servico": "servico executado"}],
   "faltas": [{"nome": "nome"}]
 }
 
@@ -36,41 +33,35 @@ Instruções:
 - diarias_mg = funcionários em DIÁRIAS POR CONTA DA MG quando SIM marcado
 - faltas = funcionários na seção FALTAS
 - Tente ler a caligrafia mesmo difícil
-- Retorne APENAS o JSON puro, sem markdown`
+- Retorne APENAS o JSON puro sem markdown`
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.ANTHROPIC_API_KEY}`,
-        'HTTP-Referer': 'https://sistema-mg.vercel.app',
-        'X-Title': 'MG Construcoes',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-opus-4',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: `data:${contentType};base64,${base64}` }
-            },
-            { type: 'text', text: prompt }
-          ]
-        }]
-      })
-    })
+    const apiKey = process.env.GEMINI_API_KEY
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: contentType, data: base64 } },
+              { text: prompt }
+            ]
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
+        })
+      }
+    )
 
     if (!response.ok) {
       const err = await response.text()
-      throw new Error('Erro OpenRouter: ' + err)
+      throw new Error('Erro Gemini: ' + err)
     }
 
     const data = await response.json()
-    const texto = data.choices?.[0]?.message?.content || ''
+    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     const jsonMatch = texto.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('IA não retornou JSON válido: ' + texto.slice(0, 200))
+    if (!jsonMatch) throw new Error('IA não retornou JSON: ' + texto.slice(0, 200))
 
     const resultado = JSON.parse(jsonMatch[0])
     return NextResponse.json({ ok: true, resultado })
