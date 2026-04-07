@@ -103,62 +103,16 @@ export default function FolhasPage() {
     setMsg('🤖 Analisando imagem com IA...')
 
     try {
-      // Baixar imagem e converter para base64
-      const resp = await fetch(folha.foto_url)
-      const blob = await resp.blob()
-      const base64 = await new Promise<string>((res) => {
-        const reader = new FileReader()
-        reader.onloadend = () => res((reader.result as string).split(',')[1])
-        reader.readAsDataURL(blob)
-      })
-
-      const nomesFuncs = funcs.map(f => f.nome).join('\n')
-
-      const prompt = `Você é um sistema de leitura de folhas de ponto de obra. Analise esta imagem de uma folha de ponto e extraia as informações.
-
-Lista de funcionários cadastrados no sistema:
-${nomesFuncs}
-
-Extraia e retorne APENAS um JSON válido com esta estrutura:
-{
-  "data": "DD/MM/AAAA",
-  "obra": "nome da obra",
-  "presentes": [{"nome": "nome como está na folha"}],
-  "diarias_obra": [{"nome": "nome", "servico": "serviço executado"}],
-  "diarias_mg": [{"nome": "nome", "servico": "serviço executado"}],
-  "faltas": [{"nome": "nome"}]
-}
-
-Instruções:
-- "presentes" = funcionários na seção PRESENÇA
-- "diarias_obra" = funcionários na seção "DIÁRIAS POR CONTA DA OBRA" (quando SIM está marcado)
-- "diarias_mg" = funcionários na seção "DIÁRIAS POR CONTA DA MG" (quando SIM está marcado)
-- "faltas" = funcionários na seção FALTAS
-- Tente ler a caligrafia mesmo que seja difícil
-- Retorne APENAS o JSON, sem explicações`
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Chamar API route do servidor
+      const nomesFuncs = funcs.map(f => f.nome)
+      const response = await fetch('/api/processar-folha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: blob.type as any, data: base64 } },
-              { type: 'text', text: prompt }
-            ]
-          }]
-        })
+        body: JSON.stringify({ imageUrl: folha.foto_url, funcionarios: nomesFuncs })
       })
-
       const data = await response.json()
-      const texto = data.content?.[0]?.text || ''
-      const jsonMatch = texto.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) throw new Error('IA não retornou JSON válido')
-
-      const resultado: ResultadoIA = JSON.parse(jsonMatch[0])
+      if (!data.ok) throw new Error(data.erro || 'Erro ao processar')
+      const resultado: ResultadoIA = data.resultado
 
       // Tentar fazer match com funcionários cadastrados
       function similaridade(a: string, b: string): number {
