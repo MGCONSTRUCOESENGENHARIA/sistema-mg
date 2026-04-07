@@ -60,7 +60,7 @@ export default function FuncionariosPage() {
     if (!modal) return
     setSalvando(true)
     await supabase.from('funcionarios').update({
-      nome: modal.nome, funcao: modal.funcao,
+      nome: modal.nome, equipe: modal.equipe, funcao: modal.funcao,
       valor_diaria: modal.valor_diaria, salario_base: modal.salario_base,
       empresa: modal.empresa,
     }).eq('id', modal.id)
@@ -72,6 +72,13 @@ export default function FuncionariosPage() {
   async function inativar(id: string) {
     if (!confirm('Inativar este funcionário?')) return
     await supabase.from('funcionarios').update({ ativo: false }).eq('id', id)
+    await carregar()
+  }
+
+  async function excluir(id: string, nome: string) {
+    if (!confirm(`Excluir permanentemente ${nome}? Esta ação não pode ser desfeita.`)) return
+    const { error } = await supabase.from('funcionarios').delete().eq('id', id)
+    if (error) { alert('Erro ao excluir: ' + error.message); return }
     await carregar()
   }
 
@@ -224,6 +231,20 @@ export default function FuncionariosPage() {
                 </div>
               ))}
               <div>
+                <label style={{ fontSize:12, fontWeight:600, color:'#6b7280', display:'block', marginBottom:4 }}>Equipe</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  {(['ARMAÇÃO','CARPINTARIA'] as const).map(eq => (
+                    <button key={eq} onClick={() => setModal(m => m ? {...m, equipe: eq} : m)}
+                      style={{ flex:1, padding:'8px', borderRadius:8, border:'1.5px solid', cursor:'pointer', fontSize:13, fontWeight:600,
+                        borderColor: modal.equipe === eq ? '#7c3aed' : '#e5e7eb',
+                        background: modal.equipe === eq ? '#7c3aed' : 'white',
+                        color: modal.equipe === eq ? 'white' : '#6b7280' }}>
+                      {eq === 'ARMAÇÃO' ? 'Armação' : 'Carpintaria'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <label style={{ fontSize:12, fontWeight:600, color:'#6b7280', display:'block', marginBottom:4 }}>Empresa</label>
                 <select value={modal.empresa} onChange={e => setModal(m => m ? {...m, empresa: e.target.value} : m)}
                   style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:8, padding:'8px 10px', fontSize:13, outline:'none' }}>
@@ -232,6 +253,7 @@ export default function FuncionariosPage() {
               </div>
             </div>
             <div style={{ padding:'14px 22px', borderTop:'1px solid #f3f4f6', display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => { if(modal) { excluir(modal.id, modal.nome); setModal(null) } }} style={{ padding:'8px 18px', borderRadius:8, border:'none', background:'#fef2f2', color:'#dc2626', cursor:'pointer', fontSize:13, fontWeight:600 }}>🗑 Excluir</button>
               <button onClick={() => setModal(null)} style={{ padding:'8px 18px', borderRadius:8, border:'1px solid #e5e7eb', background:'white', color:'#6b7280', cursor:'pointer', fontSize:13 }}>Cancelar</button>
               <button onClick={salvarEdicao} disabled={salvando} style={{ padding:'8px 20px', borderRadius:8, border:'none', background:'#7c3aed', color:'white', cursor:'pointer', fontSize:13, fontWeight:600 }}>
                 {salvando ? 'Salvando...' : 'Salvar'}
