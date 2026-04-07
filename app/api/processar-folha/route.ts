@@ -4,40 +4,36 @@ export async function POST(req: NextRequest) {
   try {
     const { imageUrl, funcionarios } = await req.json()
 
+    // 1. Baixar a imagem e converter para Base64
     const imgResp = await fetch(imageUrl)
     if (!imgResp.ok) throw new Error('Erro ao baixar imagem: ' + imgResp.status)
+    
     const imgBuffer = await imgResp.arrayBuffer()
     const base64 = Buffer.from(imgBuffer).toString('base64')
     const contentType = imgResp.headers.get('content-type') || 'image/jpeg'
 
     const nomesFuncs = funcionarios.join('\n')
 
-    const prompt = `Você é um sistema de leitura de folhas de ponto de construção civil. Analise esta imagem de uma folha de ponto e extraia as informações.
+    // 2. Prompt otimizado para extração de dados
+    const prompt = `Você é um sistema especialista em OCR para construção civil. 
+Analise a folha de ponto e extraia as informações comparando os nomes manuscritos com a lista oficial abaixo.
 
-Lista de funcionários cadastrados no sistema:
+LISTA OFICIAL DE FUNCIONÁRIOS:
 ${nomesFuncs}
 
-Extraia e retorne APENAS um JSON válido com esta estrutura exata:
-{
-  "data": "DD/MM/AAAA",
-  "obra": "nome da obra",
-  "presentes": [{"nome": "nome como está na folha"}],
-  "diarias_obra": [{"nome": "nome", "servico": "servico executado"}],
-  "diarias_mg": [{"nome": "nome", "servico": "servico executado"}],
-  "faltas": [{"nome": "nome"}]
-}
-
-Instruções:
-- presentes = funcionários listados na seção PRESENÇA
-- diarias_obra = funcionários em DIÁRIAS POR CONTA DA OBRA quando SIM marcado
-- diarias_mg = funcionários em DIÁRIAS POR CONTA DA MG quando SIM marcado
-- faltas = funcionários na seção FALTAS
-- Tente ler a caligrafia mesmo difícil
-- Retorne APENAS o JSON puro sem markdown`
+INSTRUÇÕES:
+- presentes: nomes na seção PRESENÇA.
+- diarias_obra: nomes em DIÁRIAS POR CONTA DA OBRA (apenas se marcado SIM).
+- diarias_mg: nomes em DIÁRIAS POR CONTA DA MG (apenas se marcado SIM).
+- faltas: nomes na seção FALTAS.
+- Se um nome estiver difícil de ler, use a LISTA OFICIAL para deduzir o nome correto.
+- Retorne os dados seguindo estritamente a estrutura JSON solicitada.`
 
     const apiKey = process.env.GEMINI_API_KEY
+    
+    // 3. Chamada para a API usando v1beta (essencial para o Flash 1.5)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,34 +44,31 @@ Instruções:
               { text: prompt }
             ]
           }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 2000,
+            // Força a resposta a ser um JSON válido, sem textos explicativos ou markdown
+            response_mime_type: "application/json" 
+          }
         })
       }
     )
 
+    // 4. Tratamento de erro da requisição
     if (!response.ok) {
-      const err = await response.text()
-      throw new Error('Erro Gemini: ' + err)
+      const errText = await response.text()
+      throw new Error(`Erro Gemini (${response.status}): ${errText}`)
     }
 
     const data = await response.json()
-    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    const jsonMatch = texto.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('IA não retornou JSON: ' + texto.slice(0, 200))
+    
+    // 5. Extração direta (com response_mime_type, não precisa de Regex)
+    const textoSaida = data.candidates?.[0]?.content?.parts?.[0]?.text
 
-    const resultado = JSON.parse(jsonMatch[0])
-    return NextResponse.json({ ok: true, resultado })
+    if (!textoSaida) {
+      throw new Error('A IA não conseguiu gerar uma resposta para esta imagem.')
+    }
 
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, erro: err.message }, { status: 500 })
-  }
-}
+    const resultado = JSON.parse(textoSaida)
 
-
-export async function GET(req: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY
-  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`)
-  const data = await resp.json()
-  const models = data.models?.map((m: any) => m.name) || []
-  return NextResponse.json({ models })
-}
+    return NextResponse.json({
