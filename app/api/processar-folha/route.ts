@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const nomesFuncs = funcionarios.join('\n')
 
-    // 2. Prompt otimizado para extração de dados
+    // 2. Prompt otimizado
     const prompt = `Você é um sistema especialista em OCR para construção civil. 
 Analise a folha de ponto e extraia as informações comparando os nomes manuscritos com a lista oficial abaixo.
 
@@ -27,11 +27,11 @@ INSTRUÇÕES:
 - diarias_mg: nomes em DIÁRIAS POR CONTA DA MG (apenas se marcado SIM).
 - faltas: nomes na seção FALTAS.
 - Se um nome estiver difícil de ler, use a LISTA OFICIAL para deduzir o nome correto.
-- Retorne os dados seguindo estritamente a estrutura JSON solicitada.`
+- Retorne um JSON com: data, obra, presentes, diarias_obra, diarias_mg e faltas.`
 
     const apiKey = process.env.GEMINI_API_KEY
     
-    // 3. Chamada para a API usando v1beta (essencial para o Flash 1.5)
+    // 3. Chamada para a API (v1beta)
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
@@ -47,28 +47,38 @@ INSTRUÇÕES:
           generationConfig: {
             temperature: 0.1,
             maxOutputTokens: 2000,
-            // Força a resposta a ser um JSON válido, sem textos explicativos ou markdown
             response_mime_type: "application/json" 
           }
         })
       }
     )
 
-    // 4. Tratamento de erro da requisição
     if (!response.ok) {
       const errText = await response.text()
       throw new Error(`Erro Gemini (${response.status}): ${errText}`)
     }
 
     const data = await response.json()
-    
-    // 5. Extração direta (com response_mime_type, não precisa de Regex)
     const textoSaida = data.candidates?.[0]?.content?.parts?.[0]?.text
 
     if (!textoSaida) {
-      throw new Error('A IA não conseguiu gerar uma resposta para esta imagem.')
+      throw new Error('A IA não conseguiu gerar uma resposta.')
     }
 
     const resultado = JSON.parse(textoSaida)
 
-    return NextResponse.json({
+    // RETORNO DE SUCESSO
+    return NextResponse.json({ ok: true, resultado })
+
+  } catch (err: any) {
+    console.error("Erro na API:", err.message)
+    return NextResponse.json(
+      { ok: false, erro: err.message }, 
+      { status: 500 }
+    )
+  }
+}
+
+export async function GET() {
+  return NextResponse.json({ status: 'Rodando v1beta' })
+}
