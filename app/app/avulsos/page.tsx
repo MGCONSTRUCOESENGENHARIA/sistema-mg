@@ -63,7 +63,7 @@ export default function AvulsosPage() {
     setLoading(true)
     const [{ data: fs }, { data: ds }] = await Promise.all([
       supabase.from('funcionarios').select('id,nome,equipe').eq('ativo', true).order('nome'),
-      supabase.from('avulsos').select('id, competencia_id, funcionario_id, data, tipo, valor, observacao, quando_descontar, valor_total, data_lancamento').order('criado_em', { ascending: false }),
+      supabase.from('avulsos').select('id, competencia_id, funcionario_id, data, tipo, valor, observacao, quando_descontar, valor_total, data_lancamento, funcionarios(nome, equipe)').order('criado_em', { ascending: false }),
     ])
     // Buscar parcelas
     const ids = (ds || []).map((d: any) => d.id)
@@ -314,7 +314,7 @@ export default function AvulsosPage() {
           <p style={{ color: '#9ca3af' }}>Nenhum desconto cadastrado.</p>
         </div>
       ) : Object.entries(porFunc).map(([funcId, items]) => {
-        const funcInfo = (items[0].funcionarios as any)
+        const funcInfo = (items[0].funcionarios as any) || funcs.find(f => f.id === items[0].funcionario_id)
         const pendente = items.reduce((s, d) => s + (d.parcelas?.filter(p => !p.descontado).reduce((a, p) => a + p.valor, 0) || 0), 0)
         const isOpen = expandido === funcId
 
