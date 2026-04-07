@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatR$ } from '@/lib/utils'
 
-type Tipo = 'Vale/Adiantamento' | 'Empréstimo' | 'Consignado' | 'Materiais' | 'Pensão' | 'Outros'
+type Tipo = 'vale' | 'empréstimo' | 'desconto' | 'adiantamento'
 type Quando = 'adiantamento' | 'pagamento_final'
 
 interface Desconto {
@@ -17,14 +17,12 @@ interface Parcela {
 }
 interface Func { id: string; nome: string; equipe: string }
 
-const TIPOS: Tipo[] = ['Vale/Adiantamento', 'Empréstimo', 'Consignado', 'Materiais', 'Pensão', 'Outros']
-const COR_TIPO: Record<Tipo, { bg: string; color: string; border: string }> = {
-  'Vale/Adiantamento': { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe' },
-  'Empréstimo':        { bg: '#fef3c7', color: '#92400e', border: '#fde68a' },
-  'Consignado':        { bg: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe' },
-  'Materiais':         { bg: '#f0fdf4', color: '#166534', border: '#bbf7d0' },
-  'Pensão':            { bg: '#fce7f3', color: '#9d174d', border: '#fbcfe8' },
-  'Outros':            { bg: '#f9fafb', color: '#374151', border: '#e5e7eb' },
+const TIPOS: Tipo[] = ['vale', 'adiantamento', 'empréstimo', 'desconto']
+const COR_TIPO: Record<string, { bg: string; color: string; border: string; label: string }> = {
+  'vale':        { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe', label: 'Vale' },
+  'adiantamento':{ bg: '#f0fdf4', color: '#166534', border: '#bbf7d0', label: 'Adiantamento' },
+  'empréstimo':  { bg: '#fef3c7', color: '#92400e', border: '#fde68a', label: 'Empréstimo' },
+  'desconto':    { bg: '#fce7f3', color: '#9d174d', border: '#fbcfe8', label: 'Desconto' },
 }
 
 function meses() {
@@ -46,7 +44,7 @@ export default function AvulsosPage() {
   const [funcs, setFuncs] = useState<Func[]>([])
   const [descontos, setDescontos] = useState<Desconto[]>([])
   const [loading, setLoading] = useState(true)
-  const [abaAtiva, setAbaAtiva] = useState<Tipo | 'Todos'>('Todos')
+  const [abaAtiva, setAbaAtiva] = useState<string>('Todos')
   const [funcFiltro, setFuncFiltro] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -54,7 +52,7 @@ export default function AvulsosPage() {
   const [expandido, setExpandido] = useState<string | null>(null)
 
   const [form, setForm] = useState({
-    funcionario_id: '', tipo: 'Vale/Adiantamento' as Tipo,
+    funcionario_id: '', tipo: 'vale' as Tipo,
     valor_total: '', observacao: '', data_lancamento: new Date().toISOString().slice(0,10),
     parcelas: [{ valor: '', quando: 'pagamento_final' as Quando, mes_ano: new Date().toISOString().slice(0,7), obs: '' }]
   })
@@ -116,7 +114,7 @@ export default function AvulsosPage() {
     setMsg('✅ Desconto salvo!')
     setTimeout(() => setMsg(''), 3000)
     setShowForm(false)
-    setForm({ funcionario_id: '', tipo: 'Vale/Adiantamento', valor_total: '', observacao: '', data_lancamento: new Date().toISOString().slice(0,10), parcelas: [{ valor: '', quando: 'pagamento_final', mes_ano: new Date().toISOString().slice(0,7), obs: '' }] })
+    setForm({ funcionario_id: '', tipo: 'vale', valor_total: '', observacao: '', data_lancamento: new Date().toISOString().slice(0,10), parcelas: [{ valor: '', quando: 'pagamento_final', mes_ano: new Date().toISOString().slice(0,7), obs: '' }] })
     await carregar()
     setSalvando(false)
   }
