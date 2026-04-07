@@ -31,7 +31,7 @@ export default function FolhasPage() {
     setLoading(true)
     const [{ data: os }, { data: fls }] = await Promise.all([
       supabase.from('obras').select('id,nome,codigo').eq('status','ATIVA').order('nome'),
-      supabase.from('folhas_ponto').select('*, obras(nome,codigo)').order('data', { ascending: false }),
+      supabase.from('folhas_ponto').select('*, obras(nome,codigo)').order('data', { ascending: true }),
     ])
     setObras(os || [])
     setFolhas(fls || [])
