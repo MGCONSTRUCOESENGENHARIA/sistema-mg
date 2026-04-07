@@ -8,42 +8,15 @@ interface Folha {
   obras?: any; processada?: boolean
 }
 
-interface ResultadoIA {
-  data?: string
-  obra?: string
-  presentes: { nome: string; funcId?: string; match?: number }[]
-  diarias_obra: { nome: string; servico: string; funcId?: string }[]
-  diarias_mg: { nome: string; servico: string; funcId?: string }[]
-  faltas: { nome: string; funcId?: string }[]
-}
-
-interface ConfirmacaoItem {
-  funcId: string | null
-  nome: string
-  nomeOriginal: string
-  tipo: 'PRESENTE' | 'FALTA'
-  extra?: 'CONTA_MG' | 'CONTA_OBRA'
-  servico?: string
-  incluir: boolean
-}
-
 export default function FolhasPage() {
   const [obras, setObras] = useState<any[]>([])
-  const [funcs, setFuncs] = useState<any[]>([])
   const [folhas, setFolhas] = useState<Folha[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [processando, setProcessando] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
   const [obraFiltro, setObraFiltro] = useState('')
   const [equipeF, setEquipeF] = useState('')
   const [fotoAberta, setFotoAberta] = useState<string | null>(null)
-  const [resultadoIA, setResultadoIA] = useState<ResultadoIA | null>(null)
-  const [folhaProcessando, setFolhaProcessando] = useState<Folha | null>(null)
-  const [confirmacao, setConfirmacao] = useState<ConfirmacaoItem[]>([])
-  const [obraConfirm, setObraConfirm] = useState('')
-  const [dataConfirm, setDataConfirm] = useState('')
-  const [salvandoLancamentos, setSalvandoLancamentos] = useState(false)
   const [form, setForm] = useState({
     obra_id: '', equipe: 'ARMAÇÃO', data: new Date().toISOString().slice(0,10),
     tem_diaria_extra: false, observacao: '',
@@ -56,13 +29,11 @@ export default function FolhasPage() {
 
   async function carregar() {
     setLoading(true)
-    const [{ data: os }, { data: fs }, { data: fls }] = await Promise.all([
+    const [{ data: os }, { data: fls }] = await Promise.all([
       supabase.from('obras').select('id,nome,codigo').eq('status','ATIVA').order('nome'),
-      supabase.from('funcionarios').select('id,nome,equipe').eq('ativo',true).order('nome'),
       supabase.from('folhas_ponto').select('*, obras(nome,codigo)').order('data', { ascending: false }),
     ])
     setObras(os || [])
-    setFuncs(fs || [])
     setFolhas(fls || [])
     setLoading(false)
   }
@@ -98,144 +69,9 @@ export default function FolhasPage() {
     setUploading(false)
   }
 
-  async function processarComIA(folha: Folha) {
-    setProcessando(folha.id)
-    setMsg('🤖 Analisando imagem com IA...')
 
-    try {
-      // Chamar API route do servidor
-      const nomesFuncs = funcs.map(f => f.nome)
-      const response = await fetch('/api/processar-folha', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: folha.foto_url, funcionarios: nomesFuncs })
-      })
-      const data = await response.json()
-      if (!data.ok) throw new Error(data.erro || 'Erro ao processar')
-      const resultado: ResultadoIA = data.resultado
 
-      // Tentar fazer match com funcionários cadastrados
-      function similaridade(a: string, b: string): number {
-        a = a.toLowerCase().trim()
-        b = b.toLowerCase().trim()
-        if (a === b) return 1
-        if (b.includes(a) || a.includes(b)) return 0.85
-        const partsA = a.split(' ').filter(p => p.length > 2)
-        const partsB = b.split(' ')
-        const match = partsA.filter(p => partsB.some(q => q.toLowerCase().startsWith(p) || p.startsWith(q.toLowerCase()))).length
-        return match / Math.max(partsA.length, 1) * 0.8
-      }
 
-      function findFunc(nome: string) {
-        let best = { id: null as string | null, nome: '', score: 0 }
-        funcs.forEach(f => {
-          const score = similaridade(nome, f.nome)
-          if (score > best.score) best = { id: f.id, nome: f.nome, score }
-        })
-        return best.score > 0.4 ? best : null
-      }
-
-      // Montar confirmação
-      const items: ConfirmacaoItem[] = []
-      const obraEncontrada = obras.find(o => o.nome.toUpperCase().includes(resultado.obra?.toUpperCase() || '') || resultado.obra?.toUpperCase().includes(o.nome.toUpperCase().split(' ')[0]))
-
-      resultado.presentes?.forEach(p => {
-        const match = findFunc(p.nome)
-        // Verificar se tem diária extra
-        const extraObra = resultado.diarias_obra?.find(d => similaridade(d.nome, p.nome) > 0.4)
-        const extraMG = resultado.diarias_mg?.find(d => similaridade(d.nome, p.nome) > 0.4)
-        items.push({
-          funcId: match?.id || null,
-          nome: match?.nome || p.nome,
-          nomeOriginal: p.nome,
-          tipo: 'PRESENTE',
-          extra: extraObra ? 'CONTA_OBRA' : extraMG ? 'CONTA_MG' : undefined,
-          servico: extraObra?.servico || extraMG?.servico || '',
-          incluir: !!match?.id,
-        })
-      })
-
-      resultado.faltas?.forEach(p => {
-        const match = findFunc(p.nome)
-        items.push({
-          funcId: match?.id || null,
-          nome: match?.nome || p.nome,
-          nomeOriginal: p.nome,
-          tipo: 'FALTA',
-          incluir: !!match?.id,
-        })
-      })
-
-      setResultadoIA(resultado)
-      setConfirmacao(items)
-      setFolhaProcessando(folha)
-      setObraConfirm(obraEncontrada?.id || folha.obra_id)
-      setDataConfirm(folha.data)
-      setMsg('')
-    } catch (err: any) {
-      setMsg('⚠️ Erro ao processar: ' + err.message)
-      setTimeout(() => setMsg(''), 5000)
-    }
-    setProcessando(null)
-  }
-
-  async function confirmarLancamentos() {
-    if (!obraConfirm || !dataConfirm) { setMsg('⚠️ Confirme a obra e data.'); return }
-    setSalvandoLancamentos(true)
-
-    const mes = dataConfirm.slice(0,7)
-    let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
-    if (!comp) {
-      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
-      comp = nova
-    }
-
-    // Buscar existentes
-    const funcIds = confirmacao.filter(c => c.incluir && c.funcId).map(c => c.funcId!)
-    const { data: existentes } = await supabase.from('presencas').select('id,funcionario_id')
-      .eq('competencia_id', comp!.id).eq('data', dataConfirm).in('funcionario_id', funcIds)
-    const existMap: Record<string, string> = {}
-    ;(existentes || []).forEach((e: any) => { existMap[e.funcionario_id] = e.id })
-
-    let count = 0
-    for (const item of confirmacao) {
-      if (!item.incluir || !item.funcId) continue
-      const tipo = item.tipo === 'PRESENTE' ? 'NORMAL' : 'FALTA'
-      const payload = {
-        competencia_id: comp!.id, funcionario_id: item.funcId,
-        data: dataConfirm, tipo,
-        obra_id: item.tipo === 'PRESENTE' ? obraConfirm : null,
-        fracao: 1,
-      }
-      if (existMap[item.funcId]) {
-        await supabase.from('presencas').update(payload).eq('id', existMap[item.funcId])
-      } else {
-        await supabase.from('presencas').insert(payload)
-      }
-
-      // Diária extra
-      if (item.extra && item.tipo === 'PRESENTE') {
-        await supabase.from('diarias_extras').insert({
-          obra_id: obraConfirm, funcionario_id: item.funcId,
-          data: dataConfirm, tipo: item.extra,
-          quantidade: 1, servico: item.servico || '',
-          descontada_producao: false, recebida_medicao: false,
-        })
-      }
-      count++
-    }
-
-    // Marcar folha como processada
-    if (folhaProcessando) {
-      await supabase.from('folhas_ponto').update({ processada: true }).eq('id', folhaProcessando.id)
-    }
-
-    setMsg(`✅ ${count} lançamentos salvos na grade de presença!`)
-    setTimeout(() => setMsg(''), 4000)
-    setConfirmacao([]); setResultadoIA(null); setFolhaProcessando(null)
-    await carregar()
-    setSalvandoLancamentos(false)
-  }
 
   async function remover(id: string, fotoUrl: string) {
     if (!confirm('Remover esta folha?')) return
@@ -456,10 +292,7 @@ export default function FolhasPage() {
                     <div style={{ fontSize: 11, color: f.equipe === 'ARMAÇÃO' ? '#7c3aed' : '#0891b2', fontWeight: 600 }}>{f.equipe}</div>
                     {f.observacao && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.observacao}</div>}
                     <div style={{ display: 'flex', gap: 4, marginTop: 8, flexDirection: 'column' }}>
-                      <button onClick={() => processarComIA(f)} disabled={processando === f.id}
-                        style={{ width: '100%', padding: '6px', borderRadius: 6, border: 'none', background: (f as any).processada ? '#f3f4f6' : '#7c3aed', color: (f as any).processada ? '#9ca3af' : 'white', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
-                        {processando === f.id ? '⏳ Processando...' : (f as any).processada ? '🔄 Reprocessar' : '🤖 Processar com IA'}
-                      </button>
+
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button onClick={() => toggleExtra(f.id, f.tem_diaria_extra)}
                           style={{ flex: 1, padding: '4px', borderRadius: 6, border: '1px solid #e5e7eb', background: 'white', color: '#6b7280', cursor: 'pointer', fontSize: 10 }}>
