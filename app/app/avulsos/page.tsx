@@ -63,7 +63,7 @@ export default function AvulsosPage() {
     setLoading(true)
     const [{ data: fs }, { data: ds }] = await Promise.all([
       supabase.from('funcionarios').select('id,nome,equipe').eq('ativo', true).order('nome'),
-      supabase.from('avulsos').select('*').order('criado_em', { ascending: false }),
+      supabase.from('avulsos').select('id, competencia_id, funcionario_id, data, tipo, valor, observacao, quando_descontar, valor_total, data_lancamento').order('criado_em', { ascending: false }),
     ])
     // Buscar parcelas
     const ids = (ds || []).map((d: any) => d.id)
@@ -103,7 +103,7 @@ export default function AvulsosPage() {
       comp = nova
     }
 
-    const { data: desc, error } = await supabase.from('avulsos').insert({
+    const { error, data: descArr } = await supabase.from('avulsos').insert({
       competencia_id: comp!.id,
       funcionario_id: form.funcionario_id,
       tipo: form.tipo,
@@ -112,14 +112,15 @@ export default function AvulsosPage() {
       valor_total: parseFloat(form.valor_total),
       observacao: form.observacao,
       data_lancamento: form.data_lancamento,
-    }).select().single()
-    if (error || !desc) { setMsg('⚠️ Erro ao salvar.'); setSalvando(false); return }
+    }).select('id')
+    if (error || !descArr?.length) { setMsg('⚠️ Erro ao salvar: ' + error?.message); setSalvando(false); return }
+    const descId = descArr[0].id
     // Salvar parcelas
     for (let i = 0; i < form.parcelas.length; i++) {
       const p = form.parcelas[i]
       if (!p.valor) continue
       await supabase.from('avulso_parcelas').insert({
-        desconto_id: desc.id, numero: i + 1,
+        desconto_id: descId, numero: i + 1,
         valor: parseFloat(p.valor), quando: p.quando,
         mes_ano: p.mes_ano, descontado: false, obs: p.obs,
       })
