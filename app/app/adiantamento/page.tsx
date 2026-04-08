@@ -55,14 +55,14 @@ export default function AdiantamentoPage() {
       presencas = pres || []
     }
 
-    // Avulsos da 1ª quinzena (descontar no adiantamento)
+    // Descontos do adiantamento via avulso_parcelas
     let avulsos: any[] = []
     if (comp?.id) {
-      const { data: av } = await supabase.from('avulsos')
-        .select('funcionario_id,valor,quando_descontar')
-        .eq('competencia_id', comp.id)
-        .eq('quando_descontar', 'adiantamento')
-        .in('funcionario_id', funcs.map((f: any) => f.id))
+      const { data: av } = await supabase.from('avulso_parcelas')
+        .select('*, avulsos(funcionario_id)')
+        .eq('mes_ano', mes)
+        .eq('quando', 'adiantamento')
+        .eq('descontado', false)
       avulsos = av || []
     }
 
@@ -80,7 +80,7 @@ export default function AdiantamentoPage() {
 
       const adiantamento = func.salario_base * 0.5
       const extraFolhaValor = extrasfolha * func.valor_diaria
-      const descFunci = avulsos.filter(a => a.funcionario_id === func.id).reduce((s, a) => s + a.valor, 0)
+      const descFunci = avulsos.filter((a: any) => a.avulsos?.funcionario_id === func.id).reduce((s: number, a: any) => s + (a.valor||0), 0)
       const editFunci = editando[func.id] || { hora_extra: 0, complemento: 0, descontos: descFunci }
 
       const total = adiantamento + extraFolhaValor + editFunci.hora_extra + editFunci.complemento - editFunci.descontos
@@ -202,7 +202,7 @@ export default function AdiantamentoPage() {
                 }
                 return (
                   <tr key={l.func_id} style={{ background: bg }}>
-                    <td style={{ padding: '7px 12px', fontWeight: 600, color: '#1a3a5c', fontSize: 12, position: 'sticky', left: 0, background: bg, zIndex: 1, borderRight: '2px solid #e5e7eb', whiteSpace: 'nowrap', minWidth: 220 }}>
+                    <td style={{ padding: '7px 12px', fontWeight: 600, color: '#1a3a5c', fontSize: 12, position: 'sticky', left: 0, background: bg, zIndex: 2, borderRight: '2px solid #e5e7eb', whiteSpace: 'nowrap', minWidth: 220 }}>
                       {l.nome}
                     </td>
                     <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 700, color: '#166534', fontSize: 13 }}>
