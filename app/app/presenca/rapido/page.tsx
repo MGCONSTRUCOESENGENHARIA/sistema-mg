@@ -65,7 +65,7 @@ export default function LancamentoRapidoPage() {
   }
 
   async function salvar() {
-    const marcacoesAtivas = Object.entries(marcacoes).filter(([_, s]) => s !== null)
+    const marcacoesAtivas = Object.entries(marcacoes).filter(([_, s]) => s !== null && s !== 'X')
     if (marcacoesAtivas.length === 0) { setMsg('⚠️ Nenhuma marcação feita.'); setTimeout(() => setMsg(''), 3000); return }
     const temPresente = marcacoesAtivas.some(([_, s]) => s === 'PRESENTE')
     if (temPresente && !obraId) {
@@ -261,9 +261,9 @@ export default function LancamentoRapidoPage() {
 
       {/* Botão salvar fixo no bottom */}
       <div style={{ position: 'fixed', bottom: 20, right: 28, zIndex: 50 }}>
-        <button onClick={salvar} disabled={salvando || Object.values(marcacoes).filter(Boolean).length === 0}
+        <button onClick={salvar} disabled={salvando || Object.values(marcacoes).filter(s => s && s !== 'X').length === 0}
           style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: 14, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 20px rgba(124,58,237,.5)', opacity: salvando ? .7 : 1, display: 'flex', alignItems: 'center', gap: 10 }}>
-          {salvando ? '⏳ Salvando...' : `💾 Salvar ${Object.values(marcacoes).filter(Boolean).length} lançamentos`}
+          {salvando ? '⏳ Salvando...' : `💾 Salvar ${Object.values(marcacoes).filter(s => s && s !== 'X').length} lançamentos`}
         </button>
       </div>
     </div>
