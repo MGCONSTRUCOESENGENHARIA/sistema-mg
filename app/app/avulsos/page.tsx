@@ -294,8 +294,8 @@ export default function AvulsosPage() {
 
       {/* Modal novo desconto */}
       {showForm && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
-          <div style={{ background:'white', borderRadius:16, width:'100%', maxWidth:560, maxHeight:'92vh', overflowY:'auto' }}>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, animation:'modalBg .2s ease', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
+          <div style={{ background:'white', borderRadius:16, width:'100%', animation:'modalSlide .25s ease', maxWidth:560, maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ padding:'18px 22px', borderBottom:'1px solid #f3f4f6', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <h2 style={{ fontSize:15, fontWeight:700, color:'#1f2937' }}>Novo Desconto</h2>
               <button onClick={() => setShowForm(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'#9ca3af' }}>×</button>

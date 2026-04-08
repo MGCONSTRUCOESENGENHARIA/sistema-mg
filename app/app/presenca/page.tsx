@@ -545,7 +545,7 @@ export default function PresencaPage() {
 
       {/* MODAL */}
       {modal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:50, animation:'modalBg .2s ease', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:420, maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6' }}>
               <div style={{ fontWeight:700, color:'#1a3a5c', fontSize:14 }}>{modal.funcNome}</div>

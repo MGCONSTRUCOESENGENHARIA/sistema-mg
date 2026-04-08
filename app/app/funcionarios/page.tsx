@@ -211,8 +211,8 @@ export default function FuncionariosPage() {
 
       {/* Modal editar */}
       {modal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div style={{ background:'white', borderRadius:16, width:'100%', maxWidth:480, overflow:'hidden' }}>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, animation:'modalBg .2s ease', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'white', borderRadius:16, width:'100%', animation:'modalSlide .25s ease', maxWidth:480, overflow:'hidden' }}>
             <div style={{ padding:'18px 22px', borderBottom:'1px solid #f3f4f6', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <h2 style={{ fontSize:15, fontWeight:700, color:'#1f2937' }}>Editar Funcionário</h2>
               <button onClick={() => setModal(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', fontSize:20 }}>×</button>
@@ -265,8 +265,8 @@ export default function FuncionariosPage() {
 
       {/* Modal novo */}
       {novoForm && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div style={{ background:'white', borderRadius:16, width:'100%', maxWidth:480, overflow:'hidden' }}>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, animation:'modalBg .2s ease', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'white', borderRadius:16, width:'100%', animation:'modalSlide .25s ease', maxWidth:480, overflow:'hidden' }}>
             <div style={{ padding:'18px 22px', borderBottom:'1px solid #f3f4f6', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <h2 style={{ fontSize:15, fontWeight:700, color:'#1f2937' }}>Novo Funcionário</h2>
               <button onClick={() => setNovoForm(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', fontSize:20 }}>×</button>

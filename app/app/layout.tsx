@@ -91,6 +91,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
         @keyframes slideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(100px);opacity:0} }
         @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes modalBg { from{opacity:0} to{opacity:1} }
+        @keyframes modalSlide { from{opacity:0;transform:scale(.95) translateY(-10px)} to{opacity:1;transform:scale(1) translateY(0)} }
         tr:hover td { background: #f8faff !important; transition: background .15s; }
         ::-webkit-scrollbar { width:6px; height:6px }
         ::-webkit-scrollbar-track { background:#f1f5f9 }
@@ -119,6 +121,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ::-webkit-scrollbar-track { background:#f1f5f9 }
         ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px }
         ::-webkit-scrollbar-thumb:hover { background:#94a3b8 }
+        @keyframes modalBg { from{opacity:0} to{opacity:1} }
+        @keyframes modalSlide { from{opacity:0;transform:scale(.95) translateY(-10px)} to{opacity:1;transform:scale(1) translateY(0)} }
       `}</style>
 
       <header ref={menuRef} style={{ background:'#1e3a8a', position:'sticky', top:0, zIndex:50, boxShadow:'0 2px 12px rgba(0,0,0,.25)' }}>
