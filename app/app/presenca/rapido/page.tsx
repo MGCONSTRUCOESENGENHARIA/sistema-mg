@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 
 interface Func { id: string; nome: string; equipe: string }
 interface Obra { id: string; nome: string; codigo: string }
-type Status = 'PRESENTE' | 'FALTA' | 'AUSENTE' | 'ATESTADO' | 'SAIU' | null
+type Status = 'PRESENTE' | 'FALTA' | 'AUSENTE' | 'ATESTADO' | 'SAIU' | 'X' | null
 
 export default function LancamentoRapidoPage() {
   const [obras, setObras] = useState<Obra[]>([])
@@ -29,7 +29,7 @@ export default function LancamentoRapidoPage() {
         const lista = d || []
         setFuncs(lista)
         setMarcacoes({})
-        // carregarExistentes(lista, dataAtual)
+        carregarExistentes(lista, dataAtual)
       })
   }, [equipe, data])
 
@@ -86,7 +86,7 @@ export default function LancamentoRapidoPage() {
     
     console.log('Salvando - obraId:', obraId, 'comp.id:', comp.id, 'data:', data)
     for (const [funcId, status] of marcacoesAtivas) {
-      const tipo = status === 'PRESENTE' ? 'NORMAL' : status
+      const tipo = status === 'PRESENTE' ? 'NORMAL' : status === 'X' ? 'NORMAL' : status
       const obraParaSalvar = status === 'PRESENTE' ? obraId : null
       console.log('Func:', funcId, 'tipo:', tipo, 'obra:', obraParaSalvar)
       const { error } = await supabase.from('presencas').upsert({
@@ -123,7 +123,7 @@ export default function LancamentoRapidoPage() {
     else setMsg(`✅ ${count} lançamentos salvos na grade!${tipoDiaria !== 'NORMAL' ? ` (${tipoDiaria === 'CONTA_MG' ? 'Conta MG' : 'Conta Obra'} registrado em Engenharia)` : ''}`)
     setTimeout(() => setMsg(''), 4000)
     
-    setMarcacoes({})
+    await carregarExistentes(funcs, data)
     setSalvando(false)
   }
 
@@ -235,7 +235,7 @@ export default function LancamentoRapidoPage() {
       <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', marginBottom: 80 }}>
         {funcsFiltradas.map((func, fi) => {
           const status = marcacoes[func.id]
-          const bgRow = status === 'PRESENTE' ? '#f0fdf4' : status === 'FALTA' ? '#fee2e2' : status ? '#fffbeb' : fi % 2 === 0 ? 'white' : '#f9fafb'
+          const bgRow = status === 'PRESENTE' ? '#f0fdf4' : status === 'FALTA' ? '#fee2e2' : status === 'X' ? '#f3f4f6' : status ? '#fffbeb' : fi % 2 === 0 ? 'white' : '#f9fafb'
           return (
             <div key={func.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid #f3f4f6', background: bgRow, transition: 'background .1s' }}>
               <div style={{ flex: 1, fontWeight: 600, fontSize: 14, color: '#1f2937' }}>{func.nome}</div>
@@ -245,6 +245,7 @@ export default function LancamentoRapidoPage() {
                 <Btn funcId={func.id} status="ATESTADO" label="🏥 Atestado" bg="#fef3c7" color="#92400e" border="#d97706" />
                 <Btn funcId={func.id} status="AUSENTE" label="⚪ Ausente" bg="#f3f4f6" color="#374151" border="#9ca3af" />
                 <Btn funcId={func.id} status="SAIU" label="🚪 Saiu" bg="#fce7f3" color="#9d174d" border="#db2777" />
+                <Btn funcId={func.id} status="X" label="✖ Feriado/Sáb" bg="#f3f4f6" color="#374151" border="#6b7280" />
               </div>
             </div>
           )
