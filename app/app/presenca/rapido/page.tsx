@@ -249,7 +249,6 @@ export default function LancamentoRapidoPage() {
                 <Btn funcId={func.id} status="ATESTADO" label="🏥 Atestado" bg="#fef3c7" color="#92400e" border="#d97706" />
                 <Btn funcId={func.id} status="AUSENTE" label="⚪ Ausente" bg="#f3f4f6" color="#374151" border="#9ca3af" />
                 <Btn funcId={func.id} status="SAIU" label="🚪 Saiu" bg="#fce7f3" color="#9d174d" border="#db2777" />
-                <Btn funcId={func.id} status="X" label="✖ X" bg="#f3f4f6" color="#374151" border="#6b7280" />
                 <Btn funcId={func.id} status="X" label="✖ Feriado/Sáb" bg="#f3f4f6" color="#374151" border="#6b7280" />
               </div>
             </div>
