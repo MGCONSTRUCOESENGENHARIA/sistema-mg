@@ -127,7 +127,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Logo */}
           <Link href="/app/dashboard">
             <div style={{ display:'flex', alignItems:'center', marginRight:28, cursor:'pointer', padding:'4px 0' }}>
-              <img src={LOGO} alt="MG Construções" style={{ height:42, width:'auto', objectFit:'contain', filter:'brightness(0) invert(1)' }} />
+              <span style={{ color:'white', fontWeight:800, fontSize:15, letterSpacing:'-0.3px' }}>MG Construções</span>
             </div>
           </Link>
 
