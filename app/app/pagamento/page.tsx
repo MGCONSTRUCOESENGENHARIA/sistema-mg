@@ -195,7 +195,7 @@ export default function PagamentoPage() {
         <div style={{ textAlign:'center', padding:48, color:'#9ca3af' }}>Carregando...</div>
       ) : (
         <div style={{ overflow:'auto', border:'1px solid #e5e7eb', borderRadius:8 }}>
-          <table style={{ borderCollapse:'collapse', minWidth:'max-content', width:'100%' }}>
+          <table style={{ borderCollapse:'collapse', width:'max-content' }}>
             <thead>
               <tr>
                 {COLS.map((h, i) => (
