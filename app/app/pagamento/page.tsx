@@ -263,7 +263,7 @@ export default function PagamentoPage() {
               })}
               <tr style={{ background:'#1a3a5c', fontWeight:700 }}>
                 <td style={{ padding:'9px 12px', color:'#fff', fontSize:12, position:'sticky', left:0, background:'#1a3a5c', zIndex:1 }}>TOTAL {equipe}</td>
-                <td colSpan={17} style={{ padding:'9px 8px' }}></td>
+                <td colSpan={16} style={{ padding:'9px 8px' }}></td>
                 <td style={{ padding:'9px 8px', textAlign:'right', color:'#86efac', fontSize:13 }}>{formatR$(totalGeral)}</td>
                 <td style={{ padding:'9px 8px', textAlign:'right', color:'#93c5fd', fontSize:13 }}>{formatR$(totalCC)}</td>
               </tr>
