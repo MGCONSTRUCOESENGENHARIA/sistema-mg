@@ -86,6 +86,7 @@ export default function LancamentoRapidoPage() {
     
     console.log('Salvando - obraId:', obraId, 'comp.id:', comp.id, 'data:', data)
     for (const [funcId, status] of marcacoesAtivas) {
+      if (status === 'X') continue // X é só visual
       if (status === 'X') continue // X é só visual, não salva
       const tipo = status === 'PRESENTE' ? 'NORMAL' : status
       const obraParaSalvar = status === 'PRESENTE' ? obraId : null
@@ -207,6 +208,8 @@ export default function LancamentoRapidoPage() {
           <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Marcar todos:</span>
           <button onClick={() => marcarTodos('PRESENTE')} style={{ padding: '5px 14px', borderRadius: 8, border: '1.5px solid #059669', background: '#f0fdf4', color: '#059669', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>✅ Todos Presentes</button>
           <button onClick={() => marcarTodos('FALTA')} style={{ padding: '5px 14px', borderRadius: 8, border: '1.5px solid #dc2626', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>❌ Todos Faltaram</button>
+          <button onClick={() => marcarTodos('AUSENTE')} style={{ padding: '5px 14px', borderRadius: 8, border: '1.5px solid #9ca3af', background: '#f3f4f6', color: '#374151', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>⚪ Todos Ausentes</button>
+          <button onClick={() => marcarTodos('X')} style={{ padding: '5px 14px', borderRadius: 8, border: '1.5px solid #6b7280', background: '#f3f4f6', color: '#374151', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>✖ Todos X</button>
           <button onClick={() => setMarcacoes({})} style={{ padding: '5px 14px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: 'white', color: '#6b7280', cursor: 'pointer', fontSize: 12 }}>🔄 Limpar tudo</button>
         </div>
       </div>
@@ -246,6 +249,7 @@ export default function LancamentoRapidoPage() {
                 <Btn funcId={func.id} status="ATESTADO" label="🏥 Atestado" bg="#fef3c7" color="#92400e" border="#d97706" />
                 <Btn funcId={func.id} status="AUSENTE" label="⚪ Ausente" bg="#f3f4f6" color="#374151" border="#9ca3af" />
                 <Btn funcId={func.id} status="SAIU" label="🚪 Saiu" bg="#fce7f3" color="#9d174d" border="#db2777" />
+                <Btn funcId={func.id} status="X" label="✖ X" bg="#f3f4f6" color="#374151" border="#6b7280" />
                 <Btn funcId={func.id} status="X" label="✖ Feriado/Sáb" bg="#f3f4f6" color="#374151" border="#6b7280" />
               </div>
             </div>
