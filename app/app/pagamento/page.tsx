@@ -219,7 +219,7 @@ export default function PagamentoPage() {
                     <td style={{ padding:'7px 12px', fontWeight:600, color:'#1a3a5c', fontSize:12, position:'sticky', left:0, background:bg, zIndex:1, borderRight:'2px solid #e5e7eb', whiteSpace:'nowrap' }}>{l.nome}</td>
                     <td style={{ padding:'4px 4px', textAlign:'center', background:'#fefce8' }}>
                       <select value={ed.tipo_pagamento||l.tipo_pagamento} onChange={e => setEdit(l.func_id,'tipo_pagamento',e.target.value as any)}
-                        style={{ border:'1px solid #fbbf24', borderRadius:4, padding:'3px 4px', fontSize:10, fontWeight:700, outline:'none', background:'#fefce8' }}>
+                        style={{ border:`1px solid ${(ed.tipo_pagamento||l.tipo_pagamento)==='DIÁRIA'?'#bfdbfe':'#bbf7d0'}`, borderRadius:6, padding:'4px 6px', fontSize:11, fontWeight:700, outline:'none', background:(ed.tipo_pagamento||l.tipo_pagamento)==='DIÁRIA'?'#eff6ff':'#f0fdf4', color:(ed.tipo_pagamento||l.tipo_pagamento)==='DIÁRIA'?'#1e40af':'#166534', cursor:'pointer' }}>
                         <option value="DIÁRIA">DIÁRIA</option>
                         <option value="SALÁRIO">SALÁRIO</option>
                       </select>
@@ -257,7 +257,7 @@ export default function PagamentoPage() {
                       <input type="number" step="0.01" style={inp(true)} value={ed.desc_inss||''} placeholder="0,00" onChange={e => setEdit(l.func_id,'desc_inss',parseFloat(e.target.value)||0)} />
                     </td>
                     <td style={{ padding:'7px 8px', textAlign:'right', fontWeight:700, color:'#065f46', background:'#dcfce7', fontSize:13 }}>{formatR$(total)}</td>
-                    <td style={{ padding:'7px 8px', textAlign:'right', fontWeight:700, color:'#1e40af', background:'#eff6ff', fontSize:13 }}>{formatR$(contracheque)}</td>
+                    <td style={{ padding:'7px 8px', textAlign:'right', fontWeight:700, color:'#1e40af', background:'#eff6ff', fontSize:13, whiteSpace:'nowrap' }}>{formatR$(contracheque)}</td>
                   </tr>
                 )
               })}
