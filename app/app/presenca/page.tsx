@@ -319,7 +319,7 @@ export default function PresencaPage() {
 
   function celLabel(p?: Pres) {
     if (!p) return ''
-    if (p.tipo === 'FERIADO') return 'X'
+    if (p.tipo === 'X' || p.tipo === 'FERIADO') return 'X'
     if (['FALTA','ATESTADO','AUSENTE','SAIU'].includes(p.tipo)) return p.tipo.substring(0,3)
     const o1 = (p.obras as any)?.codigo || ''
     const o2 = (p.obras2 as any)?.codigo || ''
@@ -523,7 +523,7 @@ export default function PresencaPage() {
                         <td key={di}
                           onClick={() => abrirModal(func.id, func.nome, key)}
                           style={{ padding:'3px 2px', textAlign:'center', fontSize:9, cursor:'pointer', minWidth:65, maxWidth:65, background:celBg(p,sab), borderBottom:'1px solid #f3f4f6', verticalAlign:'middle' }}>
-                          <span style={{ display:'block', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', padding:'0 2px', fontWeight:p?600:400, color:p&&p.tipo==='FALTA'?'#dc2626':p&&p.tipo==='ATESTADO'?'#854d0e':p&&['AUSENTE','SAIU'].includes(p.tipo)?'#6b7280':p?'#166534':'#d1d5db' }}>
+                          <span style={{ display:'block', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', padding:'0 2px', fontWeight:p?600:400, color:p&&p.tipo==='FALTA'?'#dc2626':p&&p.tipo==='X'?'#dc2626':p&&p.tipo==='ATESTADO'?'#854d0e':p&&['AUSENTE','SAIU'].includes(p.tipo)?'#6b7280':p?'#166534':'#d1d5db' }}>
                             {label||(sab?'·':'')}
                           </span>
                         </td>
@@ -559,8 +559,8 @@ export default function PresencaPage() {
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
                   {(['NORMAL','SABADO_EXTRA','X','FALTA','ATESTADO','AUSENTE','SAIU'] as any[]).map(t => (
                     <button key={t} onClick={() => setFormTipo(t)}
-                      style={{ padding:'6px 4px', borderRadius:6, border:formTipo===t?'2px solid #1a3a5c':'1px solid #e5e7eb', background:formTipo===t?'#1a3a5c':'#fff', color:formTipo===t?'#fff':'#374151', cursor:'pointer', fontSize:11, fontWeight:500 }}>
-                      {t==='NORMAL'?'Normal':t==='SABADO_EXTRA'?'Sáb Extra':t==='FALTA'?'Falta':t==='ATESTADO'?'Atestado':t==='AUSENTE'?'Ausente':t==='X'?'✖ X':'Saiu'}
+                      style={{ padding:'6px 4px', borderRadius:6, border:formTipo===t?'2px solid #1a3a5c':'1px solid #e5e7eb', background:formTipo===t?'#1a3a5c':'#fff', color:formTipo===t?'#fff': t==='X'?'#dc2626':'#374151', cursor:'pointer', fontSize:11, fontWeight:500 }}>
+                      {t==='NORMAL'?'Normal':t==='SABADO_EXTRA'?'Sáb Extra':t==='FALTA'?'Falta':t==='ATESTADO'?'Atestado':t==='AUSENTE'?'Ausente':t==='X'?'X':'Saiu'}
                     </button>
                   ))}
                 </div>
