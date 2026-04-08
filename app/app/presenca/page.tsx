@@ -362,18 +362,19 @@ export default function PresencaPage() {
       obra2_id: formObra2 || null, fracao2: parseFloat(formFracao2) || null,
     }
     try {
+      const chave = `${modal.funcId}|${modal.data}`
       if (modal.atual) {
         const { error } = await supabase.from('presencas').update(payload).eq('id', modal.atual.id)
         if (error) { setFormErro(error.message); return }
         const { data: atualizada } = await supabase.from('presencas')
-          .select('*, obras:obra_id(nome,codigo), obras2:obra2_id(nome,codigo)')
+          .select('id,funcionario_id,data,tipo,obra_id,fracao,obra2_id,fracao2,obras:obra_id(nome,codigo),obras2:obra2_id(nome,codigo)')
           .eq('id', modal.atual.id).single()
-        if (atualizada) setPresencas((prev: any[]) => prev.map((p: any) => p.id === modal.atual!.id ? atualizada : p))
+        if (atualizada) setPresMap(prev => ({ ...prev, [chave]: atualizada }))
       } else {
         const { error, data: nova } = await supabase.from('presencas')
-          .insert(payload).select('*, obras:obra_id(nome,codigo), obras2:obra2_id(nome,codigo)').single()
+          .insert(payload).select('id,funcionario_id,data,tipo,obra_id,fracao,obra2_id,fracao2,obras:obra_id(nome,codigo),obras2:obra2_id(nome,codigo)').single()
         if (error) { setFormErro(error.message); return }
-        if (nova) setPresencas((prev: any[]) => [...prev, nova])
+        if (nova) setPresMap(prev => ({ ...prev, [chave]: nova }))
       }
       setModal(null)
     } catch(e: any) {
@@ -386,7 +387,7 @@ export default function PresencaPage() {
   async function remover() {
     if (!modal?.atual) return
     await supabase.from('presencas').delete().eq('id', modal.atual.id)
-    setPresencas((prev: any[]) => prev.filter((p: any) => p.id !== modal.atual!.id))
+    setPresMap(prev => { const next = {...prev}; delete next[`${modal.funcId}|${modal.data}`]; return next })
     setModal(null)
   }
 
