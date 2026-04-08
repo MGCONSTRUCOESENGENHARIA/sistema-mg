@@ -94,7 +94,14 @@ export default function PassagensPage() {
         })
       }
     }
-    await carregar()
+    // Atualizar só os itens modificados localmente
+    const { data: novos } = await supabase.from('funcionario_obra_passagem')
+      .select('*').eq('funcionario_id', funcId)
+    setPassagens(prev => {
+      const next = { ...prev }
+      ;(novos || []).forEach((p: any) => { next[p.funcionario_id + '_' + p.obra_id] = p })
+      return next
+    })
     setSalvando(null)
   }
 
@@ -105,14 +112,15 @@ export default function PassagensPage() {
     if (p) {
       await supabase.from('funcionario_obra_passagem')
         .update({ valor_passagem: valor }).eq('id', p.id)
+      // Atualizar só esse item localmente
+      setPassagens(prev => ({ ...prev, [funcId + '_' + obraId]: { ...p, valor_passagem: valor } }))
     } else {
-      await supabase.from('funcionario_obra_passagem').insert({
+      const { data: novo } = await supabase.from('funcionario_obra_passagem').insert({
         funcionario_id: funcId, obra_id: obraId,
         tipo_passagem: tipo, valor_passagem: valor,
-      })
+      }).select().single()
+      if (novo) setPassagens(prev => ({ ...prev, [funcId + '_' + obraId]: novo }))
     }
-    // Atualizar localmente
-    await carregar()
   }
 
   const funcsFiltradas = funcs.filter(f => !busca || f.nome.toLowerCase().includes(busca.toLowerCase()))

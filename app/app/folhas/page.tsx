@@ -74,7 +74,7 @@ export default function FolhasPage() {
     const path = fotoUrl.split('/folhas-ponto/')[1]
     if (path) await supabase.storage.from('folhas-ponto').remove([decodeURIComponent(path)])
     await supabase.from('folhas_ponto').delete().eq('id', id)
-    await carregar()
+    setFolhas((prev: any[]) => prev.filter((f: any) => f.id !== id))
   }
 
   async function toggleExtra(id: string, val: boolean) {

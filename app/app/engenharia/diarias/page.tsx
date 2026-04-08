@@ -49,21 +49,21 @@ export default function DiariasExtrasPage() {
     })
     setShowForm(false)
     setForm({ obra_id: '', funcionario_id: '', data: new Date().toISOString().slice(0,10), tipo: 'CONTA_MG', quantidade: '1', servico: '', observacao: '' })
-    await carregar()
     setSalvando(false)
     setMsg('✅ Diária extra registrada!')
     setTimeout(() => setMsg(''), 3000)
+    await carregar()
   }
 
   async function toggleStatus(id: string, field: 'descontada_producao' | 'recebida_medicao', val: boolean) {
     await supabase.from('diarias_extras').update({ [field]: !val }).eq('id', id)
-    await carregar()
+    setDiarias((prev: any[]) => prev.map((d: any) => d.id === id ? { ...d, [field]: !val } : d))
   }
 
   async function remover(id: string) {
     if (!confirm('Remover este lançamento?')) return
     await supabase.from('diarias_extras').delete().eq('id', id)
-    await carregar()
+    setDiarias((prev: any[]) => prev.filter((d: any) => d.id !== id))
   }
 
   const filtradas = diarias.filter(d => {

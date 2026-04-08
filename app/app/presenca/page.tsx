@@ -361,19 +361,29 @@ export default function PresencaPage() {
       obra_id: formObra || null, fracao: parseFloat(formFracao) || null,
       obra2_id: formObra2 || null, fracao2: parseFloat(formFracao2) || null,
     }
-    const { error } = modal.atual
-      ? await supabase.from('presencas').update(payload).eq('id', modal.atual.id)
-      : await supabase.from('presencas').insert(payload)
-    if (error) { setFormErro(error.message); setSalvando(false); return }
-    await carregar(); setSalvando(false); setModal(null)
+    let resultId = modal.atual?.id
+    if (modal.atual) {
+      const { error } = await supabase.from('presencas').update(payload).eq('id', modal.atual.id)
+      if (error) { setFormErro(error.message); setSalvando(false); return }
+    } else {
+      const { error, data: nova } = await supabase.from('presencas').insert(payload).select('*, obras:obra_id(nome,codigo), obras2:obra2_id(nome,codigo)').single()
+      if (error) { setFormErro(error.message); setSalvando(false); return }
+      resultId = nova?.id
+      // Adicionar na lista local sem recarregar
+      setPresencas((prev: any[]) => [...prev, nova])
+    }
+    // Atualizar item existente localmente
+    if (modal.atual) {
+      setPresencas((prev: any[]) => prev.map((p: any) => p.id === resultId ? { ...p, ...payload } : p))
+    }
+    setSalvando(false); setModal(null)
   }
-
-
 
   async function remover() {
     if (!modal?.atual) return
     await supabase.from('presencas').delete().eq('id', modal.atual.id)
-    await carregar(); setModal(null)
+    setPresencas((prev: any[]) => prev.filter((p: any) => p.id !== modal.atual!.id))
+    setModal(null)
   }
 
   function calcTot(funcId: string) {
