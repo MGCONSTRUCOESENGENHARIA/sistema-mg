@@ -354,7 +354,6 @@ export default function PresencaPage() {
 
   async function salvar() {
     if (!modal || !compId) return
-    if (formTipo === ('X' as any)) { setModal(null); return } // X é só visual, não salva
     if ((formTipo==='NORMAL'||formTipo==='SABADO_EXTRA') && !formObra) { setFormErro('Selecione a obra.'); return }
     setSalvando(true)
     const payload: any = {
