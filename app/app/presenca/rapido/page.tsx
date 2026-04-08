@@ -86,7 +86,8 @@ export default function LancamentoRapidoPage() {
     
     console.log('Salvando - obraId:', obraId, 'comp.id:', comp.id, 'data:', data)
     for (const [funcId, status] of marcacoesAtivas) {
-      const tipo = status === 'PRESENTE' ? 'NORMAL' : status === 'X' ? 'NORMAL' : status
+      if (status === 'X') continue // X é só visual, não salva
+      const tipo = status === 'PRESENTE' ? 'NORMAL' : status
       const obraParaSalvar = status === 'PRESENTE' ? obraId : null
       console.log('Func:', funcId, 'tipo:', tipo, 'obra:', obraParaSalvar)
       const { error } = await supabase.from('presencas').upsert({

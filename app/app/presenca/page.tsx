@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { diasDoMes, formatDate, formatBR, mesAtual } from '@/lib/utils'
 
-type PresencaTipo = 'NORMAL' | 'FALTA' | 'ATESTADO' | 'AUSENTE' | 'SAIU' | 'SABADO_EXTRA'
+type PresencaTipo = 'NORMAL' | 'FALTA' | 'ATESTADO' | 'AUSENTE' | 'SAIU' | 'SABADO_EXTRA' | 'FERIADO'
 
 interface Func { id: string; nome: string; equipe: string }
 interface Obra { id: string; codigo: string; nome: string }
@@ -319,6 +319,7 @@ export default function PresencaPage() {
 
   function celLabel(p?: Pres) {
     if (!p) return ''
+    if (p.tipo === 'FERIADO') return 'X'
     if (['FALTA','ATESTADO','AUSENTE','SAIU'].includes(p.tipo)) return p.tipo.substring(0,3)
     const o1 = (p.obras as any)?.codigo || ''
     const o2 = (p.obras2 as any)?.codigo || ''
@@ -353,6 +354,7 @@ export default function PresencaPage() {
 
   async function salvar() {
     if (!modal || !compId) return
+    if (formTipo === ('X' as any)) { setModal(null); return } // X é só visual, não salva
     if ((formTipo==='NORMAL'||formTipo==='SABADO_EXTRA') && !formObra) { setFormErro('Selecione a obra.'); return }
     setSalvando(true)
     const payload: any = {
@@ -555,10 +557,10 @@ export default function PresencaPage() {
               <div>
                 <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Tipo</label>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
-                  {(['NORMAL','SABADO_EXTRA','FALTA','ATESTADO','AUSENTE','SAIU'] as PresencaTipo[]).map(t => (
+                  {(['NORMAL','SABADO_EXTRA','X','FALTA','ATESTADO','AUSENTE','SAIU'] as any[]).map(t => (
                     <button key={t} onClick={() => setFormTipo(t)}
                       style={{ padding:'6px 4px', borderRadius:6, border:formTipo===t?'2px solid #1a3a5c':'1px solid #e5e7eb', background:formTipo===t?'#1a3a5c':'#fff', color:formTipo===t?'#fff':'#374151', cursor:'pointer', fontSize:11, fontWeight:500 }}>
-                      {t==='NORMAL'?'Normal':t==='SABADO_EXTRA'?'Sáb Extra':t==='FALTA'?'Falta':t==='ATESTADO'?'Atestado':t==='AUSENTE'?'Ausente':'Saiu'}
+                      {t==='NORMAL'?'Normal':t==='SABADO_EXTRA'?'Sáb Extra':t==='FALTA'?'Falta':t==='ATESTADO'?'Atestado':t==='AUSENTE'?'Ausente':t==='X'?'✖ X':'Saiu'}
                     </button>
                   ))}
                 </div>
