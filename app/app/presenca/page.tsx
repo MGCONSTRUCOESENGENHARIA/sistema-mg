@@ -361,21 +361,26 @@ export default function PresencaPage() {
       obra_id: formObra || null, fracao: parseFloat(formFracao) || null,
       obra2_id: formObra2 || null, fracao2: parseFloat(formFracao2) || null,
     }
-    if (modal.atual) {
-      const { error } = await supabase.from('presencas').update(payload).eq('id', modal.atual.id)
-      if (error) { setFormErro(error.message); setSalvando(false); return }
-      // Buscar presença atualizada com joins
-      const { data: atualizada } = await supabase.from('presencas')
-        .select('*, obras:obra_id(nome,codigo), obras2:obra2_id(nome,codigo)')
-        .eq('id', modal.atual.id).single()
-      if (atualizada) setPresencas((prev: any[]) => prev.map((p: any) => p.id === modal.atual!.id ? atualizada : p))
-    } else {
-      const { error, data: nova } = await supabase.from('presencas')
-        .insert(payload).select('*, obras:obra_id(nome,codigo), obras2:obra2_id(nome,codigo)').single()
-      if (error) { setFormErro(error.message); setSalvando(false); return }
-      if (nova) setPresencas((prev: any[]) => [...prev, nova])
+    try {
+      if (modal.atual) {
+        const { error } = await supabase.from('presencas').update(payload).eq('id', modal.atual.id)
+        if (error) { setFormErro(error.message); return }
+        const { data: atualizada } = await supabase.from('presencas')
+          .select('*, obras:obra_id(nome,codigo), obras2:obra2_id(nome,codigo)')
+          .eq('id', modal.atual.id).single()
+        if (atualizada) setPresencas((prev: any[]) => prev.map((p: any) => p.id === modal.atual!.id ? atualizada : p))
+      } else {
+        const { error, data: nova } = await supabase.from('presencas')
+          .insert(payload).select('*, obras:obra_id(nome,codigo), obras2:obra2_id(nome,codigo)').single()
+        if (error) { setFormErro(error.message); return }
+        if (nova) setPresencas((prev: any[]) => [...prev, nova])
+      }
+      setModal(null)
+    } catch(e: any) {
+      setFormErro(e.message || 'Erro ao salvar')
+    } finally {
+      setSalvando(false)
     }
-    setSalvando(false); setModal(null)
   }
 
   async function remover() {
