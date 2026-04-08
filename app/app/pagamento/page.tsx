@@ -17,7 +17,8 @@ interface Linha {
 }
 
 function calcTotal(l: Linha, ed: any) {
-  const base = l.tipo_pagamento === 'SALÁRIO' ? l.salario_base : (l.total_diarias + l.extras_folha) * l.valor_diaria
+  const tipo = ed.tipo_pagamento || l.tipo_pagamento
+  const base = tipo === 'SALÁRIO' ? l.salario_base : (l.total_diarias + l.extras_folha) * l.valor_diaria
   const totalDesc = (ed.descontos||0) + (ed.desc_pensao||0) + (ed.desc_dsr||0) + (ed.desc_sindicato||0) + (ed.desc_inss||0)
   const total = base + (ed.hora_extra||0) + (ed.complemento||0) - totalDesc
   const contracheque = total - (l.adiantamento||0)
@@ -108,7 +109,8 @@ export default function PagamentoPage() {
       if (!editando[l.func_id]) {
         newEdit[l.func_id] = {
           hora_extra: 0, complemento: 0, descontos: l.descontos,
-          desc_pensao: 0, desc_dsr: 0, desc_sindicato: 0, desc_inss: 0
+          desc_pensao: 0, desc_dsr: 0, desc_sindicato: 0, desc_inss: 0,
+          dsr: l.dsr||0, tipo_pagamento: l.tipo_pagamento
         }
       }
     })
@@ -120,8 +122,8 @@ export default function PagamentoPage() {
     setEditando(ed => ({ ...ed, [funcId]: { ...(ed[funcId] || {}), [field]: val } }))
   }
 
-  function getEd(funcId: string) {
-    return editando[funcId] || { hora_extra:0, complemento:0, descontos:0, desc_pensao:0, desc_dsr:0, desc_sindicato:0, desc_inss:0 }
+  function getEd(funcId: string, l?: Linha) {
+    return editando[funcId] || { hora_extra:0, complemento:0, descontos:0, desc_pensao:0, desc_dsr:0, desc_sindicato:0, desc_inss:0, dsr: l?.dsr||0, tipo_pagamento: l?.tipo_pagamento||'DIÁRIA' }
   }
 
   const btnEq = (eq: 'ARMAÇÃO' | 'CARPINTARIA') => ({
@@ -135,8 +137,8 @@ export default function PagamentoPage() {
     background: red ? '#fef2f2' : '#fefce8', fontWeight: 600,
   })
 
-  const totalGeral = linhas.reduce((s, l) => s + calcTotal(l, getEd(l.func_id)).total, 0)
-  const totalCC = linhas.reduce((s, l) => s + calcTotal(l, getEd(l.func_id)).contracheque, 0)
+  const totalGeral = linhas.reduce((s, l) => s + calcTotal(l, getEd(l.func_id, l)).total, 0)
+  const totalCC = linhas.reduce((s, l) => s + calcTotal(l, getEd(l.func_id, l)).contracheque, 0)
 
   const COLS = [
     { label: 'FUNCIONÁRIO', bg: '#1a3a5c', min: 200, sticky: true },
@@ -209,20 +211,26 @@ export default function PagamentoPage() {
             </thead>
             <tbody>
               {linhas.map((l, fi) => {
-                const ed = getEd(l.func_id)
+                const ed = getEd(l.func_id, l)
                 const { base, totalDesc, total, contracheque } = calcTotal(l, ed)
                 const bg = fi%2===0 ? '#fff' : '#f9fafb'
                 return (
                   <tr key={l.func_id} style={{ background:bg }}>
                     <td style={{ padding:'7px 12px', fontWeight:600, color:'#1a3a5c', fontSize:12, position:'sticky', left:0, background:bg, zIndex:1, borderRight:'2px solid #e5e7eb', whiteSpace:'nowrap' }}>{l.nome}</td>
-                    <td style={{ padding:'7px 8px', textAlign:'center' }}>
-                      <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, background: l.tipo_pagamento==='DIÁRIA'?'#eff6ff':'#f0fdf4', color: l.tipo_pagamento==='DIÁRIA'?'#1e40af':'#166534' }}>{l.tipo_pagamento}</span>
+                    <td style={{ padding:'4px 4px', textAlign:'center', background:'#fefce8' }}>
+                      <select value={ed.tipo_pagamento||l.tipo_pagamento} onChange={e => setEdit(l.func_id,'tipo_pagamento',e.target.value as any)}
+                        style={{ border:'1px solid #fbbf24', borderRadius:4, padding:'3px 4px', fontSize:10, fontWeight:700, outline:'none', background:'#fefce8' }}>
+                        <option value="DIÁRIA">DIÁRIA</option>
+                        <option value="SALÁRIO">SALÁRIO</option>
+                      </select>
                     </td>
                     <td style={{ padding:'7px 8px', textAlign:'center', fontWeight:700, color:'#166534', fontSize:13 }}>{l.total_diarias.toFixed(1)}</td>
                     <td style={{ padding:'7px 8px', textAlign:'center', color:'#6d28d9', fontSize:13 }}>{l.extras_folha.toFixed(1)||'—'}</td>
                     <td style={{ padding:'7px 8px', textAlign:'center', color:'#dc2626', fontSize:13 }}>{l.faltas||'—'}</td>
                     <td style={{ padding:'7px 8px', textAlign:'center', color:'#6b7280', fontSize:13 }}>{l.ausentes||'—'}</td>
-                    <td style={{ padding:'7px 8px', textAlign:'center', color:'#92400e', fontSize:13 }}>{l.dsr||'—'}</td>
+                    <td style={{ padding:'4px 4px', textAlign:'center', background:'#fefce8' }}>
+                      <input type="number" step="1" style={{ width:60, textAlign:'right', border:'1px solid #fbbf24', borderRadius:4, padding:'3px 6px', fontSize:11, background:'#fefce8', fontWeight:600 }} value={ed.dsr||''} placeholder="0" onChange={e => setEdit(l.func_id,'dsr',parseFloat(e.target.value)||0)} />
+                    </td>
                     <td style={{ padding:'7px 8px', textAlign:'right', fontSize:12 }}>{formatR$(l.valor_diaria)}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', fontSize:12 }}>{formatR$(l.salario_base)}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', color:'#6d28d9', background:'#f5f3ff', fontSize:12 }}>{l.extra_folha_valor>0?formatR$(l.extra_folha_valor):'—'}</td>
