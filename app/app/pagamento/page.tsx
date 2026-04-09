@@ -73,33 +73,45 @@ interface Linha {
 function calcRow(l: Linha, ed: any) {
   const tipo = ed.tipo_pagamento || l.tipo_pagamento
   const faltas = l.faltas
-  const ausentes = l.ausentes
-  const dsr = calcDSR(l.presencas_datas, '')  // será calculado com mes
 
-  const naoRegistrado = (l.empresa || '').toUpperCase().includes('N') && (l.empresa || '').toUpperCase().includes('REGISTRADO')
-  const sindicato = naoRegistrado ? 17.66 : 0
+  // R$17,66 para todos EXCETO NÃO REGISTRADO
+  const naoRegistrado = l.empresa === 'NÃO REGISTRADO'
+  const taxaSindicato = naoRegistrado ? 0 : 17.66
 
   if (tipo === 'DIÁRIA') {
+    // Sem DSR, sem INSS
     const extraFolha = l.extra_folha_valor
     const totalBase = l.dias_uteis * l.valor_diaria
-    const somaDescontos = -(l.adiantamento_valor) + (ed.hora_extra||0) + (ed.complemento||0)
+    const total = totalBase + extraFolha - (l.adiantamento_valor)
+      + (ed.hora_extra||0) + (ed.complemento||0)
       - (ed.desc_materiais||0) - (ed.desc_emprestimo||0) - (ed.desc_acerto||0)
-      - (ed.desc_pensao||0) - (ed.desc_dsr||0) - sindicato - (ed.desc_inss||0)
-    const total = totalBase + extraFolha + somaDescontos
+      - (ed.desc_pensao||0) - taxaSindicato
     const contracheque = total - extraFolha - (ed.hora_extra||0)
-    return { dsr: 0, inss: 0, salarioLiq: 0, total, contracheque, sindicato }
-  } else {
-    // SALÁRIO
+    return { dsr: 0, inss: 0, salarioLiq: 0, total, contracheque, sindicato: taxaSindicato }
+
+  } else if (tipo === 'SALÁRIO') {
+    // Sem DSR, sem INSS
     const salBase = l.salario_base
     const salLiq = salBase - (salBase / 30 * faltas)
-    const dsrCalc = ed.dsr_manual !== undefined ? ed.dsr_manual : (salLiq * 2) / 30 * (ed.dsr_qtd || 0)
+    const total = salLiq - (l.adiantamento_valor)
+      + (ed.hora_extra||0) + (ed.complemento||0)
+      - (ed.desc_materiais||0) - (ed.desc_emprestimo||0) - (ed.desc_acerto||0)
+      - (ed.desc_pensao||0) - taxaSindicato
+    const contracheque = total - (ed.hora_extra||0)
+    return { dsr: 0, inss: 0, salarioLiq: salLiq, total, contracheque, sindicato: taxaSindicato }
+
+  } else {
+    // SINDICATO - COM DSR e COM INSS
+    const salBase = l.salario_base
+    const salLiq = salBase - (salBase / 30 * faltas)
+    const dsrCalc = (salLiq * 2) / 30 * (ed.dsr_qtd || 0)
     const inss = calcINSS(salBase)
     const total = salLiq - (l.adiantamento_valor)
       + (ed.hora_extra||0) + (ed.complemento||0)
       - (ed.desc_materiais||0) - (ed.desc_emprestimo||0) - (ed.desc_acerto||0)
-      - (ed.desc_pensao||0) - dsrCalc - sindicato - inss
+      - (ed.desc_pensao||0) - dsrCalc - taxaSindicato - inss
     const contracheque = total - (ed.hora_extra||0)
-    return { dsr: dsrCalc, inss, salarioLiq: salLiq, total, contracheque, sindicato }
+    return { dsr: dsrCalc, inss, salarioLiq: salLiq, total, contracheque, sindicato: taxaSindicato }
   }
 }
 
