@@ -140,7 +140,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <nav style={{ display:'flex', alignItems:'center', flex:1, gap:2 }}>
             {MENUS.map(menu => {
               const aberto = menuAberto === menu.label
-              const ativo = menu.items.some(item => pathname.startsWith(item.href.split('?')[0]))
+              const ativo = menu.items.some(item => {
+                const hrefBase = item.href.split('?')[0]
+                return pathname === hrefBase || pathname.startsWith(hrefBase + '/')
+              })
               return (
                 <div key={menu.label} style={{ position:'relative' }}>
                   <button onClick={() => setMenuAberto(aberto ? null : menu.label)}
@@ -167,7 +170,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       minWidth:230, overflow:'hidden', border:'1px solid #e5e7eb', borderTop:'none',
                     }}>
                       {menu.items.map((item, i) => {
-                        const ativoItem = pathname.startsWith(item.href.split('?')[0])
+                        const hrefBase = item.href.split('?')[0]
+                const ativoItem = pathname === hrefBase || (pathname.startsWith(hrefBase + '/') && hrefBase !== '/app/presenca' && hrefBase !== '/app/engenharia')
                         return (
                           <Link key={i} href={item.href} onClick={() => setMenuAberto(null)}>
                             <div style={{
