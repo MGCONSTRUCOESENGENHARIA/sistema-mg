@@ -64,15 +64,17 @@ export default function PlanejamentoPage() {
 
   const CORES = ['#1e3a8a','#065f46','#7c3aed','#92400e','#0891b2','#dc2626','#059669','#4f46e5','#be185d','#0f766e','#b45309','#1d4ed8','#7f1d1d','#14532d','#4c1d95','#0c4a6e','#713f12','#581c87']
 
-  const FuncCard = ({ func, showX }: { func: Func; showX: boolean }) => (
+  const FuncCard = ({ func, showX }: { func: Func; showX: boolean }) => {
+    const isEnc = func.funcao?.toLowerCase().includes('enc') || func.funcao?.toLowerCase().includes('mestre')
+    return (
     <div
       draggable
       onDragStart={() => setDragging(func.id)}
       onDragEnd={() => setDragging(null)}
       style={{
         display:'flex', alignItems:'center', gap:6, padding:'5px 8px',
-        background: dragging === func.id ? '#dbeafe' : 'white',
-        border:`1px solid ${dragging === func.id ? '#93c5fd' : '#e5e7eb'}`,
+        background: dragging === func.id ? '#dbeafe' : isEnc ? '#f3f4f6' : 'white',
+        border:`1px solid ${dragging === func.id ? '#93c5fd' : isEnc ? '#d1d5db' : '#e5e7eb'}`,
         borderRadius:6, cursor:'grab', marginBottom:4,
         boxShadow:'0 1px 2px rgba(0,0,0,.04)', transition:'all .1s',
       }}>
@@ -87,7 +89,7 @@ export default function PlanejamentoPage() {
           style={{ background:'none', border:'none', cursor:'pointer', color:'#dc2626', fontSize:14, padding:0, lineHeight:1, flexShrink:0 }}>×</button>
       )}
     </div>
-  )
+  )}
 
   const Bloco = ({ obraId, titulo, cor }: { obraId: string | null; titulo: string; cor: string }) => {
     const lista = obraId ? getFuncsObra(obraId) : getNaoAlocados()
