@@ -161,9 +161,9 @@ export default function PlanejamentoPage() {
           <div>
             <Bloco obraId={null} titulo={`Não Alocados`} cor="#6b7280" />
           </div>
-          {/* Obras em grid */}
+          {/* Obras em grid - ordenadas por qtd funcionários */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10 }}>
-            {obras.map((obra, i) => (
+            {[...obras].sort((a, b) => getFuncsObra(b.id).length - getFuncsObra(a.id).length).map((obra, i) => (
               <Bloco key={obra.id} obraId={obra.id} titulo={obra.nome} cor={CORES[i % CORES.length]} />
             ))}
           </div>
