@@ -400,9 +400,8 @@ export default function PagamentoPage() {
           </table>
         </div>
       )}
-    </div>
 
-    {modalFunc && (
+      {modalFunc && (
       <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
         onClick={() => setModalFunc(null)}>
         <div style={{ background:'white', borderRadius:16, width:'100%', maxWidth:440, overflow:'hidden' }}
