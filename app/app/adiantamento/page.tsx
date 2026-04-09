@@ -27,6 +27,7 @@ export default function AdiantamentoPage() {
   const [editando, setEditando] = useState<Record<string, { hora_extra: number; complemento: number; descontos: number }>>({})
   const [salvando, setSalvando] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
+  const [modalFunc, setModalFunc] = useState<any>(null)
 
   useEffect(() => { carregar() }, [equipe, mes])
 
@@ -234,8 +235,9 @@ export default function AdiantamentoPage() {
                 }
                 return (
                   <tr key={l.func_id} style={{ background: bg }}>
-                    <td style={{ padding: '7px 12px', fontWeight: 600, color: '#1a3a5c', fontSize: 12, position: 'sticky', left: 0, background: bg, zIndex: 2, borderRight: '2px solid #e5e7eb', whiteSpace: 'nowrap', minWidth: 220 }}>
-                      {l.nome}
+                    <td style={{ padding: '7px 12px', fontWeight: 600, color: '#1a3a5c', fontSize: 12, position: 'sticky', left: 0, background: bg, zIndex: 2, borderRight: '2px solid #e5e7eb', whiteSpace: 'nowrap', minWidth: 220, cursor:'pointer' }}
+                      onClick={() => setModalFunc({ l, ed, total })}>
+                      <span style={{ borderBottom:'1px dashed #93c5fd' }}>{l.nome}</span>
                     </td>
                     <td style={{ padding: '7px 10px', textAlign: 'center', fontWeight: 700, color: '#166534', fontSize: 13 }}>
                       {l.total_diarias.toFixed(1)}
@@ -318,5 +320,44 @@ export default function AdiantamentoPage() {
         </div>
       )}
     </div>
+
+    {/* Modal resumo funcionário */}
+    {modalFunc && (
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+        onClick={() => setModalFunc(null)}>
+        <div style={{ background:'white', borderRadius:16, width:'100%', maxWidth:420, overflow:'hidden' }}
+          onClick={e => e.stopPropagation()}>
+          <div style={{ background:'#1a3a5c', padding:'16px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div>
+              <div style={{ color:'white', fontWeight:700, fontSize:15 }}>{modalFunc.l.nome}</div>
+              <div style={{ color:'rgba(255,255,255,.6)', fontSize:12 }}>{equipe} · Adiantamento — {mes}</div>
+            </div>
+            <button onClick={() => setModalFunc(null)} style={{ background:'none', border:'none', color:'white', fontSize:22, cursor:'pointer' }}>×</button>
+          </div>
+          <div style={{ padding:20 }}>
+            {[
+              { label:'Total Diárias', val: modalFunc.l.total_diarias.toFixed(1), unit:' dias', color:'#166534' },
+              { label:'Diárias Extra Folha', val: modalFunc.l.extras_folha.toFixed(1), unit:' dias', color:'#6d28d9' },
+              { label:'Valor da Diária', val: formatR$(modalFunc.l.valor_diaria), color:'#1a3a5c' },
+              { label:'Salário Base', val: formatR$(modalFunc.l.salario_base), color:'#1a3a5c' },
+              { label:'Adiantamento (50%)', val: formatR$(modalFunc.l.adiantamento), color:'#065f46', bold:true },
+              { label:'Extra Folha', val: modalFunc.l.extra_folha_valor > 0 ? formatR$(modalFunc.l.extra_folha_valor) : '—', color:'#6d28d9' },
+              { label:'Hora Extra', val: formatR$(modalFunc.ed.hora_extra || 0), color:'#92400e' },
+              { label:'Complemento', val: formatR$(modalFunc.ed.complemento || 0), color:'#92400e' },
+              { label:'Descontos', val: '-' + formatR$(modalFunc.ed.descontos || 0), color:'#dc2626' },
+            ].map((item, i) => (
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f3f4f6' }}>
+                <span style={{ fontSize:13, color:'#6b7280' }}>{item.label}</span>
+                <span style={{ fontSize:13, fontWeight: item.bold ? 700 : 600, color: item.color }}>{item.val}{item.unit||''}</span>
+              </div>
+            ))}
+            <div style={{ display:'flex', justifyContent:'space-between', padding:'12px 0 0', marginTop:4 }}>
+              <span style={{ fontSize:14, fontWeight:700, color:'#1a3a5c' }}>TOTAL DO PAGAMENTO</span>
+              <span style={{ fontSize:16, fontWeight:800, color:'#065f46' }}>{formatR$(modalFunc.total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
   )
 }
