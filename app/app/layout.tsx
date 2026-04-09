@@ -13,11 +13,11 @@ const MENUS = [
   { label: 'Cadastro', items: [
     { href: '/app/funcionarios', label: 'Funcionários' },
     { href: '/app/obras',        label: 'Obras' },
-    { href: '/app/passagens',    label: 'Matriz de Passagens' },
     { href: '/app/planejamento',  label: 'Planejamento de Obras' },
   ]},
   { label: 'Lançamentos', items: [
     { href: '/app/presenca/rapido', label: 'Lançamento Rápido' },
+      { href: '/app/passagens',    label: 'Matriz de Passagens' },
     { href: '/app/presenca',        label: 'Grade de Presença' },
     { href: '/app/avulsos',         label: 'Descontos / Vales' },
     { href: '/app/folhas',          label: 'Folhas de Ponto' },
