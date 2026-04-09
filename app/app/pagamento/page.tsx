@@ -76,7 +76,7 @@ function calcRow(l: Linha, ed: any) {
   const ausentes = l.ausentes
   const dsr = calcDSR(l.presencas_datas, '')  // será calculado com mes
 
-  const naoRegistrado = l.empresa === 'NÃO REGISTRADO'
+  const naoRegistrado = (l.empresa || '').toUpperCase().includes('N') && (l.empresa || '').toUpperCase().includes('REGISTRADO')
   const sindicato = naoRegistrado ? 17.66 : 0
 
   if (tipo === 'DIÁRIA') {
