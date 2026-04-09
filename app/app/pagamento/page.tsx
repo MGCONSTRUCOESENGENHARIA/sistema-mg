@@ -387,7 +387,7 @@ export default function PagamentoPage() {
                       <input type="number" step="0.01" style={inp(true)} value={ed.desc_pensao||''} placeholder="0,00" onChange={e => setEdit(l.func_id,'desc_pensao',parseFloat(e.target.value)||0)} />
                     </td>
                     <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>{tipo==='SALÁRIO'?formatR$(dsr):'—'}</td>
-                    <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>{l.empresa==='NÃO REGISTRADO'?'R$ 17,66':'—'}</td>
+                    <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>{l.empresa==='NÃO REGISTRADO'?'—':'R$ 17,66'}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>{tipo==='SALÁRIO'?formatR$(inss):'—'}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', fontWeight:700, color:'#065f46', background:'#dcfce7', fontSize:13 }}>{formatR$(total)}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', fontWeight:700, color:'#1e40af', background:'#eff6ff', fontSize:13 }}>{formatR$(contracheque)}</td>
