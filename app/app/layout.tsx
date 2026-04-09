@@ -14,6 +14,7 @@ const MENUS = [
     { href: '/app/funcionarios', label: 'Funcionários' },
     { href: '/app/obras',        label: 'Obras' },
     { href: '/app/passagens',    label: 'Matriz de Passagens' },
+    { href: '/app/planejamento',  label: 'Planejamento de Obras' },
   ]},
   { label: 'Lançamentos', items: [
     { href: '/app/presenca/rapido', label: 'Lançamento Rápido' },
