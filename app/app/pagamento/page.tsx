@@ -451,5 +451,6 @@ export default function PagamentoPage() {
         </div>
       </div>
     )}
+    </div>
   )
 }

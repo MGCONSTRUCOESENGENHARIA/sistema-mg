@@ -319,9 +319,8 @@ export default function AdiantamentoPage() {
           </table>
         </div>
       )}
-    </div>
 
-    {/* Modal resumo funcionário */}
+      {/* Modal resumo funcionário */}
     {modalFunc && (
       <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
         onClick={() => setModalFunc(null)}>
@@ -359,5 +358,6 @@ export default function AdiantamentoPage() {
         </div>
       </div>
     )}
+    </div>
   )
 }
