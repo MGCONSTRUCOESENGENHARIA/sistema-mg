@@ -123,7 +123,7 @@ export default function LancamentoRapidoPage() {
     else setMsg(`✅ ${count} lançamentos salvos na grade!${tipoDiaria !== 'NORMAL' ? ` (${tipoDiaria === 'CONTA_MG' ? 'Conta MG' : 'Conta Obra'} registrado em Engenharia)` : ''}`)
     setTimeout(() => setMsg(''), 4000)
     
-    await carregarExistentes(funcs, data)
+    setMarcacoes({})
     setSalvando(false)
   }
 
