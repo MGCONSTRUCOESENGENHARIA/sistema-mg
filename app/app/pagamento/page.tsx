@@ -60,7 +60,7 @@ function calcDSR(presencasDatas: { data: string; tipo: string }[], mes: string):
 }
 
 interface Linha {
-  func_id: string; nome: string; equipe: string
+  func_id: string; nome: string; equipe: string; empresa: string
   tipo_pagamento: string
   valor_diaria: number; salario_base: number
   total_diarias: number; extras_folha: number
@@ -76,15 +76,18 @@ function calcRow(l: Linha, ed: any) {
   const ausentes = l.ausentes
   const dsr = calcDSR(l.presencas_datas, '')  // será calculado com mes
 
+  const naoRegistrado = l.empresa === 'NÃO REGISTRADO'
+  const sindicato = naoRegistrado ? 17.66 : 0
+
   if (tipo === 'DIÁRIA') {
     const extraFolha = l.extra_folha_valor
     const totalBase = l.dias_uteis * l.valor_diaria
     const somaDescontos = -(l.adiantamento_valor) + (ed.hora_extra||0) + (ed.complemento||0)
       - (ed.desc_materiais||0) - (ed.desc_emprestimo||0) - (ed.desc_acerto||0)
-      - (ed.desc_pensao||0) - (ed.desc_dsr||0) - (ed.desc_sindicato||0) - (ed.desc_inss||0)
+      - (ed.desc_pensao||0) - (ed.desc_dsr||0) - sindicato - (ed.desc_inss||0)
     const total = totalBase + extraFolha + somaDescontos
     const contracheque = total - extraFolha - (ed.hora_extra||0)
-    return { dsr: 0, inss: 0, salarioLiq: 0, total, contracheque }
+    return { dsr: 0, inss: 0, salarioLiq: 0, total, contracheque, sindicato }
   } else {
     // SALÁRIO
     const salBase = l.salario_base
@@ -94,9 +97,9 @@ function calcRow(l: Linha, ed: any) {
     const total = salLiq - (l.adiantamento_valor)
       + (ed.hora_extra||0) + (ed.complemento||0)
       - (ed.desc_materiais||0) - (ed.desc_emprestimo||0) - (ed.desc_acerto||0)
-      - (ed.desc_pensao||0) - dsrCalc - 17.66 - inss
+      - (ed.desc_pensao||0) - dsrCalc - sindicato - inss
     const contracheque = total - (ed.hora_extra||0)
-    return { dsr: dsrCalc, inss, salarioLiq: salLiq, total, contracheque }
+    return { dsr: dsrCalc, inss, salarioLiq: salLiq, total, contracheque, sindicato }
   }
 }
 
@@ -114,7 +117,7 @@ export default function PagamentoPage() {
     setLoading(true)
     const { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
     const { data: funcs } = await supabase.from('funcionarios')
-      .select('id,nome,equipe,valor_diaria,salario_base')
+      .select('id,nome,equipe,valor_diaria,salario_base,empresa')
       .eq('equipe', equipe).eq('ativo', true).order('nome')
     if (!funcs?.length) { setLinhas([]); setLoading(false); return }
 
@@ -167,7 +170,7 @@ export default function PagamentoPage() {
       const descAvulsos = avulsosPF.filter((a: any) => a.avulsos?.funcionario_id === func.id).reduce((s: number, a: any) => s + (a.valor||0), 0)
 
       return {
-        func_id: func.id, nome: func.nome, equipe: func.equipe,
+        func_id: func.id, nome: func.nome, equipe: func.equipe, empresa: func.empresa || '',
         tipo_pagamento: 'DIÁRIA',
         valor_diaria: func.valor_diaria, salario_base: func.salario_base,
         total_diarias: totalDiarias, extras_folha: extrasfolha,
@@ -383,7 +386,7 @@ export default function PagamentoPage() {
                       <input type="number" step="0.01" style={inp(true)} value={ed.desc_pensao||''} placeholder="0,00" onChange={e => setEdit(l.func_id,'desc_pensao',parseFloat(e.target.value)||0)} />
                     </td>
                     <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>{tipo==='SALÁRIO'?formatR$(dsr):'—'}</td>
-                    <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>{tipo==='SALÁRIO'?'R$ 17,66':'—'}</td>
+                    <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>{l.empresa==='NÃO REGISTRADO'?'R$ 17,66':'—'}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>{tipo==='SALÁRIO'?formatR$(inss):'—'}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', fontWeight:700, color:'#065f46', background:'#dcfce7', fontSize:13 }}>{formatR$(total)}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', fontWeight:700, color:'#1e40af', background:'#eff6ff', fontSize:13 }}>{formatR$(contracheque)}</td>
