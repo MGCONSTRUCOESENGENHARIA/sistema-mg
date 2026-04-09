@@ -349,6 +349,7 @@ export default function PagamentoPage() {
                         style={{ border:'1px solid #fbbf24', borderRadius:4, padding:'3px 4px', fontSize:10, fontWeight:700, outline:'none', background:'#fefce8', color: tipo==='DIÁRIA'?'#1e40af':'#166534' }}>
                         <option value="DIÁRIA">DIÁRIA</option>
                         <option value="SALÁRIO">SALÁRIO</option>
+                        <option value="SINDICATO">SINDICATO</option>
                       </select>
                     </td>
                     <td style={{ padding:'7px 8px', textAlign:'center', fontWeight:700, color:'#166534', fontSize:13 }}>{l.total_diarias.toFixed(1)}</td>
