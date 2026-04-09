@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { mesAtual, nomeMes, formatR$, diasDoMes, formatDate, fim1Quinzena, AUSENCIAS } from '@/lib/utils'
 
@@ -95,20 +95,52 @@ export default function AdiantamentoPage() {
       }
     })
 
+    // Carregar ajustes salvos do banco
+    let ajustes: any[] = []
+    if (comp?.id) {
+      const { data: aj } = await supabase.from('pagamento_ajustes')
+        .select('*').eq('competencia_id', comp.id).eq('tipo', 'adiantamento')
+        .in('funcionario_id', funcs.map((f: any) => f.id))
+      ajustes = aj || []
+    }
+
     setLinhas(resultado)
-    // Inicializar editando com descontos do banco
     const newEdit: typeof editando = {}
     resultado.forEach(l => {
-      if (!editando[l.func_id]) {
-        newEdit[l.func_id] = { hora_extra: 0, complemento: 0, descontos: l.descontos }
-      }
+      const aj = ajustes.find(a => a.funcionario_id === l.func_id)
+      newEdit[l.func_id] = aj ? {
+        hora_extra: aj.hora_extra || 0,
+        complemento: aj.complemento || 0,
+        descontos: aj.descontos || l.descontos,
+      } : { hora_extra: 0, complemento: 0, descontos: l.descontos }
     })
-    setEditando(ed => ({ ...newEdit, ...ed }))
+    setEditando(newEdit)
     setLoading(false)
   }
 
+  const saveTimers = useRef<Record<string, any>>({})
+
+  async function salvarAjuste(funcId: string, newEd: any) {
+    const { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
+    if (!comp?.id) return
+    await supabase.from('pagamento_ajustes').upsert({
+      competencia_id: comp.id,
+      funcionario_id: funcId,
+      tipo: 'adiantamento',
+      hora_extra: newEd.hora_extra || 0,
+      complemento: newEd.complemento || 0,
+      descontos: newEd.descontos || 0,
+      atualizado_em: new Date().toISOString(),
+    }, { onConflict: 'competencia_id,funcionario_id,tipo' })
+  }
+
   function setEdit(funcId: string, field: 'hora_extra' | 'complemento' | 'descontos', val: number) {
-    setEditando(ed => ({ ...ed, [funcId]: { ...(ed[funcId] || { hora_extra: 0, complemento: 0, descontos: 0 }), [field]: val } }))
+    setEditando(ed => {
+      const newEd = { ...(ed[funcId] || { hora_extra: 0, complemento: 0, descontos: 0 }), [field]: val }
+      clearTimeout(saveTimers.current[funcId])
+      saveTimers.current[funcId] = setTimeout(() => salvarAjuste(funcId, newEd), 800)
+      return { ...ed, [funcId]: newEd }
+    })
   }
 
   function recalcular(linha: Linha) {

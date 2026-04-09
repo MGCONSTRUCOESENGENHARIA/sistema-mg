@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { mesAtual, nomeMes, formatR$, diasDoMes, formatDate, fim1Quinzena, AUSENCIAS } from '@/lib/utils'
 
@@ -177,26 +177,66 @@ export default function PagamentoPage() {
       }
     })
 
+    // Carregar ajustes salvos
+    let ajustes: any[] = []
+    if (comp?.id) {
+      const { data: aj } = await supabase.from('pagamento_ajustes')
+        .select('*').eq('competencia_id', comp.id).eq('tipo', 'pagamento_final')
+        .in('funcionario_id', funcs.map((f: any) => f.id))
+      ajustes = aj || []
+    }
+
     setLinhas(resultado)
     const newEdit: typeof editando = {}
     resultado.forEach(l => {
-      if (!editando[l.func_id]) {
-        const dsr = calcDSR(l.presencas_datas, mes)
-        newEdit[l.func_id] = {
-          tipo_pagamento: 'DIÁRIA',
-          hora_extra: 0, complemento: 0,
-          desc_materiais: 0, desc_emprestimo: 0, desc_acerto: 0,
-          desc_pensao: 0, desc_dsr: 0, desc_sindicato: 0, desc_inss: 0,
-          dsr_qtd: dsr,
-        }
+      const aj = ajustes.find(a => a.funcionario_id === l.func_id)
+      const dsr = calcDSR(l.presencas_datas, mes)
+      newEdit[l.func_id] = aj ? {
+        tipo_pagamento: aj.tipo_pagamento || 'DIÁRIA',
+        hora_extra: aj.hora_extra || 0,
+        complemento: aj.complemento || 0,
+        desc_materiais: aj.desc_materiais || 0,
+        desc_emprestimo: aj.desc_emprestimo || 0,
+        desc_acerto: aj.desc_acerto || 0,
+        desc_pensao: aj.desc_pensao || 0,
+        desc_dsr: aj.desc_dsr || 0,
+        desc_sindicato: aj.desc_sindicato || 0,
+        desc_inss: aj.desc_inss || 0,
+        dsr_qtd: aj.dsr_qtd || dsr,
+      } : {
+        tipo_pagamento: 'DIÁRIA',
+        hora_extra: 0, complemento: 0,
+        desc_materiais: 0, desc_emprestimo: 0, desc_acerto: 0,
+        desc_pensao: 0, desc_dsr: 0, desc_sindicato: 0, desc_inss: 0,
+        dsr_qtd: dsr,
       }
     })
-    setEditando(ed => ({ ...newEdit, ...ed }))
+    setEditando(newEdit)
     setLoading(false)
   }
 
+  async function salvarAjuste(funcId: string, newEd: any) {
+    const { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
+    if (!comp?.id) return
+    await supabase.from('pagamento_ajustes').upsert({
+      competencia_id: comp.id,
+      funcionario_id: funcId,
+      tipo: 'pagamento_final',
+      ...newEd,
+      atualizado_em: new Date().toISOString(),
+    }, { onConflict: 'competencia_id,funcionario_id,tipo' })
+  }
+
+  const saveTimers = useRef<Record<string, any>>({})
+
   function setEdit(funcId: string, field: string, val: any) {
-    setEditando(ed => ({ ...ed, [funcId]: { ...(ed[funcId] || {}), [field]: val } }))
+    setEditando(ed => {
+      const newEd = { ...(ed[funcId] || {}), [field]: val }
+      // Debounce save 800ms após última alteração
+      clearTimeout(saveTimers.current[funcId])
+      saveTimers.current[funcId] = setTimeout(() => salvarAjuste(funcId, newEd), 800)
+      return { ...ed, [funcId]: newEd }
+    })
   }
 
   function getEd(funcId: string) {
