@@ -154,13 +154,17 @@ export default function PlanejamentoPage() {
       {loading ? (
         <div style={{ textAlign:'center', padding:48, color:'#9ca3af' }}>Carregando...</div>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:10 }}>
-          {/* Não Alocados sempre primeiro */}
-          <Bloco obraId={null} titulo={`Não Alocados (${getNaoAlocados().length})`} cor="#6b7280" />
-          {/* Obras */}
-          {obras.map((obra, i) => (
-            <Bloco key={obra.id} obraId={obra.id} titulo={obra.nome} cor={CORES[i % CORES.length]} />
-          ))}
+        <div style={{ display:'grid', gridTemplateColumns:'220px 1fr', gap:12, alignItems:'start' }}>
+          {/* Não Alocados - coluna fixa */}
+          <div>
+            <Bloco obraId={null} titulo={`Não Alocados`} cor="#6b7280" />
+          </div>
+          {/* Obras em grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10 }}>
+            {obras.map((obra, i) => (
+              <Bloco key={obra.id} obraId={obra.id} titulo={obra.nome} cor={CORES[i % CORES.length]} />
+            ))}
+          </div>
         </div>
       )}
     </div>
