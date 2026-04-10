@@ -65,12 +65,14 @@ export default function CampoLancar() {
   }, [equipe])
 
   useEffect(() => {
-    if (!obraId || !data || !funcs.length) { setFuncsDisp(funcs); return }
-    supabase.from('presencas').select('funcionario_id').eq('data',data).eq('obra_id',obraId).then(({data:p})=>{
-      const jaReg = new Set((p||[]).map((x:any)=>x.funcionario_id))
-      setFuncsDisp(funcs.filter(f=>!jaReg.has(f.id)))
-    })
-  }, [obraId, data, funcs])
+    if (!data || !funcs.length) { setFuncsDisp(funcs); return }
+    supabase.from('presencas').select('funcionario_id').eq('data',data)
+      .in('funcionario_id', funcs.map(f=>f.id))
+      .then(({data:p})=>{
+        const jaReg = new Set((p||[]).map((x:any)=>x.funcionario_id))
+        setFuncsDisp(funcs.filter(f=>!jaReg.has(f.id)))
+      })
+  }, [data, funcs])
 
   const obra = obras.find(o=>o.id===obraId)
   const presentes = funcs.filter(f=>presentesIds.includes(f.id))
