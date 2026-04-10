@@ -239,8 +239,7 @@ export default function CampoLancar() {
       e.faltaram.length > 0 ? `Faltaram: ${e.faltaram.map((f:any) => f.nome).join(', ')}` : null,
       e.teveObra ? `Diária Conta Obra: ${e.servicoObra} | ${e.periodoObra === 'METADE' ? 'Metade' : 'Dia todo'} | Solicitado por: ${e.solicitouObra} | Funcionários: ${e.funcsObra.map((f:any) => f.nome).join(', ')}` : null,
       e.teveMG ? `Diária Conta MG: ${e.servicoMG} | ${e.periodoMG === 'METADE' ? 'Metade' : 'Dia todo'} | Funcionários: ${e.funcsMG.map((f:any) => f.nome).join(', ')}` : null,
-    ].filter(Boolean).join('
-')
+    ].filter(Boolean).join('\n')
 
     await supabase.from('folhas_ponto').insert({
       obra_id: e.obra.id,
