@@ -12,14 +12,14 @@ interface Estado {
   presentes: any[]
   simAtrasado: boolean | null; atrasados: any[]; horariosAtrasados: Record<string, string>
   simSaiu: boolean | null; saiuCedo: any[]; horariosSaiu: Record<string, string>
-  teveObra: boolean | null; solicitouObra: string; periodoObra: 'DIA_TODO' | 'METADE' | null
-  servicoObra: string; funcsObra: any[]
+  teveObra: boolean | null; solicitouObra: string
+  periodoObra: 'DIA_TODO' | 'METADE' | null; servicoObra: string; funcsObra: any[]
   teveMG: boolean | null; periodoMG: 'DIA_TODO' | 'METADE' | null
   servicoMG: string; funcsMG: any[]
 }
 
 const INIT: Estado = {
-  data: new Date().toISOString().slice(0,10),
+  data: new Date().toISOString().slice(0, 10),
   obra: null, equipe: null, presentes: [],
   simAtrasado: null, atrasados: [], horariosAtrasados: {},
   simSaiu: null, saiuCedo: [], horariosSaiu: {},
@@ -27,62 +27,74 @@ const INIT: Estado = {
   teveMG: null, periodoMG: null, servicoMG: '', funcsMG: [],
 }
 
-const STEPS: Tela[] = ['dia','obra','equipe','funcionarios','atrasados','saiu_cedo','conta_obra','conta_mg','confirmacao']
+const STEPS: Tela[] = ['dia', 'obra', 'equipe', 'funcionarios', 'atrasados', 'saiu_cedo', 'conta_obra', 'conta_mg', 'confirmacao']
 
-const C = {
-  azul: '#1a3a6b', azulLight: '#2563eb', bg: '#f0f4f8',
-  white: '#ffffff', text: '#111827', muted: '#6b7280', border: '#e2e8f0',
-  verde: '#059669', vermelho: '#dc2626', verdeLight: '#d1fae5', vermelhoLight: '#fee2e2',
-}
-
-const inp: any = {
-  width:'100%', border:`1.5px solid ${C.border}`, borderRadius:14,
-  padding:'14px 16px', fontSize:16, outline:'none',
-  background:C.white, color:C.text, boxSizing:'border-box',
-}
-
-function BuscaFunc({ todos, selecionados, onChange, placeholder }: {
+// Componente de busca SEM onBlur
+function Busca({ todos, selecionados, onChange, placeholder }: {
   todos: any[], selecionados: any[], onChange: (v: any[]) => void, placeholder?: string
 }) {
   const [q, setQ] = useState('')
-  const [open, setOpen] = useState(false)
-  const filtrados = todos.filter((f:any) => !selecionados.find((s:any) => s.id === f.id) && f.nome.toLowerCase().includes(q.toLowerCase()))
+  const disponiveis = todos.filter((f: any) =>
+    !selecionados.find((s: any) => s.id === f.id) &&
+    f.nome.toLowerCase().includes(q.toLowerCase())
+  )
+
+  function selecionar(f: any) {
+    onChange([...selecionados, f])
+    setQ('')
+  }
+
+  function remover(id: string) {
+    onChange(selecionados.filter((s: any) => s.id !== id))
+  }
 
   return (
     <div>
-      <div style={{ position:'relative' }}>
-        <span style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', fontSize:16, color:C.muted, pointerEvents:'none' }}>🔍</span>
-        <input value={q} placeholder={placeholder||'Buscar pelo nome...'} autoComplete="off"
-          style={{ ...inp, paddingLeft:44 }}
-          onChange={ev => { setQ(ev.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)} />
-      </div>
-      {open && q.length > 0 && filtrados.length > 0 && (
-        <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,.12)', marginTop:6, maxHeight:220, overflowY:'auto' }}>
-          {filtrados.slice(0,8).map((f:any) => (
-            <div key={f.id}
-              style={{ padding:'14px 16px', cursor:'pointer', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', gap:10 }}
-              onTouchStart={() => { onChange([...selecionados, f]); setQ(''); setOpen(false) }}
-              onMouseDown={() => { onChange([...selecionados, f]); setQ(''); setOpen(false) }}>
-              <div style={{ width:32, height:32, borderRadius:'50%', background:'#dbeafe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:C.azul, flexShrink:0 }}>
-                {f.nome.split(' ').slice(0,2).map((n:string)=>n[0]).join('')}
-              </div>
-              <span style={{ fontSize:14, color:C.text }}>{f.nome}</span>
+      <input
+        type="text"
+        value={q}
+        placeholder={placeholder || 'Digite o nome...'}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="words"
+        style={{
+          width: '100%', padding: '14px 16px', fontSize: 16,
+          border: '2px solid #cbd5e1', borderRadius: 12, outline: 'none',
+          background: 'white', boxSizing: 'border-box' as const,
+        }}
+        onChange={e => setQ(e.target.value)}
+      />
+
+      {q.length > 0 && disponiveis.length > 0 && (
+        <div style={{
+          background: 'white', border: '2px solid #cbd5e1', borderRadius: 12,
+          marginTop: 6, maxHeight: 240, overflowY: 'auto'
+        }}>
+          {disponiveis.slice(0, 8).map((f: any) => (
+            <div
+              key={f.id}
+              style={{ padding: '14px 16px', fontSize: 15, color: '#1f2937', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+              onPointerDown={e => { e.preventDefault(); selecionar(f) }}
+            >
+              {f.nome}
             </div>
           ))}
         </div>
       )}
+
       {selecionados.length > 0 && (
-        <div style={{ marginTop:12, display:'flex', flexWrap:'wrap', gap:8 }}>
-          {selecionados.map((f:any) => (
-            <div key={f.id} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'7px 12px 7px 10px', borderRadius:20, background:'#dbeafe' }}>
-              <div style={{ width:22, height:22, borderRadius:'50%', background:C.azul, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, color:'white' }}>
-                {f.nome.split(' ').slice(0,2).map((n:string)=>n[0]).join('')}
-              </div>
-              <span style={{ fontSize:13, fontWeight:600, color:C.azul }}>{f.nome.split(' ')[0]}</span>
-              <span style={{ color:'#93c5fd', cursor:'pointer', fontWeight:700, fontSize:18, lineHeight:1 }}
-                onTouchStart={() => onChange(selecionados.filter((s:any) => s.id !== f.id))}
-                onMouseDown={() => onChange(selecionados.filter((s:any) => s.id !== f.id))}>×</span>
+        <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
+          {selecionados.map((f: any) => (
+            <div key={f.id} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 12px', borderRadius: 20, background: '#dbeafe',
+              fontSize: 14, fontWeight: 600, color: '#1e40af'
+            }}>
+              {f.nome.split(' ')[0]}
+              <span
+                style={{ fontSize: 18, lineHeight: 1, color: '#93c5fd', cursor: 'pointer' }}
+                onPointerDown={e => { e.preventDefault(); remover(f.id) }}
+              >×</span>
             </div>
           ))}
         </div>
@@ -95,30 +107,28 @@ export default function CampoLancar() {
   const [tela, setTela] = useState<Tela>('dia')
   const [obras, setObras] = useState<any[]>([])
   const [funcs, setFuncs] = useState<any[]>([])
-  const [funcsDisponiveis, setFuncsDisponiveis] = useState<any[]>([])
-  const [buscaObra, setBuscaObra] = useState('')
-  const [obraAberta, setObraAberta] = useState(false)
+  const [funcsDisp, setFuncsDisp] = useState<any[]>([])
   const [salvando, setSalvando] = useState(false)
   const [e, setE] = useState<Estado>(INIT)
 
   useEffect(() => {
-    supabase.from('obras').select('id,nome,codigo').eq('status','ATIVA').order('nome')
+    supabase.from('obras').select('id,nome,codigo').eq('status', 'ATIVA').order('nome')
       .then(({ data }) => setObras(data || []))
   }, [])
 
   useEffect(() => {
     if (e.equipe) {
-      supabase.from('funcionarios').select('id,nome,equipe').eq('ativo',true).eq('equipe',e.equipe).order('nome')
+      supabase.from('funcionarios').select('id,nome').eq('ativo', true).eq('equipe', e.equipe).order('nome')
         .then(({ data }) => setFuncs(data || []))
     }
   }, [e.equipe])
 
   useEffect(() => {
-    if (!e.obra || !e.data || !funcs.length) { setFuncsDisponiveis(funcs); return }
+    if (!e.obra || !e.data || !funcs.length) { setFuncsDisp(funcs); return }
     supabase.from('presencas').select('funcionario_id').eq('data', e.data).eq('obra_id', e.obra.id)
       .then(({ data }) => {
-        const jaReg = new Set((data||[]).map((p:any) => p.funcionario_id))
-        setFuncsDisponiveis(funcs.filter(f => !jaReg.has(f.id)))
+        const jaReg = new Set((data || []).map((p: any) => p.funcionario_id))
+        setFuncsDisp(funcs.filter(f => !jaReg.has(f.id)))
       })
   }, [e.obra, e.data, funcs])
 
@@ -126,23 +136,21 @@ export default function CampoLancar() {
   function ir(t: Tela) { setTela(t) }
 
   const step = STEPS.indexOf(tela) + 1
-  const obrasFiltradas = obras.filter(o => o.nome.toLowerCase().includes(buscaObra.toLowerCase()))
 
   async function salvar() {
     setSalvando(true)
-    const mes = e.data.slice(0,7)
+    const mes = e.data.slice(0, 7)
     let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
     if (!comp) {
-      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status:'ABERTA' }).select().single()
+      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
       comp = nova
     }
     for (const f of e.presentes) {
-      const atrasado = e.atrasados.find((a:any) => a.id === f.id)
-      const saiu = e.saiuCedo.find((s:any) => s.id === f.id)
+      const at = e.atrasados.find((a: any) => a.id === f.id)
+      const sc = e.saiuCedo.find((s: any) => s.id === f.id)
       await supabase.from('presencas').upsert({
         competencia_id: comp!.id, funcionario_id: f.id,
-        data: e.data, obra_id: e.obra.id, tipo: 'NORMAL',
-        fracao: (atrasado || saiu) ? 0.5 : 1,
+        data: e.data, obra_id: e.obra.id, tipo: 'NORMAL', fracao: (at || sc) ? 0.5 : 1,
       }, { onConflict: 'funcionario_id,data,competencia_id' })
     }
     if (e.teveObra) {
@@ -150,8 +158,7 @@ export default function CampoLancar() {
         await supabase.from('diarias_extras').insert({
           obra_id: e.obra.id, funcionario_id: f.id, data: e.data, tipo: 'CONTA_OBRA',
           quantidade: e.periodoObra === 'METADE' ? 0.5 : 1, servico: e.servicoObra,
-          observacao: `Solicitado por: ${e.solicitouObra} | Período: ${e.periodoObra === 'METADE' ? 'Metade' : 'Dia todo'}`,
-          descontada_producao: false, recebida_medicao: false,
+          observacao: `Solicitado: ${e.solicitouObra}`, descontada_producao: false, recebida_medicao: false,
         })
       }
     }
@@ -160,18 +167,17 @@ export default function CampoLancar() {
         await supabase.from('diarias_extras').insert({
           obra_id: e.obra.id, funcionario_id: f.id, data: e.data, tipo: 'CONTA_MG',
           quantidade: e.periodoMG === 'METADE' ? 0.5 : 1, servico: e.servicoMG,
-          observacao: `Período: ${e.periodoMG === 'METADE' ? 'Metade' : 'Dia todo'}`,
           descontada_producao: false, recebida_medicao: false,
         })
       }
     }
     const resumo = [
       `Equipe: ${e.equipe}`,
-      `Presentes (${e.presentes.length}): ${e.presentes.map((f:any) => f.nome).join(', ')}`,
-      e.atrasados.length > 0 ? `Atrasados: ${e.atrasados.map((f:any) => `${f.nome} (${e.horariosAtrasados[f.id]||'?'})`).join(', ')}` : null,
-      e.saiuCedo.length > 0 ? `Saíram cedo: ${e.saiuCedo.map((f:any) => `${f.nome} (${e.horariosSaiu[f.id]||'?'})`).join(', ')}` : null,
-      e.teveObra ? `Diária Conta Obra: ${e.servicoObra} | ${e.periodoObra === 'METADE' ? 'Metade' : 'Dia todo'} | Solicitado: ${e.solicitouObra} | Funcs: ${e.funcsObra.map((f:any) => f.nome).join(', ')}` : null,
-      e.teveMG ? `Diária Conta MG: ${e.servicoMG} | ${e.periodoMG === 'METADE' ? 'Metade' : 'Dia todo'} | Funcs: ${e.funcsMG.map((f:any) => f.nome).join(', ')}` : null,
+      `Presentes (${e.presentes.length}): ${e.presentes.map((f: any) => f.nome).join(', ')}`,
+      e.atrasados.length > 0 ? `Atrasados: ${e.atrasados.map((f: any) => `${f.nome} (${e.horariosAtrasados[f.id] || '?'})`).join(', ')}` : null,
+      e.saiuCedo.length > 0 ? `Saíram cedo: ${e.saiuCedo.map((f: any) => `${f.nome} (${e.horariosSaiu[f.id] || '?'})`).join(', ')}` : null,
+      e.teveObra ? `Conta Obra: ${e.servicoObra} | ${e.periodoObra === 'METADE' ? 'Metade' : 'Dia todo'} | ${e.solicitouObra} | ${e.funcsObra.map((f: any) => f.nome).join(', ')}` : null,
+      e.teveMG ? `Conta MG: ${e.servicoMG} | ${e.periodoMG === 'METADE' ? 'Metade' : 'Dia todo'} | ${e.funcsMG.map((f: any) => f.nome).join(', ')}` : null,
     ].filter(Boolean).join('\n')
     await supabase.from('folhas_ponto').insert({
       obra_id: e.obra.id, equipe: e.equipe, data: e.data, foto_url: '',
@@ -181,394 +187,381 @@ export default function CampoLancar() {
     ir('sucesso')
   }
 
-  // UI helpers
-  const grad = `linear-gradient(135deg, ${C.azul} 0%, #1e40af 100%)`
+  // Styles base
+  const azul = '#1e3a8a'
+  const page: any = { minHeight: '100vh', background: '#f8fafc', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column' }
+  const topbar: any = { background: azul, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }
+  const body: any = { flex: 1, padding: '24px 20px', overflowY: 'auto' }
+  const bottom: any = { padding: '16px 20px', background: 'white', borderTop: '1px solid #e2e8f0' }
+  const h1: any = { fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }
+  const sub: any = { fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }
+  const lbl: any = { fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8, marginTop: 20 }
+  const inp: any = { width: '100%', padding: '14px 16px', fontSize: 16, border: '2px solid #cbd5e1', borderRadius: 12, outline: 'none', background: 'white', boxSizing: 'border-box', color: '#0f172a' }
 
-  function TopBar({ back, sub }: { back?: () => void, sub?: string }) {
+  function PBtn({ disabled, onClick, children }: any) {
     return (
-      <div style={{ background:grad, padding:'18px 20px', display:'flex', alignItems:'center', gap:12 }}>
-        {back && <button onClick={back} style={{ width:38, height:38, borderRadius:10, border:'none', background:'rgba(255,255,255,.15)', color:'white', fontSize:20, cursor:'pointer', flexShrink:0 }}>←</button>}
-        <div>
-          <div style={{ color:'white', fontWeight:800, fontSize:18 }}>MG Campo</div>
-          {sub && <div style={{ color:'rgba(255,255,255,.65)', fontSize:12, marginTop:1 }}>{sub}</div>}
-        </div>
+      <button disabled={disabled} onClick={onClick} style={{
+        width: '100%', padding: '16px', borderRadius: 14, border: 'none',
+        background: disabled ? '#94a3b8' : azul, color: 'white',
+        fontSize: 16, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer'
+      }}>{children}</button>
+    )
+  }
+
+  function SBtn({ onClick, children }: any) {
+    return <button onClick={onClick} style={{ width: '100%', padding: '14px', borderRadius: 14, border: '2px solid #e2e8f0', background: 'white', color: '#374151', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10 }}>{children}</button>
+  }
+
+  function YN({ sel, verde, emoji, label, onClick }: any) {
+    return (
+      <div
+        style={{
+          flex: 1, padding: '20px 12px', borderRadius: 16, textAlign: 'center' as const,
+          border: sel ? `2px solid ${verde ? '#059669' : '#dc2626'}` : '2px solid #e2e8f0',
+          background: sel ? (verde ? '#d1fae5' : '#fee2e2') : 'white', cursor: 'pointer'
+        }}
+        onPointerDown={e => { e.preventDefault(); onClick() }}
+      >
+        <div style={{ fontSize: 36, marginBottom: 8 }}>{emoji}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: sel ? (verde ? '#059669' : '#dc2626') : '#374151' }}>{label}</div>
+      </div>
+    )
+  }
+
+  function Period({ sel, onClick, icon, label }: any) {
+    return (
+      <div
+        style={{ flex: 1, padding: '18px 12px', borderRadius: 14, border: sel ? `2px solid ${azul}` : '2px solid #e2e8f0', background: sel ? '#dbeafe' : 'white', cursor: 'pointer', textAlign: 'center' as const }}
+        onPointerDown={e => { e.preventDefault(); onClick() }}
+      >
+        <div style={{ fontSize: 28, marginBottom: 6 }}>{icon}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: sel ? azul : '#374151' }}>{label}</div>
       </div>
     )
   }
 
   function ProgBar() {
     return (
-      <div style={{ background:'#1e40af', padding:'0 20px 14px', display:'flex', gap:4 }}>
-        {STEPS.map((_,i) => <div key={i} style={{ height:3, borderRadius:2, flex:1, background: i+1<step?'white':i+1===step?'#93c5fd':'rgba(255,255,255,.2)', transition:'all .3s' }} />)}
-      </div>
-    )
-  }
-
-  function Body({ children }: any) { return <div style={{ flex:1, padding:'24px 20px', overflowY:'auto' as const }}>{children}</div> }
-  function Bottom({ children }: any) { return <div style={{ padding:'16px 20px', background:C.white, borderTop:`1px solid ${C.border}`, display:'flex', flexDirection:'column' as const, gap:10 }}>{children}</div> }
-  function H1({ children }: any) { return <div style={{ fontSize:22, fontWeight:800, color:C.text, marginBottom:8, lineHeight:'1.2' }}>{children}</div> }
-  function Sub({ children }: any) { return <div style={{ fontSize:14, color:C.muted, marginBottom:20, lineHeight:'1.5' }}>{children}</div> }
-  function Lbl({ children }: any) { return <div style={{ fontSize:11, fontWeight:700, color:C.muted, marginBottom:8, marginTop:20, textTransform:'uppercase' as const, letterSpacing:'0.08em' }}>{children}</div> }
-
-  function YN({ sel, type, emoji, label, onClick }: any) {
-    const sim = type === 'sim'
-    return (
-      <div onClick={onClick} style={{
-        flex:1, padding:'22px 12px', borderRadius:18, cursor:'pointer', textAlign:'center' as const,
-        border: sel ? `2px solid ${sim?C.verde:C.vermelho}` : `1.5px solid ${C.border}`,
-        background: sel ? (sim?C.verdeLight:C.vermelhoLight) : C.white,
-        transition:'all .15s', WebkitTapHighlightColor:'transparent'
-      }}>
-        <div style={{ fontSize:34, marginBottom:8 }}>{emoji}</div>
-        <div style={{ fontSize:15, fontWeight:700, color: sel?(sim?C.verde:C.vermelho):C.text }}>{label}</div>
-      </div>
-    )
-  }
-
-  function Btn({ disabled, onClick, children }: any) {
-    return (
-      <button disabled={disabled} onClick={onClick} style={{
-        width:'100%', padding:'16px', borderRadius:14, border:'none',
-        background: disabled ? '#cbd5e1' : grad,
-        color:'white', fontSize:16, fontWeight:700, cursor:disabled?'not-allowed':'pointer',
-        boxShadow: disabled ? 'none' : '0 4px 14px rgba(37,99,235,.3)',
-        WebkitTapHighlightColor:'transparent'
-      }}>{children}</button>
-    )
-  }
-
-  function SecBtn({ onClick, children }: any) {
-    return <button onClick={onClick} style={{ width:'100%', padding:'14px', borderRadius:14, border:`1.5px solid ${C.border}`, background:C.white, color:C.text, fontSize:14, fontWeight:600, cursor:'pointer', WebkitTapHighlightColor:'transparent' }}>{children}</button>
-  }
-
-  function Period({ sel, onClick, icon, label }: any) {
-    return (
-      <div onClick={onClick} style={{ flex:1, padding:'18px 12px', borderRadius:16, border:sel?`2px solid ${C.azulLight}`:`1.5px solid ${C.border}`, background:sel?'#dbeafe':C.white, cursor:'pointer', textAlign:'center' as const, transition:'all .15s', WebkitTapHighlightColor:'transparent' }}>
-        <div style={{ fontSize:28, marginBottom:6 }}>{icon}</div>
-        <div style={{ fontSize:13, fontWeight:700, color:sel?C.azulLight:C.text }}>{label}</div>
+      <div style={{ background: '#1e40af', padding: '0 20px 14px', display: 'flex', gap: 4 }}>
+        {STEPS.map((_, i) => (
+          <div key={i} style={{ height: 3, flex: 1, borderRadius: 2, background: i + 1 < step ? 'white' : i + 1 === step ? '#93c5fd' : 'rgba(255,255,255,.25)' }} />
+        ))}
       </div>
     )
   }
 
   function CRow({ label, value, color }: any) {
     return (
-      <div style={{ display:'flex', justifyContent:'space-between', padding:'10px 0', borderBottom:`1px solid ${C.border}`, gap:16 }}>
-        <span style={{ fontSize:13, color:C.muted, flexShrink:0, minWidth:80 }}>{label}</span>
-        <span style={{ fontSize:13, fontWeight:600, color:color||C.text, textAlign:'right' as const }}>{value}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f1f5f9', gap: 12 }}>
+        <span style={{ fontSize: 13, color: '#64748b', flexShrink: 0, minWidth: 80 }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: color || '#0f172a', textAlign: 'right' as const }}>{value}</span>
       </div>
     )
   }
 
-  function Card({ children, style }: any) {
-    return <div style={{ background:C.white, borderRadius:16, padding:16, border:`1px solid ${C.border}`, ...style }}>{children}</div>
-  }
-
-  const back = () => {
-    if (tela==='confirma_dia') ir('dia')
-    else if (tela==='conta_obra_det') ir('conta_obra')
-    else if (tela==='conta_mg_det') ir('conta_mg')
-    else { const i=STEPS.indexOf(tela); if(i>0) ir(STEPS[i-1]) }
-  }
-
   if (tela === 'sucesso') return (
-    <div style={{ minHeight:'100vh', background:C.bg, maxWidth:480, margin:'0 auto', display:'flex', flexDirection:'column' as const }}>
-      <TopBar />
-      <Body>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', paddingTop:32 }}>
-          <div style={{ width:100, height:100, borderRadius:'50%', background:C.verdeLight, display:'flex', alignItems:'center', justifyContent:'center', fontSize:52, marginBottom:24, boxShadow:'0 8px 32px rgba(5,150,105,.2)' }}>✅</div>
-          <div style={{ fontSize:26, fontWeight:800, color:C.text, marginBottom:10 }}>Tudo salvo!</div>
-          <div style={{ fontSize:15, color:C.muted, lineHeight:'1.6', marginBottom:32, maxWidth:280 }}>Lançamento registrado com sucesso no sistema.</div>
-          <Card style={{ width:'100%', marginBottom:24, textAlign:'left' as const }}>
-            <div style={{ fontSize:11, fontWeight:700, color:C.muted, marginBottom:10, textTransform:'uppercase' as const, letterSpacing:'0.08em' }}>Resumo</div>
-            <div style={{ fontSize:15, fontWeight:700, color:C.text }}>{e.obra?.nome}</div>
-            <div style={{ fontSize:13, color:C.muted, marginTop:2 }}>{e.equipe} · {new Date(e.data+'T12:00').toLocaleDateString('pt-BR',{day:'numeric',month:'long'})}</div>
-            <div style={{ fontSize:13, color:C.verde, marginTop:6, fontWeight:600 }}>✓ {e.presentes.length} presentes{e.teveObra||e.teveMG?' · ⚡ com diária extra':''}</div>
-          </Card>
-          <Btn onClick={() => { setE(INIT); ir('dia') }}>Novo lançamento</Btn>
+    <div style={page}>
+      <div style={topbar}><span style={{ color: 'white', fontWeight: 800, fontSize: 18 }}>MG Campo</span></div>
+      <div style={{ ...body, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 48 }}>
+        <div style={{ width: 96, height: 96, borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, marginBottom: 24 }}>✅</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Salvo!</div>
+        <div style={{ fontSize: 15, color: '#64748b', marginBottom: 32 }}>Lançamento registrado no sistema.</div>
+        <div style={{ background: 'white', border: '2px solid #e2e8f0', borderRadius: 16, padding: 20, width: '100%', textAlign: 'left' as const, marginBottom: 24 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{e.obra?.nome}</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>{e.equipe} · {new Date(e.data + 'T12:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}</div>
+          <div style={{ fontSize: 13, color: '#059669', marginTop: 8, fontWeight: 600 }}>✓ {e.presentes.length} presentes</div>
         </div>
-      </Body>
+        <PBtn onClick={() => { setE(INIT); ir('dia') }}>Novo lançamento</PBtn>
+      </div>
     </div>
   )
 
+  const goBack = () => {
+    if (tela === 'confirma_dia') ir('dia')
+    else if (tela === 'conta_obra_det') ir('conta_obra')
+    else if (tela === 'conta_mg_det') ir('conta_mg')
+    else { const i = STEPS.indexOf(tela); if (i > 0) ir(STEPS[i - 1]) }
+  }
+
   return (
-    <div style={{ minHeight:'100vh', background:C.bg, maxWidth:480, margin:'0 auto', display:'flex', flexDirection:'column' as const }}>
-      <TopBar back={tela!=='dia'?back:undefined} sub={e.obra?e.obra.nome:'Lançamento diário'} />
+    <div style={page}>
+      <div style={topbar}>
+        {tela !== 'dia' && (
+          <button
+            style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,.2)', color: 'white', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}
+            onPointerDown={e => { e.preventDefault(); goBack() }}>←</button>
+        )}
+        <div>
+          <div style={{ color: 'white', fontWeight: 800, fontSize: 17 }}>MG Campo</div>
+          {e.obra && <div style={{ color: 'rgba(255,255,255,.6)', fontSize: 12, marginTop: 1 }}>{e.obra.nome}</div>}
+        </div>
+      </div>
       <ProgBar />
 
       {/* DIA */}
-      {tela==='dia' && (
-        <Body>
-          <H1>Essa diária é de hoje?</H1>
-          <Sub>{new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</Sub>
-          <div style={{ display:'flex', gap:12 }}>
-            <YN sel={false} type="sim" emoji="✅" label="Sim, hoje" onClick={() => { upd({ data: new Date().toISOString().slice(0,10) }); ir('obra') }} />
-            <YN sel={false} type="nao" emoji="📅" label="Outro dia" onClick={() => ir('confirma_dia')} />
+      {tela === 'dia' && (
+        <div style={body}>
+          <div style={h1}>Essa diária é de hoje?</div>
+          <div style={sub}>{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <YN sel={false} verde emoji="✅" label="Sim, hoje" onClick={() => { upd({ data: new Date().toISOString().slice(0, 10) }); ir('obra') }} />
+            <YN sel={false} verde={false} emoji="📅" label="Outro dia" onClick={() => ir('confirma_dia')} />
           </div>
-        </Body>
+        </div>
       )}
 
       {/* CONFIRMA DIA */}
-      {tela==='confirma_dia' && (
+      {tela === 'confirma_dia' && (
         <>
-          <Body>
-            <H1>Qual a data?</H1>
-            <Sub>Toque no campo abaixo para selecionar</Sub>
-            <input type="date" style={{ ...inp, minHeight:52 }}
-              value={e.data} max={new Date().toISOString().slice(0,10)}
-              onChange={ev => { if(ev.target.value) upd({ data: ev.target.value }) }} />
+          <div style={body}>
+            <div style={h1}>Qual a data?</div>
+            <div style={sub}>Toque para abrir o calendário</div>
+            <input
+              type="date"
+              style={{ ...inp, minHeight: 54 }}
+              value={e.data}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={ev => upd({ data: ev.target.value })}
+            />
             {e.data && (
-              <div style={{ marginTop:14, padding:'14px 16px', background:'#dbeafe', borderRadius:14, fontSize:15, fontWeight:700, color:C.azul, display:'flex', alignItems:'center', gap:10 }}>
-                <span>📅</span>
-                {new Date(e.data+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+              <div style={{ marginTop: 16, padding: '14px 16px', background: '#dbeafe', borderRadius: 12, fontWeight: 700, color: azul, fontSize: 15 }}>
+                📅 {new Date(e.data + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
               </div>
             )}
-          </Body>
-          <Bottom><Btn disabled={!e.data} onClick={() => ir('obra')}>Confirmar →</Btn></Bottom>
+          </div>
+          <div style={bottom}><PBtn disabled={!e.data} onClick={() => ir('obra')}>Confirmar →</PBtn></div>
         </>
       )}
 
       {/* OBRA */}
-      {tela==='obra' && (
+      {tela === 'obra' && (
         <>
-          <Body>
-            <H1>Qual a obra?</H1>
-            <Sub>Digite para buscar</Sub>
-            <div style={{ position:'relative' }}>
-              <span style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', fontSize:16, color:C.muted, pointerEvents:'none' }}>🏗</span>
-              <input style={{ ...inp, paddingLeft:44 }} value={buscaObra} placeholder="Ex: Barreiro, Savassi..."
-                onChange={ev => { setBuscaObra(ev.target.value); setObraAberta(true) }}
-                onFocus={() => setObraAberta(true)} />
-            </div>
-            {obraAberta && buscaObra.length > 0 && obrasFiltradas.length > 0 && (
-              <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,.12)', marginTop:6, maxHeight:280, overflowY:'auto' }}>
-                {obrasFiltradas.map(o => (
-                  <div key={o.id}
-                    style={{ padding:'16px', cursor:'pointer', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', gap:10, WebkitTapHighlightColor:'transparent' }}
-                    onTouchStart={() => { upd({ obra:o }); setBuscaObra(o.nome); setObraAberta(false) }}
-                    onMouseDown={() => { upd({ obra:o }); setBuscaObra(o.nome); setObraAberta(false) }}>
-                    <div style={{ width:36, height:36, borderRadius:10, background:'#dbeafe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>🏗</div>
-                    <div>
-                      <div style={{ fontWeight:700, fontSize:14, color:C.text }}>{o.nome}</div>
-                      <div style={{ fontSize:12, color:C.muted }}>{o.codigo}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div style={body}>
+            <div style={h1}>Qual a obra?</div>
+            <div style={sub}>Digite para buscar</div>
+            <Busca
+              todos={obras}
+              selecionados={e.obra ? [e.obra] : []}
+              onChange={v => upd({ obra: v.length ? v[v.length - 1] : null })}
+              placeholder="Ex: Barreiro, Savassi..."
+            />
             {e.obra && (
-              <div style={{ marginTop:14, padding:'14px 16px', background:'#dbeafe', borderRadius:14, border:`2px solid ${C.azulLight}`, display:'flex', alignItems:'center', gap:10 }}>
-                <span style={{ fontSize:20 }}>✓</span>
-                <span style={{ fontWeight:700, color:C.azul }}>{e.obra.nome}</span>
+              <div style={{ marginTop: 14, padding: '14px 16px', background: '#dbeafe', borderRadius: 12, fontWeight: 700, color: azul, fontSize: 15 }}>
+                🏗 {e.obra.nome}
               </div>
             )}
-          </Body>
-          <Bottom><Btn disabled={!e.obra} onClick={() => ir('equipe')}>Continuar →</Btn></Bottom>
+          </div>
+          <div style={bottom}><PBtn disabled={!e.obra} onClick={() => ir('equipe')}>Continuar →</PBtn></div>
         </>
       )}
 
       {/* EQUIPE */}
-      {tela==='equipe' && (
+      {tela === 'equipe' && (
         <>
-          <Body>
-            <H1>Qual a equipe?</H1>
-            <Sub>Selecione a equipe que está na obra hoje</Sub>
-            <div style={{ display:'flex', gap:12 }}>
-              <YN sel={e.equipe==='ARMAÇÃO'} type="sim" emoji="🔩" label="Armação" onClick={() => upd({ equipe:'ARMAÇÃO', presentes:[] })} />
-              <YN sel={e.equipe==='CARPINTARIA'} type="sim" emoji="🪵" label="Carpintaria" onClick={() => upd({ equipe:'CARPINTARIA', presentes:[] })} />
+          <div style={body}>
+            <div style={h1}>Qual a equipe?</div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <YN sel={e.equipe === 'ARMAÇÃO'} verde emoji="🔩" label="Armação" onClick={() => upd({ equipe: 'ARMAÇÃO', presentes: [] })} />
+              <YN sel={e.equipe === 'CARPINTARIA'} verde emoji="🪵" label="Carpintaria" onClick={() => upd({ equipe: 'CARPINTARIA', presentes: [] })} />
             </div>
-          </Body>
-          <Bottom><Btn disabled={!e.equipe} onClick={() => ir('funcionarios')}>Continuar →</Btn></Bottom>
+          </div>
+          <div style={bottom}><PBtn disabled={!e.equipe} onClick={() => ir('funcionarios')}>Continuar →</PBtn></div>
         </>
       )}
 
       {/* FUNCIONÁRIOS */}
-      {tela==='funcionarios' && (
+      {tela === 'funcionarios' && (
         <>
-          <Body>
-            <H1>Quem estava na obra?</H1>
-            <Sub>{funcsDisponiveis.length < funcs.length && funcs.length > 0
-              ? `${funcs.length - funcsDisponiveis.length} já registrado(s) hoje`
-              : 'Selecione os funcionários presentes'}</Sub>
-            {funcsDisponiveis.length === 0 && funcs.length > 0 ? (
-              <Card style={{ textAlign:'center', padding:'32px 16px' }}>
-                <div style={{ fontSize:32, marginBottom:12 }}>✅</div>
-                <div style={{ fontSize:15, fontWeight:700, color:C.verde }}>Todos já registrados hoje!</div>
-              </Card>
+          <div style={body}>
+            <div style={h1}>Quem estava na obra?</div>
+            <div style={sub}>
+              {funcs.length > 0 && funcsDisp.length < funcs.length
+                ? `${funcs.length - funcsDisp.length} já registrado(s) hoje`
+                : 'Selecione os presentes'}
+            </div>
+            {funcsDisp.length === 0 && funcs.length > 0 ? (
+              <div style={{ padding: '32px 16px', background: '#d1fae5', borderRadius: 14, textAlign: 'center' as const }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+                <div style={{ fontWeight: 700, color: '#059669' }}>Todos já registrados hoje!</div>
+              </div>
             ) : (
-              <BuscaFunc todos={funcsDisponiveis} selecionados={e.presentes} onChange={v => upd({ presentes:v })} placeholder="Buscar funcionário..." />
+              <Busca todos={funcsDisp} selecionados={e.presentes} onChange={v => upd({ presentes: v })} placeholder="Buscar funcionário..." />
             )}
-          </Body>
-          <Bottom><Btn disabled={!e.presentes.length} onClick={() => ir('atrasados')}>Continuar →</Btn></Bottom>
+          </div>
+          <div style={bottom}><PBtn disabled={!e.presentes.length} onClick={() => ir('atrasados')}>Continuar →</PBtn></div>
         </>
       )}
 
       {/* ATRASADOS */}
-      {tela==='atrasados' && (
+      {tela === 'atrasados' && (
         <>
-          <Body>
-            <H1>Alguém chegou atrasado?</H1>
-            <div style={{ display:'flex', gap:12, marginBottom:20 }}>
-              <YN sel={e.simAtrasado===false} type="nao" emoji="❌" label="Não" onClick={() => upd({ simAtrasado:false, atrasados:[], horariosAtrasados:{} })} />
-              <YN sel={e.simAtrasado===true} type="sim" emoji="✅" label="Sim" onClick={() => upd({ simAtrasado:true })} />
+          <div style={body}>
+            <div style={h1}>Alguém chegou atrasado?</div>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              <YN sel={e.simAtrasado === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ simAtrasado: false, atrasados: [], horariosAtrasados: {} })} />
+              <YN sel={e.simAtrasado === true} verde emoji="✅" label="Sim" onClick={() => upd({ simAtrasado: true })} />
             </div>
-            {e.simAtrasado===true && (
+            {e.simAtrasado === true && (
               <>
-                <Lbl>Quem chegou atrasado?</Lbl>
-                <BuscaFunc todos={e.presentes} selecionados={e.atrasados} onChange={v => upd({ atrasados:v })} placeholder="Buscar..." />
-                {e.atrasados.map((f:any) => (
-                  <Card key={f.id} style={{ marginTop:12 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:10 }}>⏰ {f.nome.split(' ')[0]} — que horas chegou?</div>
-                    <input type="time" style={inp} value={e.horariosAtrasados[f.id]||''}
-                      onChange={ev => upd({ horariosAtrasados:{...e.horariosAtrasados,[f.id]:ev.target.value} })} />
-                  </Card>
+                <span style={lbl}>Quem?</span>
+                <Busca todos={e.presentes} selecionados={e.atrasados} onChange={v => upd({ atrasados: v })} placeholder="Buscar..." />
+                {e.atrasados.map((f: any) => (
+                  <div key={f.id} style={{ marginTop: 12, background: 'white', border: '2px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>⏰ {f.nome.split(' ')[0]} — que horas chegou?</div>
+                    <input type="time" style={inp} value={e.horariosAtrasados[f.id] || ''}
+                      onChange={ev => upd({ horariosAtrasados: { ...e.horariosAtrasados, [f.id]: ev.target.value } })} />
+                  </div>
                 ))}
               </>
             )}
-          </Body>
-          <Bottom>
-            <Btn disabled={e.simAtrasado===null||(e.simAtrasado===true&&(!e.atrasados.length||e.atrasados.some((f:any)=>!e.horariosAtrasados[f.id])))}
-              onClick={() => ir('saiu_cedo')}>Continuar →</Btn>
-          </Bottom>
+          </div>
+          <div style={bottom}>
+            <PBtn
+              disabled={e.simAtrasado === null || (e.simAtrasado === true && (!e.atrasados.length || e.atrasados.some((f: any) => !e.horariosAtrasados[f.id])))}
+              onClick={() => ir('saiu_cedo')}>Continuar →</PBtn>
+          </div>
         </>
       )}
 
       {/* SAIU CEDO */}
-      {tela==='saiu_cedo' && (
+      {tela === 'saiu_cedo' && (
         <>
-          <Body>
-            <H1>Alguém saiu mais cedo?</H1>
-            <div style={{ display:'flex', gap:12, marginBottom:20 }}>
-              <YN sel={e.simSaiu===false} type="nao" emoji="❌" label="Não" onClick={() => upd({ simSaiu:false, saiuCedo:[], horariosSaiu:{} })} />
-              <YN sel={e.simSaiu===true} type="sim" emoji="✅" label="Sim" onClick={() => upd({ simSaiu:true })} />
+          <div style={body}>
+            <div style={h1}>Alguém saiu mais cedo?</div>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              <YN sel={e.simSaiu === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ simSaiu: false, saiuCedo: [], horariosSaiu: {} })} />
+              <YN sel={e.simSaiu === true} verde emoji="✅" label="Sim" onClick={() => upd({ simSaiu: true })} />
             </div>
-            {e.simSaiu===true && (
+            {e.simSaiu === true && (
               <>
-                <Lbl>Quem saiu mais cedo?</Lbl>
-                <BuscaFunc todos={e.presentes} selecionados={e.saiuCedo} onChange={v => upd({ saiuCedo:v })} placeholder="Buscar..." />
-                {e.saiuCedo.map((f:any) => (
-                  <Card key={f.id} style={{ marginTop:12 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:10 }}>🚪 {f.nome.split(' ')[0]} — que horas saiu?</div>
-                    <input type="time" style={inp} value={e.horariosSaiu[f.id]||''}
-                      onChange={ev => upd({ horariosSaiu:{...e.horariosSaiu,[f.id]:ev.target.value} })} />
-                  </Card>
+                <span style={lbl}>Quem?</span>
+                <Busca todos={e.presentes} selecionados={e.saiuCedo} onChange={v => upd({ saiuCedo: v })} placeholder="Buscar..." />
+                {e.saiuCedo.map((f: any) => (
+                  <div key={f.id} style={{ marginTop: 12, background: 'white', border: '2px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>🚪 {f.nome.split(' ')[0]} — que horas saiu?</div>
+                    <input type="time" style={inp} value={e.horariosSaiu[f.id] || ''}
+                      onChange={ev => upd({ horariosSaiu: { ...e.horariosSaiu, [f.id]: ev.target.value } })} />
+                  </div>
                 ))}
               </>
             )}
-          </Body>
-          <Bottom>
-            <Btn disabled={e.simSaiu===null||(e.simSaiu===true&&(!e.saiuCedo.length||e.saiuCedo.some((f:any)=>!e.horariosSaiu[f.id])))}
-              onClick={() => ir('conta_obra')}>Continuar →</Btn>
-          </Bottom>
+          </div>
+          <div style={bottom}>
+            <PBtn
+              disabled={e.simSaiu === null || (e.simSaiu === true && (!e.saiuCedo.length || e.saiuCedo.some((f: any) => !e.horariosSaiu[f.id])))}
+              onClick={() => ir('conta_obra')}>Continuar →</PBtn>
+          </div>
         </>
       )}
 
       {/* CONTA OBRA? */}
-      {tela==='conta_obra' && (
+      {tela === 'conta_obra' && (
         <>
-          <Body>
-            <H1>Teve diária por conta da obra?</H1>
-            <Sub>Serviço extra solicitado pelo cliente</Sub>
-            <div style={{ display:'flex', gap:12 }}>
-              <YN sel={e.teveObra===false} type="nao" emoji="❌" label="Não" onClick={() => upd({ teveObra:false, funcsObra:[] })} />
-              <YN sel={e.teveObra===true} type="sim" emoji="✅" label="Sim" onClick={() => upd({ teveObra:true })} />
+          <div style={body}>
+            <div style={h1}>Teve diária por conta da obra?</div>
+            <div style={sub}>Serviço extra solicitado pelo cliente</div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <YN sel={e.teveObra === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ teveObra: false, funcsObra: [] })} />
+              <YN sel={e.teveObra === true} verde emoji="✅" label="Sim" onClick={() => upd({ teveObra: true })} />
             </div>
-          </Body>
-          <Bottom><Btn disabled={e.teveObra===null} onClick={() => ir(e.teveObra?'conta_obra_det':'conta_mg')}>Continuar →</Btn></Bottom>
+          </div>
+          <div style={bottom}><PBtn disabled={e.teveObra === null} onClick={() => ir(e.teveObra ? 'conta_obra_det' : 'conta_mg')}>Continuar →</PBtn></div>
         </>
       )}
 
       {/* CONTA OBRA DET */}
-      {tela==='conta_obra_det' && (
+      {tela === 'conta_obra_det' && (
         <>
-          <Body>
-            <H1>Detalhes — Conta Obra</H1>
-            <Lbl>Quem solicitou?</Lbl>
-            <input style={inp} value={e.solicitouObra} onChange={ev => upd({ solicitouObra:ev.target.value })} placeholder="Nome do responsável..." />
-            <Lbl>Período</Lbl>
-            <div style={{ display:'flex', gap:12 }}>
-              <Period sel={e.periodoObra==='DIA_TODO'} onClick={() => upd({ periodoObra:'DIA_TODO' })} icon="☀️" label="Dia todo" />
-              <Period sel={e.periodoObra==='METADE'} onClick={() => upd({ periodoObra:'METADE' })} icon="🌤" label="Metade" />
+          <div style={body}>
+            <div style={h1}>Detalhes — Conta Obra</div>
+            <span style={lbl}>Quem solicitou?</span>
+            <input style={inp} value={e.solicitouObra} onChange={ev => upd({ solicitouObra: ev.target.value })} placeholder="Nome do responsável..." />
+            <span style={lbl}>Período</span>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <Period sel={e.periodoObra === 'DIA_TODO'} onClick={() => upd({ periodoObra: 'DIA_TODO' })} icon="☀️" label="Dia todo" />
+              <Period sel={e.periodoObra === 'METADE'} onClick={() => upd({ periodoObra: 'METADE' })} icon="🌤" label="Metade" />
             </div>
-            <Lbl>Serviço executado</Lbl>
-            <textarea style={{ ...inp, height:88, resize:'none' as const }} value={e.servicoObra}
-              onChange={ev => upd({ servicoObra:ev.target.value })} placeholder="Descreva o serviço..." />
-            <Lbl>Funcionários ({e.funcsObra.length} selecionados)</Lbl>
-            <BuscaFunc todos={e.presentes} selecionados={e.funcsObra} onChange={v => upd({ funcsObra:v })} placeholder="Buscar da lista de presentes..." />
-          </Body>
-          <Bottom><Btn disabled={!e.solicitouObra||!e.periodoObra||!e.servicoObra||!e.funcsObra.length} onClick={() => ir('conta_mg')}>Continuar →</Btn></Bottom>
+            <span style={lbl}>Serviço executado</span>
+            <textarea style={{ ...inp, height: 90, resize: 'none' as const }} value={e.servicoObra}
+              onChange={ev => upd({ servicoObra: ev.target.value })} placeholder="Descreva o serviço..." />
+            <span style={lbl}>Funcionários ({e.funcsObra.length})</span>
+            <Busca todos={e.presentes} selecionados={e.funcsObra} onChange={v => upd({ funcsObra: v })} placeholder="Buscar da lista de presentes..." />
+          </div>
+          <div style={bottom}>
+            <PBtn disabled={!e.solicitouObra || !e.periodoObra || !e.servicoObra || !e.funcsObra.length} onClick={() => ir('conta_mg')}>Continuar →</PBtn>
+          </div>
         </>
       )}
 
       {/* CONTA MG? */}
-      {tela==='conta_mg' && (
+      {tela === 'conta_mg' && (
         <>
-          <Body>
-            <H1>Teve diária por conta da MG?</H1>
-            <Sub>Serviço extra solicitado pela MG Construções</Sub>
-            <div style={{ display:'flex', gap:12 }}>
-              <YN sel={e.teveMG===false} type="nao" emoji="❌" label="Não" onClick={() => upd({ teveMG:false, funcsMG:[] })} />
-              <YN sel={e.teveMG===true} type="sim" emoji="✅" label="Sim" onClick={() => upd({ teveMG:true })} />
+          <div style={body}>
+            <div style={h1}>Teve diária por conta da MG?</div>
+            <div style={sub}>Serviço extra solicitado pela MG Construções</div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <YN sel={e.teveMG === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ teveMG: false, funcsMG: [] })} />
+              <YN sel={e.teveMG === true} verde emoji="✅" label="Sim" onClick={() => upd({ teveMG: true })} />
             </div>
-          </Body>
-          <Bottom><Btn disabled={e.teveMG===null} onClick={() => ir(e.teveMG?'conta_mg_det':'confirmacao')}>Continuar →</Btn></Bottom>
+          </div>
+          <div style={bottom}><PBtn disabled={e.teveMG === null} onClick={() => ir(e.teveMG ? 'conta_mg_det' : 'confirmacao')}>Continuar →</PBtn></div>
         </>
       )}
 
       {/* CONTA MG DET */}
-      {tela==='conta_mg_det' && (
+      {tela === 'conta_mg_det' && (
         <>
-          <Body>
-            <H1>Detalhes — Conta MG</H1>
-            <Lbl>Período</Lbl>
-            <div style={{ display:'flex', gap:12 }}>
-              <Period sel={e.periodoMG==='DIA_TODO'} onClick={() => upd({ periodoMG:'DIA_TODO' })} icon="☀️" label="Dia todo" />
-              <Period sel={e.periodoMG==='METADE'} onClick={() => upd({ periodoMG:'METADE' })} icon="🌤" label="Metade" />
+          <div style={body}>
+            <div style={h1}>Detalhes — Conta MG</div>
+            <span style={lbl}>Período</span>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <Period sel={e.periodoMG === 'DIA_TODO'} onClick={() => upd({ periodoMG: 'DIA_TODO' })} icon="☀️" label="Dia todo" />
+              <Period sel={e.periodoMG === 'METADE'} onClick={() => upd({ periodoMG: 'METADE' })} icon="🌤" label="Metade" />
             </div>
-            <Lbl>Serviço executado</Lbl>
-            <textarea style={{ ...inp, height:88, resize:'none' as const }} value={e.servicoMG}
-              onChange={ev => upd({ servicoMG:ev.target.value })} placeholder="Descreva o serviço..." />
-            <Lbl>Funcionários ({e.funcsMG.length} selecionados)</Lbl>
-            <BuscaFunc todos={e.presentes} selecionados={e.funcsMG} onChange={v => upd({ funcsMG:v })} placeholder="Buscar da lista de presentes..." />
-          </Body>
-          <Bottom><Btn disabled={!e.periodoMG||!e.servicoMG||!e.funcsMG.length} onClick={() => ir('confirmacao')}>Continuar →</Btn></Bottom>
+            <span style={lbl}>Serviço executado</span>
+            <textarea style={{ ...inp, height: 90, resize: 'none' as const }} value={e.servicoMG}
+              onChange={ev => upd({ servicoMG: ev.target.value })} placeholder="Descreva o serviço..." />
+            <span style={lbl}>Funcionários ({e.funcsMG.length})</span>
+            <Busca todos={e.presentes} selecionados={e.funcsMG} onChange={v => upd({ funcsMG: v })} placeholder="Buscar da lista de presentes..." />
+          </div>
+          <div style={bottom}>
+            <PBtn disabled={!e.periodoMG || !e.servicoMG || !e.funcsMG.length} onClick={() => ir('confirmacao')}>Continuar →</PBtn>
+          </div>
         </>
       )}
 
       {/* CONFIRMAÇÃO */}
-      {tela==='confirmacao' && (
+      {tela === 'confirmacao' && (
         <>
-          <Body>
-            <H1>Confirmar</H1>
-            <Sub>Revise antes de salvar</Sub>
-            <Card>
-              <CRow label="Obra" value={e.obra?.nome} color={C.azul} />
-              <CRow label="Data" value={new Date(e.data+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})} />
-              <CRow label="Equipe" value={e.equipe||''} />
-              <CRow label="Presentes" value={e.presentes.map((f:any)=>f.nome).join(', ')} color={C.verde} />
-              {e.atrasados.length>0 && <CRow label="Atrasados" value={e.atrasados.map((f:any)=>`${f.nome} (${e.horariosAtrasados[f.id]||'?'})`).join(', ')} color="#92400e" />}
-              {e.saiuCedo.length>0 && <CRow label="Saíram cedo" value={e.saiuCedo.map((f:any)=>`${f.nome} (${e.horariosSaiu[f.id]||'?'})`).join(', ')} color="#92400e" />}
+          <div style={body}>
+            <div style={h1}>Confirmar</div>
+            <div style={sub}>Revise antes de salvar</div>
+            <div style={{ background: 'white', border: '2px solid #e2e8f0', borderRadius: 16, padding: 16, marginBottom: 14 }}>
+              <CRow label="Obra" value={e.obra?.nome} color={azul} />
+              <CRow label="Data" value={new Date(e.data + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} />
+              <CRow label="Equipe" value={e.equipe || ''} />
+              <CRow label="Presentes" value={e.presentes.map((f: any) => f.nome).join(', ')} color="#059669" />
+              {e.atrasados.length > 0 && <CRow label="Atrasados" value={e.atrasados.map((f: any) => `${f.nome} (${e.horariosAtrasados[f.id] || '?'})`).join(', ')} color="#92400e" />}
+              {e.saiuCedo.length > 0 && <CRow label="Saíram cedo" value={e.saiuCedo.map((f: any) => `${f.nome} (${e.horariosSaiu[f.id] || '?'})`).join(', ')} color="#92400e" />}
               {e.teveObra && <>
-                <div style={{ fontSize:11, fontWeight:700, color:C.muted, margin:'16px 0 8px', textTransform:'uppercase' as const, letterSpacing:'0.08em' }}>Conta Obra</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Conta Obra</div>
                 <CRow label="Solicitou" value={e.solicitouObra} />
-                <CRow label="Período" value={e.periodoObra==='DIA_TODO'?'Dia todo':'Metade'} />
+                <CRow label="Período" value={e.periodoObra === 'DIA_TODO' ? 'Dia todo' : 'Metade'} />
                 <CRow label="Serviço" value={e.servicoObra} />
-                <CRow label="Funcs" value={e.funcsObra.map((f:any)=>f.nome).join(', ')} />
+                <CRow label="Funcs" value={e.funcsObra.map((f: any) => f.nome).join(', ')} />
               </>}
               {e.teveMG && <>
-                <div style={{ fontSize:11, fontWeight:700, color:C.muted, margin:'16px 0 8px', textTransform:'uppercase' as const, letterSpacing:'0.08em' }}>Conta MG</div>
-                <CRow label="Período" value={e.periodoMG==='DIA_TODO'?'Dia todo':'Metade'} />
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Conta MG</div>
+                <CRow label="Período" value={e.periodoMG === 'DIA_TODO' ? 'Dia todo' : 'Metade'} />
                 <CRow label="Serviço" value={e.servicoMG} />
-                <CRow label="Funcs" value={e.funcsMG.map((f:any)=>f.nome).join(', ')} />
+                <CRow label="Funcs" value={e.funcsMG.map((f: any) => f.nome).join(', ')} />
               </>}
-            </Card>
-            <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:12, padding:'12px 16px', marginTop:14, fontSize:13, color:C.verde, display:'flex', gap:8, alignItems:'center' }}>
-              <span>🔄</span><span>Aparece em tempo real no sistema principal ao salvar.</span>
             </div>
-          </Body>
-          <Bottom>
-            <Btn disabled={salvando} onClick={salvar}>{salvando?'⏳ Salvando...':'✓ Confirmar e salvar'}</Btn>
-            <SecBtn onClick={() => ir('dia')}>Voltar ao início</SecBtn>
-          </Bottom>
+          </div>
+          <div style={bottom}>
+            <PBtn disabled={salvando} onClick={salvar}>{salvando ? '⏳ Salvando...' : '✓ Confirmar e salvar'}</PBtn>
+            <SBtn onClick={() => ir('dia')}>Voltar ao início</SBtn>
+          </div>
         </>
       )}
     </div>
