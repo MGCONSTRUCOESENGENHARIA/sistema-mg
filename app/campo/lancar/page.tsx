@@ -371,7 +371,18 @@ export default function CampoLancar() {
           <Body>
             <H1>Qual a data?</H1>
             <Label>Selecione o dia</Label>
-            <input type="date" style={inp} value={e.data} onChange={ev => upd({ data: ev.target.value })} />
+            <input
+              type="date"
+              style={{ ...inp, fontSize:16, WebkitAppearance:'none' as any, appearance:'none' }}
+              value={e.data}
+              max={new Date().toISOString().slice(0,10)}
+              onChange={ev => upd({ data: ev.target.value })}
+            />
+            {e.data && (
+              <div style={{ marginTop:12, padding:'12px 16px', background:'#dbeafe', borderRadius:12, fontSize:14, fontWeight:600, color:C.azul }}>
+                📅 {new Date(e.data+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+              </div>
+            )}
           </Body>
           <Bottom><PrimaryBtn disabled={!e.data} onClick={() => ir('obra')}>Confirmar →</PrimaryBtn></Bottom>
         </>
