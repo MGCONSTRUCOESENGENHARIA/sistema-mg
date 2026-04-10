@@ -10,7 +10,7 @@ const MENUS = [
     { href: '/app/dashboard',    label: 'Dashboard' },
     { href: '/app/competencias', label: 'Competências' },
   ]},
-  { label: 'Cadastro', items: [
+  { label: 'Planejamento', items: [
     { href: '/app/funcionarios', label: 'Funcionários' },
     { href: '/app/obras',        label: 'Obras' },
     { href: '/app/planejamento',  label: 'Planejamento de Obras' },
