@@ -1,91 +1,23 @@
 'use client'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-type Tela = 'dia' | 'confirma_dia' | 'obra' | 'equipe' | 'funcionarios' |
-  'atrasados' | 'saiu_cedo' |
-  'conta_obra' | 'conta_obra_det' | 'conta_mg' | 'conta_mg_det' |
-  'confirmacao' | 'sucesso'
+const azul = '#1e3a8a'
 
-interface Estado {
-  data: string; obra: any; equipe: 'ARMAÇÃO' | 'CARPINTARIA' | null
-  presentes: any[]
-  simAtrasado: boolean | null; atrasados: any[]; horariosAtrasados: Record<string, string>
-  simSaiu: boolean | null; saiuCedo: any[]; horariosSaiu: Record<string, string>
-  teveObra: boolean | null; solicitouObra: string
-  periodoObra: 'DIA_TODO' | 'METADE' | null; servicoObra: string; funcsObra: any[]
-  teveMG: boolean | null; periodoMG: 'DIA_TODO' | 'METADE' | null
-  servicoMG: string; funcsMG: any[]
-}
-
-const INIT: Estado = {
-  data: new Date().toISOString().slice(0, 10),
-  obra: null, equipe: null, presentes: [],
-  simAtrasado: null, atrasados: [], horariosAtrasados: {},
-  simSaiu: null, saiuCedo: [], horariosSaiu: {},
-  teveObra: null, solicitouObra: '', periodoObra: null, servicoObra: '', funcsObra: [],
-  teveMG: null, periodoMG: null, servicoMG: '', funcsMG: [],
-}
-
-const STEPS: Tela[] = ['dia', 'obra', 'equipe', 'funcionarios', 'atrasados', 'saiu_cedo', 'conta_obra', 'conta_mg', 'confirmacao']
-
-// Busca SEM re-render no pai — usa ref interno para o valor
-function Busca({ todos, selecionados, onChange, placeholder }: {
-  todos: any[], selecionados: any[], onChange: (v: any[]) => void, placeholder?: string
-}) {
-  const [resultados, setResultados] = useState<any[]>([])
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const buscar = useCallback((q: string) => {
-    if (!q) { setResultados([]); return }
-    const disp = todos.filter((f: any) =>
-      !selecionados.find((s: any) => s.id === f.id) &&
-      f.nome.toLowerCase().includes(q.toLowerCase())
-    ).slice(0, 8)
-    setResultados(disp)
-  }, [todos, selecionados])
-
-  function selecionar(f: any) {
-    onChange([...selecionados, f])
-    setResultados([])
-    if (inputRef.current) { inputRef.current.value = ''; inputRef.current.focus() }
-  }
-
-  return (
-    <div>
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder={placeholder || 'Digite o nome...'}
-        autoComplete="off"
-        autoCorrect="off"
-        spellCheck={false}
-        style={{ width: '100%', padding: '14px 16px', fontSize: 16, border: '2px solid #cbd5e1', borderRadius: 12, outline: 'none', background: 'white', boxSizing: 'border-box' as const, color: '#111', WebkitAppearance: 'none' }}
-        onChange={e => buscar(e.target.value)}
-      />
-      {resultados.length > 0 && (
-        <div style={{ background: 'white', border: '2px solid #cbd5e1', borderRadius: 12, marginTop: 6, overflow: 'hidden' }}>
-          {resultados.map((f: any) => (
-            <div key={f.id}
-              style={{ padding: '16px', fontSize: 15, color: '#111', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-              onMouseDown={ev => { ev.preventDefault(); selecionar(f) }}
-              onTouchEnd={ev => { ev.preventDefault(); selecionar(f) }}>
-              {f.nome}
-            </div>
-          ))}
-        </div>
-      )}
-      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginTop: selecionados.length ? 10 : 0 }}>
-        {selecionados.map((f: any) => (
-          <div key={f.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 20, background: '#dbeafe', fontSize: 14, fontWeight: 600, color: '#1e40af' }}>
-            {f.nome.split(' ')[0]}
-            <span style={{ fontSize: 20, color: '#93c5fd', cursor: 'pointer', lineHeight: 1 }}
-              onClick={() => onChange(selecionados.filter((s: any) => s.id !== f.id))}>×</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+const css = {
+  page: { minHeight:'100vh', background:'#f8fafc', maxWidth:480, margin:'0 auto', display:'flex', flexDirection:'column' as const },
+  top: { background:azul, padding:'16px 20px', display:'flex', alignItems:'center' as const, gap:12 },
+  body: { flex:1, padding:'24px 20px' },
+  bot: { padding:'16px 20px', background:'white', borderTop:'1px solid #e2e8f0' },
+  h1: { fontSize:22, fontWeight:800, color:'#0f172a', marginBottom:12 },
+  lbl: { fontSize:13, fontWeight:700, color:'#374151', display:'block' as const, marginBottom:6, marginTop:18 },
+  sel: { width:'100%', padding:'14px 16px', fontSize:16, border:'2px solid #cbd5e1', borderRadius:12, background:'white', color:'#111', outline:'none', appearance:'none' as const },
+  inp: { width:'100%', padding:'14px 16px', fontSize:16, border:'2px solid #cbd5e1', borderRadius:12, background:'white', color:'#111', outline:'none', boxSizing:'border-box' as const },
+  pbtn: (dis?:boolean): any => ({ width:'100%', padding:16, borderRadius:14, border:'none', background:dis?'#94a3b8':azul, color:'white', fontSize:16, fontWeight:700, cursor:dis?'not-allowed':'pointer' }),
+  sbtn: { width:'100%', padding:14, borderRadius:14, border:'2px solid #e2e8f0', background:'white', color:'#374151', fontSize:15, fontWeight:600, cursor:'pointer', marginTop:10 },
+  yn: (sel:boolean, verde:boolean): any => ({ flex:1, padding:'18px 12px', borderRadius:14, textAlign:'center' as const, cursor:'pointer', border:sel?`2px solid ${verde?'#059669':'#dc2626'}`:'2px solid #e2e8f0', background:sel?(verde?'#d1fae5':'#fee2e2'):'white' }),
+  card: { background:'white', border:'2px solid #e2e8f0', borderRadius:12, padding:14, marginTop:12 },
+  row: { display:'flex', justifyContent:'space-between', padding:'9px 0', borderBottom:'1px solid #f1f5f9', gap:12 },
 }
 
 export default function CampoLancar() {
@@ -94,385 +26,491 @@ export default function CampoLancar() {
   const [funcs, setFuncs] = useState<any[]>([])
   const [funcsDisp, setFuncsDisp] = useState<any[]>([])
   const [salvando, setSalvando] = useState(false)
-  const [e, setE] = useState<Estado>(INIT)
+
+  // Estado simples
+  const [data, setData] = useState(new Date().toISOString().slice(0,10))
+  const [obraId, setObraId] = useState('')
+  const [equipe, setEquipe] = useState<'ARMAÇÃO'|'CARPINTARIA'|''>('')
+  const [presentesIds, setPresentesIds] = useState<string[]>([])
+  const [simAtrasado, setSimAtrasado] = useState<boolean|null>(null)
+  const [atrasadosIds, setAtrasadosIds] = useState<string[]>([])
+  const [horaAtrasado, setHoraAtrasado] = useState<Record<string,string>>({})
+  const [simSaiu, setSimSaiu] = useState<boolean|null>(null)
+  const [saiuIds, setSaiuIds] = useState<string[]>([])
+  const [horaSaiu, setHoraSaiu] = useState<Record<string,string>>({})
+  const [teveObra, setTeveObra] = useState<boolean|null>(null)
+  const [solicitou, setSolicitou] = useState('')
+  const [periodoObra, setPeriodoObra] = useState<'DIA_TODO'|'METADE'|''>('')
+  const [servicoObra, setServicoObra] = useState('')
+  const [funcsObraIds, setFuncsObraIds] = useState<string[]>([])
+  const [teveMG, setTeveMG] = useState<boolean|null>(null)
+  const [periodoMG, setPeriodoMG] = useState<'DIA_TODO'|'METADE'|''>('')
+  const [servicoMG, setServicoMG] = useState('')
+  const [funcsMGIds, setFuncsMGIds] = useState<string[]>([])
 
   useEffect(() => {
-    supabase.from('obras').select('id,nome,codigo').eq('status', 'ATIVA').order('nome')
-      .then(({ data }) => setObras(data || []))
+    supabase.from('obras').select('id,nome').eq('status','ATIVA').order('nome').then(({data})=>setObras(data||[]))
   }, [])
 
   useEffect(() => {
-    if (e.equipe) {
-      supabase.from('funcionarios').select('id,nome').eq('ativo', true).eq('equipe', e.equipe).order('nome')
-        .then(({ data }) => setFuncs(data || []))
-    }
-  }, [e.equipe])
+    if (!equipe) return
+    supabase.from('funcionarios').select('id,nome').eq('ativo',true).eq('equipe',equipe).order('nome').then(({data})=>setFuncs(data||[]))
+  }, [equipe])
 
   useEffect(() => {
-    if (!e.obra || !e.data || !funcs.length) { setFuncsDisp(funcs); return }
-    supabase.from('presencas').select('funcionario_id').eq('data', e.data).eq('obra_id', e.obra.id)
-      .then(({ data }) => {
-        const jaReg = new Set((data || []).map((p: any) => p.funcionario_id))
-        setFuncsDisp(funcs.filter(f => !jaReg.has(f.id)))
-      })
-  }, [e.obra, e.data, funcs])
+    if (!obraId || !data || !funcs.length) { setFuncsDisp(funcs); return }
+    supabase.from('presencas').select('funcionario_id').eq('data',data).eq('obra_id',obraId).then(({data:p})=>{
+      const jaReg = new Set((p||[]).map((x:any)=>x.funcionario_id))
+      setFuncsDisp(funcs.filter(f=>!jaReg.has(f.id)))
+    })
+  }, [obraId, data, funcs])
 
-  function upd(k: Partial<Estado>) { setE(prev => ({ ...prev, ...k })) }
-  function ir(t: Tela) { setTela(t) }
-  const step = STEPS.indexOf(tela) + 1
-  const azul = '#1e3a8a'
+  const obra = obras.find(o=>o.id===obraId)
+  const presentes = funcs.filter(f=>presentesIds.includes(f.id))
+  const atrasados = funcs.filter(f=>atrasadosIds.includes(f.id))
+  const saiuCedo = funcs.filter(f=>saiuIds.includes(f.id))
+  const funcsObra = presentes.filter(f=>funcsObraIds.includes(f.id))
+  const funcsMG = presentes.filter(f=>funcsMGIds.includes(f.id))
+
+  const step = STEPS.indexOf(tela)+1
+
+  function ir(t:Tela) { setTela(t) }
+  function goBack() {
+    if (tela==='confirma_dia') ir('dia')
+    else if (tela==='conta_obra_det') ir('conta_obra')
+    else if (tela==='conta_mg_det') ir('conta_mg')
+    else { const i=STEPS.indexOf(tela); if(i>0) ir(STEPS[i-1] as Tela) }
+  }
 
   async function salvar() {
     setSalvando(true)
-    const mes = e.data.slice(0, 7)
-    let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
-    if (!comp) {
-      const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status: 'ABERTA' }).select().single()
-      comp = nova
-    }
-    for (const f of e.presentes) {
-      const at = e.atrasados.find((a: any) => a.id === f.id)
-      const sc = e.saiuCedo.find((s: any) => s.id === f.id)
+    const mes = data.slice(0,7)
+    let {data:comp} = await supabase.from('competencias').select('id').eq('mes_ano',mes).maybeSingle()
+    if (!comp) { const {data:n} = await supabase.from('competencias').insert({mes_ano:mes,status:'ABERTA'}).select().single(); comp=n }
+    for (const f of presentes) {
+      const at = atrasados.find(a=>a.id===f.id)
+      const sc = saiuCedo.find(s=>s.id===f.id)
       await supabase.from('presencas').upsert({
-        competencia_id: comp!.id, funcionario_id: f.id,
-        data: e.data, obra_id: e.obra.id, tipo: 'NORMAL', fracao: (at || sc) ? 0.5 : 1,
-      }, { onConflict: 'funcionario_id,data,competencia_id' })
+        competencia_id:comp!.id, funcionario_id:f.id, data, obra_id:obraId, tipo:'NORMAL', fracao:(at||sc)?0.5:1
+      },{onConflict:'funcionario_id,data,competencia_id'})
     }
-    if (e.teveObra) {
-      for (const f of e.funcsObra) {
+    if (teveObra) {
+      for (const f of funcsObra) {
         await supabase.from('diarias_extras').insert({
-          obra_id: e.obra.id, funcionario_id: f.id, data: e.data, tipo: 'CONTA_OBRA',
-          quantidade: e.periodoObra === 'METADE' ? 0.5 : 1, servico: e.servicoObra,
-          observacao: `Solicitado: ${e.solicitouObra}`, descontada_producao: false, recebida_medicao: false,
+          obra_id:obraId, funcionario_id:f.id, data, tipo:'CONTA_OBRA',
+          quantidade:periodoObra==='METADE'?0.5:1, servico:servicoObra,
+          observacao:`Solicitado: ${solicitou}`, descontada_producao:false, recebida_medicao:false
         })
       }
     }
-    if (e.teveMG) {
-      for (const f of e.funcsMG) {
+    if (teveMG) {
+      for (const f of funcsMG) {
         await supabase.from('diarias_extras').insert({
-          obra_id: e.obra.id, funcionario_id: f.id, data: e.data, tipo: 'CONTA_MG',
-          quantidade: e.periodoMG === 'METADE' ? 0.5 : 1, servico: e.servicoMG,
-          descontada_producao: false, recebida_medicao: false,
+          obra_id:obraId, funcionario_id:f.id, data, tipo:'CONTA_MG',
+          quantidade:periodoMG==='METADE'?0.5:1, servico:servicoMG,
+          descontada_producao:false, recebida_medicao:false
         })
       }
     }
     const resumo = [
-      `Equipe: ${e.equipe}`,
-      `Presentes (${e.presentes.length}): ${e.presentes.map((f: any) => f.nome).join(', ')}`,
-      e.atrasados.length > 0 ? `Atrasados: ${e.atrasados.map((f: any) => `${f.nome} (${e.horariosAtrasados[f.id] || '?'})`).join(', ')}` : null,
-      e.saiuCedo.length > 0 ? `Saíram cedo: ${e.saiuCedo.map((f: any) => `${f.nome} (${e.horariosSaiu[f.id] || '?'})`).join(', ')}` : null,
-      e.teveObra ? `Conta Obra: ${e.servicoObra} | ${e.periodoObra === 'METADE' ? 'Metade' : 'Dia todo'} | ${e.solicitouObra} | ${e.funcsObra.map((f: any) => f.nome).join(', ')}` : null,
-      e.teveMG ? `Conta MG: ${e.servicoMG} | ${e.periodoMG === 'METADE' ? 'Metade' : 'Dia todo'} | ${e.funcsMG.map((f: any) => f.nome).join(', ')}` : null,
+      `Equipe: ${equipe}`,
+      `Presentes (${presentes.length}): ${presentes.map(f=>f.nome).join(', ')}`,
+      atrasados.length>0?`Atrasados: ${atrasados.map(f=>`${f.nome} (${horaAtrasado[f.id]||'?'})`).join(', ')}`:null,
+      saiuCedo.length>0?`Saíram cedo: ${saiuCedo.map(f=>`${f.nome} (${horaSaiu[f.id]||'?'})`).join(', ')}`:null,
+      teveObra?`Conta Obra: ${servicoObra} | ${periodoObra==='METADE'?'Metade':'Dia todo'} | ${solicitou} | ${funcsObra.map(f=>f.nome).join(', ')}`:null,
+      teveMG?`Conta MG: ${servicoMG} | ${periodoMG==='METADE'?'Metade':'Dia todo'} | ${funcsMG.map(f=>f.nome).join(', ')}`:null,
     ].filter(Boolean).join('\n')
     await supabase.from('folhas_ponto').insert({
-      obra_id: e.obra.id, equipe: e.equipe, data: e.data, foto_url: '',
-      tem_diaria_extra: !!(e.teveObra || e.teveMG), observacao: resumo, processada: false,
+      obra_id:obraId, equipe, data, foto_url:'',
+      tem_diaria_extra:!!(teveObra||teveMG), observacao:resumo, processada:false
     })
     setSalvando(false)
     ir('sucesso')
   }
 
-  const st = {
-    page: { minHeight: '100vh', background: '#f8fafc', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column' as const },
-    top: { background: azul, padding: '16px 20px', display: 'flex', alignItems: 'center' as const, gap: 12 },
-    body: { flex: 1, padding: '24px 20px', overflowY: 'auto' as const },
-    bot: { padding: '16px 20px', background: 'white', borderTop: '1px solid #e2e8f0' },
-    h1: { fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 },
-    sub: { fontSize: 14, color: '#64748b', marginBottom: 20 },
-    lbl: { fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.06em', display: 'block' as const, marginBottom: 8, marginTop: 20 },
-    inp: { width: '100%', padding: '14px 16px', fontSize: 16, border: '2px solid #cbd5e1', borderRadius: 12, outline: 'none', background: 'white', boxSizing: 'border-box' as const, color: '#111' },
-  }
-
-  function PBtn({ disabled, onClick, label }: any) {
-    return <button disabled={disabled} onClick={onClick} style={{ width: '100%', padding: 16, borderRadius: 14, border: 'none', background: disabled ? '#94a3b8' : azul, color: 'white', fontSize: 16, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer' }}>{label}</button>
-  }
-  function SBtn({ onClick, label }: any) {
-    return <button onClick={onClick} style={{ width: '100%', padding: 14, borderRadius: 14, border: '2px solid #e2e8f0', background: 'white', color: '#374151', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10 }}>{label}</button>
-  }
-  function YN({ sel, verde, emoji, label, onClick }: any) {
-    return (
-      <div onClick={onClick} style={{ flex: 1, padding: '20px 12px', borderRadius: 16, textAlign: 'center' as const, cursor: 'pointer', border: sel ? `2px solid ${verde ? '#059669' : '#dc2626'}` : '2px solid #e2e8f0', background: sel ? (verde ? '#d1fae5' : '#fee2e2') : 'white' }}>
-        <div style={{ fontSize: 36, marginBottom: 8 }}>{emoji}</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: sel ? (verde ? '#059669' : '#dc2626') : '#374151' }}>{label}</div>
-      </div>
-    )
-  }
-  function Period({ sel, onClick, icon, label }: any) {
-    return (
-      <div onClick={onClick} style={{ flex: 1, padding: '18px 12px', borderRadius: 14, border: sel ? `2px solid ${azul}` : '2px solid #e2e8f0', background: sel ? '#dbeafe' : 'white', cursor: 'pointer', textAlign: 'center' as const }}>
-        <div style={{ fontSize: 28, marginBottom: 6 }}>{icon}</div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: sel ? azul : '#374151' }}>{label}</div>
-      </div>
-    )
-  }
-  function CRow({ label, value, color }: any) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f1f5f9', gap: 12 }}>
-        <span style={{ fontSize: 13, color: '#64748b', flexShrink: 0, minWidth: 80 }}>{label}</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: color || '#0f172a', textAlign: 'right' as const }}>{value}</span>
-      </div>
-    )
-  }
-
-  if (tela === 'sucesso') return (
-    <div style={st.page}>
-      <div style={st.top}><span style={{ color: 'white', fontWeight: 800, fontSize: 18 }}>MG Campo</span></div>
-      <div style={{ ...st.body, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', textAlign: 'center', paddingTop: 48 }}>
-        <div style={{ width: 96, height: 96, borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, marginBottom: 24 }}>✅</div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Salvo!</div>
-        <div style={{ fontSize: 15, color: '#64748b', marginBottom: 32 }}>Lançamento registrado no sistema.</div>
-        <PBtn onClick={() => { setE(INIT); ir('dia') }} label="Novo lançamento" />
+  if (tela==='sucesso') return (
+    <div style={css.page}>
+      <div style={css.top}><span style={{color:'white',fontWeight:800,fontSize:18}}>MG Campo</span></div>
+      <div style={{...css.body,display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',paddingTop:48}}>
+        <div style={{width:96,height:96,borderRadius:'50%',background:'#d1fae5',display:'flex',alignItems:'center',justifyContent:'center',fontSize:48,marginBottom:24}}>✅</div>
+        <div style={{fontSize:26,fontWeight:800,color:'#0f172a',marginBottom:8}}>Salvo!</div>
+        <div style={{fontSize:15,color:'#64748b',marginBottom:32}}>Lançamento registrado no sistema.</div>
+        <button style={css.pbtn()} onClick={()=>{
+          setTela('dia'); setObraId(''); setEquipe(''); setPresentesIds([]); setSimAtrasado(null); setAtrasadosIds([]); setHoraAtrasado({}); setSimSaiu(null); setSaiuIds([]); setHoraSaiu({}); setTeveObra(null); setSolicitou(''); setPeriodoObra(''); setServicoObra(''); setFuncsObraIds([]); setTeveMG(null); setPeriodoMG(''); setServicoMG(''); setFuncsMGIds([])
+        }}>Novo lançamento</button>
       </div>
     </div>
   )
 
-  const goBack = () => {
-    if (tela === 'confirma_dia') ir('dia')
-    else if (tela === 'conta_obra_det') ir('conta_obra')
-    else if (tela === 'conta_mg_det') ir('conta_mg')
-    else { const i = STEPS.indexOf(tela); if (i > 0) ir(STEPS[i - 1]) }
-  }
-
   return (
-    <div style={st.page}>
-      <div style={st.top}>
-        {tela !== 'dia' && <button onClick={goBack} style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,.2)', color: 'white', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>←</button>}
+    <div style={css.page}>
+      <div style={css.top}>
+        {tela!=='dia' && <button onClick={goBack} style={{width:38,height:38,borderRadius:10,border:'none',background:'rgba(255,255,255,.2)',color:'white',fontSize:20,cursor:'pointer',flexShrink:0}}>←</button>}
         <div>
-          <div style={{ color: 'white', fontWeight: 800, fontSize: 17 }}>MG Campo</div>
-          {e.obra && <div style={{ color: 'rgba(255,255,255,.6)', fontSize: 12 }}>{e.obra.nome}</div>}
+          <div style={{color:'white',fontWeight:800,fontSize:17}}>MG Campo</div>
+          {obra && <div style={{color:'rgba(255,255,255,.6)',fontSize:12}}>{obra.nome}</div>}
         </div>
       </div>
-      <div style={{ background: '#1e40af', padding: '0 20px 12px', display: 'flex', gap: 4 }}>
-        {STEPS.map((_, i) => <div key={i} style={{ height: 3, flex: 1, borderRadius: 2, background: i + 1 < step ? 'white' : i + 1 === step ? '#93c5fd' : 'rgba(255,255,255,.25)' }} />)}
+      <div style={{background:'#1e40af',padding:'0 20px 12px',display:'flex',gap:4}}>
+        {STEPS.map((_,i)=><div key={i} style={{height:3,flex:1,borderRadius:2,background:i+1<step?'white':i+1===step?'#93c5fd':'rgba(255,255,255,.25)'}}/>)}
       </div>
 
-      {tela === 'dia' && (
-        <div style={st.body}>
-          <div style={st.h1}>Essa diária é de hoje?</div>
-          <div style={st.sub}>{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <YN sel={false} verde emoji="✅" label="Sim, hoje" onClick={() => { upd({ data: new Date().toISOString().slice(0, 10) }); ir('obra') }} />
-            <YN sel={false} verde={false} emoji="📅" label="Outro dia" onClick={() => ir('confirma_dia')} />
-          </div>
-        </div>
-      )}
-
-      {tela === 'confirma_dia' && (
-        <>
-          <div style={st.body}>
-            <div style={st.h1}>Qual a data?</div>
-            <div style={st.sub}>Toque para selecionar</div>
-            <input
-              type="date"
-              defaultValue={e.data}
-              max={new Date().toISOString().slice(0, 10)}
-              style={{ ...st.inp, minHeight: 54 }}
-              onChange={ev => { if (ev.target.value) upd({ data: ev.target.value }) }}
-            />
-          </div>
-          <div style={st.bot}><PBtn disabled={!e.data} onClick={() => ir('obra')} label="Confirmar →" /></div>
-        </>
-      )}
-
-      {tela === 'obra' && (
-        <>
-          <div style={st.body}>
-            <div style={st.h1}>Qual a obra?</div>
-            <div style={st.sub}>Digite para buscar</div>
-            <Busca todos={obras} selecionados={e.obra ? [e.obra] : []} onChange={v => upd({ obra: v.length ? v[v.length - 1] : null })} placeholder="Ex: Barreiro, Savassi..." />
-            {e.obra && <div style={{ marginTop: 14, padding: '14px 16px', background: '#dbeafe', borderRadius: 12, fontWeight: 700, color: azul }}>🏗 {e.obra.nome}</div>}
-          </div>
-          <div style={st.bot}><PBtn disabled={!e.obra} onClick={() => ir('equipe')} label="Continuar →" /></div>
-        </>
-      )}
-
-      {tela === 'equipe' && (
-        <>
-          <div style={st.body}>
-            <div style={st.h1}>Qual a equipe?</div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <YN sel={e.equipe === 'ARMAÇÃO'} verde emoji="🔩" label="Armação" onClick={() => upd({ equipe: 'ARMAÇÃO', presentes: [] })} />
-              <YN sel={e.equipe === 'CARPINTARIA'} verde emoji="🪵" label="Carpintaria" onClick={() => upd({ equipe: 'CARPINTARIA', presentes: [] })} />
+      {/* DIA */}
+      {tela==='dia' && (
+        <div style={css.body}>
+          <div style={css.h1}>Essa diária é de hoje?</div>
+          <div style={{fontSize:14,color:'#64748b',marginBottom:24}}>{new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+          <div style={{display:'flex',gap:12}}>
+            <div style={css.yn(false,true)} onClick={()=>{setData(new Date().toISOString().slice(0,10));ir('obra')}}>
+              <div style={{fontSize:36,marginBottom:8}}>✅</div>
+              <div style={{fontSize:15,fontWeight:700}}>Sim, hoje</div>
+            </div>
+            <div style={css.yn(false,false)} onClick={()=>ir('confirma_dia')}>
+              <div style={{fontSize:36,marginBottom:8}}>📅</div>
+              <div style={{fontSize:15,fontWeight:700}}>Outro dia</div>
             </div>
           </div>
-          <div style={st.bot}><PBtn disabled={!e.equipe} onClick={() => ir('funcionarios')} label="Continuar →" /></div>
+        </div>
+      )}
+
+      {/* CONFIRMA DIA */}
+      {tela==='confirma_dia' && (
+        <>
+          <div style={css.body}>
+            <div style={css.h1}>Qual a data?</div>
+            <span style={css.lbl}>Selecione o dia</span>
+            <input type="date" style={{...css.inp,minHeight:54}}
+              value={data} max={new Date().toISOString().slice(0,10)}
+              onChange={ev=>setData(ev.target.value)} />
+          </div>
+          <div style={css.bot}><button style={css.pbtn(!data)} disabled={!data} onClick={()=>ir('obra')}>Confirmar →</button></div>
         </>
       )}
 
-      {tela === 'funcionarios' && (
+      {/* OBRA */}
+      {tela==='obra' && (
         <>
-          <div style={st.body}>
-            <div style={st.h1}>Quem estava na obra?</div>
-            {funcsDisp.length === 0 && funcs.length > 0 ? (
-              <div style={{ padding: 32, background: '#d1fae5', borderRadius: 14, textAlign: 'center' as const }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-                <div style={{ fontWeight: 700, color: '#059669' }}>Todos já registrados hoje!</div>
+          <div style={css.body}>
+            <div style={css.h1}>Qual a obra?</div>
+            <span style={css.lbl}>Selecione a obra</span>
+            <select style={css.sel} value={obraId} onChange={ev=>setObraId(ev.target.value)}>
+              <option value="">-- Selecione --</option>
+              {obras.map(o=><option key={o.id} value={o.id}>{o.nome}</option>)}
+            </select>
+          </div>
+          <div style={css.bot}><button style={css.pbtn(!obraId)} disabled={!obraId} onClick={()=>ir('equipe')}>Continuar →</button></div>
+        </>
+      )}
+
+      {/* EQUIPE */}
+      {tela==='equipe' && (
+        <>
+          <div style={css.body}>
+            <div style={css.h1}>Qual a equipe?</div>
+            <div style={{display:'flex',gap:12}}>
+              <div style={css.yn(equipe==='ARMAÇÃO',true)} onClick={()=>{setEquipe('ARMAÇÃO');setPresentesIds([])}}>
+                <div style={{fontSize:36,marginBottom:8}}>🔩</div>
+                <div style={{fontSize:15,fontWeight:700,color:equipe==='ARMAÇÃO'?'#059669':'#374151'}}>Armação</div>
+              </div>
+              <div style={css.yn(equipe==='CARPINTARIA',true)} onClick={()=>{setEquipe('CARPINTARIA');setPresentesIds([])}}>
+                <div style={{fontSize:36,marginBottom:8}}>🪵</div>
+                <div style={{fontSize:15,fontWeight:700,color:equipe==='CARPINTARIA'?'#059669':'#374151'}}>Carpintaria</div>
+              </div>
+            </div>
+          </div>
+          <div style={css.bot}><button style={css.pbtn(!equipe)} disabled={!equipe} onClick={()=>ir('funcionarios')}>Continuar →</button></div>
+        </>
+      )}
+
+      {/* FUNCIONÁRIOS — checkboxes nativos */}
+      {tela==='funcionarios' && (
+        <>
+          <div style={css.body}>
+            <div style={css.h1}>Quem estava na obra?</div>
+            {funcsDisp.length===0 && funcs.length>0 ? (
+              <div style={{padding:32,background:'#d1fae5',borderRadius:14,textAlign:'center'}}>
+                <div style={{fontSize:32,marginBottom:8}}>✅</div>
+                <div style={{fontWeight:700,color:'#059669'}}>Todos já registrados hoje!</div>
               </div>
             ) : (
-              <Busca todos={funcsDisp} selecionados={e.presentes} onChange={v => upd({ presentes: v })} placeholder="Buscar funcionário..." />
+              <div>
+                {funcsDisp.map(f=>(
+                  <label key={f.id} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                    <input type="checkbox" checked={presentesIds.includes(f.id)}
+                      onChange={ev=>{
+                        if(ev.target.checked) setPresentesIds(prev=>[...prev,f.id])
+                        else setPresentesIds(prev=>prev.filter(id=>id!==f.id))
+                      }}
+                      style={{width:22,height:22,cursor:'pointer',accentColor:azul}} />
+                    <span style={{fontSize:16,color:'#0f172a'}}>{f.nome}</span>
+                  </label>
+                ))}
+              </div>
             )}
           </div>
-          <div style={st.bot}><PBtn disabled={!e.presentes.length} onClick={() => ir('atrasados')} label="Continuar →" /></div>
+          <div style={css.bot}><button style={css.pbtn(!presentesIds.length)} disabled={!presentesIds.length} onClick={()=>ir('atrasados')}>Continuar →</button></div>
         </>
       )}
 
-      {tela === 'atrasados' && (
+      {/* ATRASADOS */}
+      {tela==='atrasados' && (
         <>
-          <div style={st.body}>
-            <div style={st.h1}>Alguém chegou atrasado?</div>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-              <YN sel={e.simAtrasado === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ simAtrasado: false, atrasados: [], horariosAtrasados: {} })} />
-              <YN sel={e.simAtrasado === true} verde emoji="✅" label="Sim" onClick={() => upd({ simAtrasado: true })} />
+          <div style={css.body}>
+            <div style={css.h1}>Alguém chegou atrasado?</div>
+            <div style={{display:'flex',gap:12,marginBottom:20}}>
+              <div style={css.yn(simAtrasado===false,false)} onClick={()=>{setSimAtrasado(false);setAtrasadosIds([]);setHoraAtrasado({})}}>
+                <div style={{fontSize:36,marginBottom:8}}>❌</div>
+                <div style={{fontSize:15,fontWeight:700,color:simAtrasado===false?'#dc2626':'#374151'}}>Não</div>
+              </div>
+              <div style={css.yn(simAtrasado===true,true)} onClick={()=>setSimAtrasado(true)}>
+                <div style={{fontSize:36,marginBottom:8}}>✅</div>
+                <div style={{fontSize:15,fontWeight:700,color:simAtrasado===true?'#059669':'#374151'}}>Sim</div>
+              </div>
             </div>
-            {e.simAtrasado === true && (
-              <>
-                <span style={st.lbl}>Quem?</span>
-                <Busca todos={e.presentes} selecionados={e.atrasados} onChange={v => upd({ atrasados: v })} placeholder="Buscar..." />
-                {e.atrasados.map((f: any) => (
-                  <div key={f.id} style={{ marginTop: 12, background: 'white', border: '2px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>⏰ {f.nome.split(' ')[0]} — que horas chegou?</div>
-                    <input type="time" style={st.inp} value={e.horariosAtrasados[f.id] || ''} onChange={ev => upd({ horariosAtrasados: { ...e.horariosAtrasados, [f.id]: ev.target.value } })} />
+            {simAtrasado===true && (
+              <div>
+                <span style={css.lbl}>Quem?</span>
+                {presentes.map(f=>(
+                  <div key={f.id}>
+                    <label style={{display:'flex',alignItems:'center',gap:14,padding:'12px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                      <input type="checkbox" checked={atrasadosIds.includes(f.id)}
+                        onChange={ev=>{
+                          if(ev.target.checked) setAtrasadosIds(prev=>[...prev,f.id])
+                          else setAtrasadosIds(prev=>prev.filter(id=>id!==f.id))
+                        }}
+                        style={{width:22,height:22,cursor:'pointer',accentColor:azul}} />
+                      <span style={{fontSize:16,color:'#0f172a'}}>{f.nome}</span>
+                    </label>
+                    {atrasadosIds.includes(f.id) && (
+                      <div style={{paddingLeft:36,paddingBottom:10}}>
+                        <span style={{fontSize:12,color:'#64748b',display:'block',marginBottom:4}}>Que horas chegou?</span>
+                        <input type="time" style={{...css.inp,width:'auto'}}
+                          value={horaAtrasado[f.id]||''}
+                          onChange={ev=>setHoraAtrasado(prev=>({...prev,[f.id]:ev.target.value}))} />
+                      </div>
+                    )}
                   </div>
                 ))}
-              </>
+              </div>
             )}
           </div>
-          <div style={st.bot}>
-            <PBtn disabled={e.simAtrasado === null || (e.simAtrasado === true && (!e.atrasados.length || e.atrasados.some((f: any) => !e.horariosAtrasados[f.id])))} onClick={() => ir('saiu_cedo')} label="Continuar →" />
+          <div style={css.bot}>
+            <button
+              style={css.pbtn(simAtrasado===null||(simAtrasado===true&&(!atrasadosIds.length||atrasadosIds.some(id=>!horaAtrasado[id]))))}
+              disabled={simAtrasado===null||(simAtrasado===true&&(!atrasadosIds.length||atrasadosIds.some(id=>!horaAtrasado[id])))}
+              onClick={()=>ir('saiu_cedo')}>Continuar →</button>
           </div>
         </>
       )}
 
-      {tela === 'saiu_cedo' && (
+      {/* SAIU CEDO */}
+      {tela==='saiu_cedo' && (
         <>
-          <div style={st.body}>
-            <div style={st.h1}>Alguém saiu mais cedo?</div>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-              <YN sel={e.simSaiu === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ simSaiu: false, saiuCedo: [], horariosSaiu: {} })} />
-              <YN sel={e.simSaiu === true} verde emoji="✅" label="Sim" onClick={() => upd({ simSaiu: true })} />
+          <div style={css.body}>
+            <div style={css.h1}>Alguém saiu mais cedo?</div>
+            <div style={{display:'flex',gap:12,marginBottom:20}}>
+              <div style={css.yn(simSaiu===false,false)} onClick={()=>{setSimSaiu(false);setSaiuIds([]);setHoraSaiu({})}}>
+                <div style={{fontSize:36,marginBottom:8}}>❌</div>
+                <div style={{fontSize:15,fontWeight:700,color:simSaiu===false?'#dc2626':'#374151'}}>Não</div>
+              </div>
+              <div style={css.yn(simSaiu===true,true)} onClick={()=>setSimSaiu(true)}>
+                <div style={{fontSize:36,marginBottom:8}}>✅</div>
+                <div style={{fontSize:15,fontWeight:700,color:simSaiu===true?'#059669':'#374151'}}>Sim</div>
+              </div>
             </div>
-            {e.simSaiu === true && (
-              <>
-                <span style={st.lbl}>Quem?</span>
-                <Busca todos={e.presentes} selecionados={e.saiuCedo} onChange={v => upd({ saiuCedo: v })} placeholder="Buscar..." />
-                {e.saiuCedo.map((f: any) => (
-                  <div key={f.id} style={{ marginTop: 12, background: 'white', border: '2px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>🚪 {f.nome.split(' ')[0]} — que horas saiu?</div>
-                    <input type="time" style={st.inp} value={e.horariosSaiu[f.id] || ''} onChange={ev => upd({ horariosSaiu: { ...e.horariosSaiu, [f.id]: ev.target.value } })} />
+            {simSaiu===true && (
+              <div>
+                <span style={css.lbl}>Quem?</span>
+                {presentes.map(f=>(
+                  <div key={f.id}>
+                    <label style={{display:'flex',alignItems:'center',gap:14,padding:'12px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                      <input type="checkbox" checked={saiuIds.includes(f.id)}
+                        onChange={ev=>{
+                          if(ev.target.checked) setSaiuIds(prev=>[...prev,f.id])
+                          else setSaiuIds(prev=>prev.filter(id=>id!==f.id))
+                        }}
+                        style={{width:22,height:22,cursor:'pointer',accentColor:azul}} />
+                      <span style={{fontSize:16,color:'#0f172a'}}>{f.nome}</span>
+                    </label>
+                    {saiuIds.includes(f.id) && (
+                      <div style={{paddingLeft:36,paddingBottom:10}}>
+                        <span style={{fontSize:12,color:'#64748b',display:'block',marginBottom:4}}>Que horas saiu?</span>
+                        <input type="time" style={{...css.inp,width:'auto'}}
+                          value={horaSaiu[f.id]||''}
+                          onChange={ev=>setHoraSaiu(prev=>({...prev,[f.id]:ev.target.value}))} />
+                      </div>
+                    )}
                   </div>
                 ))}
-              </>
+              </div>
             )}
           </div>
-          <div style={st.bot}>
-            <PBtn disabled={e.simSaiu === null || (e.simSaiu === true && (!e.saiuCedo.length || e.saiuCedo.some((f: any) => !e.horariosSaiu[f.id])))} onClick={() => ir('conta_obra')} label="Continuar →" />
+          <div style={css.bot}>
+            <button
+              style={css.pbtn(simSaiu===null||(simSaiu===true&&(!saiuIds.length||saiuIds.some(id=>!horaSaiu[id]))))}
+              disabled={simSaiu===null||(simSaiu===true&&(!saiuIds.length||saiuIds.some(id=>!horaSaiu[id])))}
+              onClick={()=>ir('conta_obra')}>Continuar →</button>
           </div>
         </>
       )}
 
-      {tela === 'conta_obra' && (
+      {/* CONTA OBRA? */}
+      {tela==='conta_obra' && (
         <>
-          <div style={st.body}>
-            <div style={st.h1}>Teve diária por conta da obra?</div>
-            <div style={st.sub}>Serviço extra solicitado pelo cliente</div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <YN sel={e.teveObra === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ teveObra: false, funcsObra: [] })} />
-              <YN sel={e.teveObra === true} verde emoji="✅" label="Sim" onClick={() => upd({ teveObra: true })} />
+          <div style={css.body}>
+            <div style={css.h1}>Teve diária por conta da obra?</div>
+            <div style={{fontSize:14,color:'#64748b',marginBottom:20}}>Serviço extra solicitado pelo cliente</div>
+            <div style={{display:'flex',gap:12}}>
+              <div style={css.yn(teveObra===false,false)} onClick={()=>{setTeveObra(false);setFuncsObraIds([])}}>
+                <div style={{fontSize:36,marginBottom:8}}>❌</div>
+                <div style={{fontSize:15,fontWeight:700,color:teveObra===false?'#dc2626':'#374151'}}>Não</div>
+              </div>
+              <div style={css.yn(teveObra===true,true)} onClick={()=>setTeveObra(true)}>
+                <div style={{fontSize:36,marginBottom:8}}>✅</div>
+                <div style={{fontSize:15,fontWeight:700,color:teveObra===true?'#059669':'#374151'}}>Sim</div>
+              </div>
             </div>
           </div>
-          <div style={st.bot}><PBtn disabled={e.teveObra === null} onClick={() => ir(e.teveObra ? 'conta_obra_det' : 'conta_mg')} label="Continuar →" /></div>
+          <div style={css.bot}><button style={css.pbtn(teveObra===null)} disabled={teveObra===null} onClick={()=>ir(teveObra?'conta_obra_det':'conta_mg')}>Continuar →</button></div>
         </>
       )}
 
-      {tela === 'conta_obra_det' && (
+      {/* CONTA OBRA DET */}
+      {tela==='conta_obra_det' && (
         <>
-          <div style={st.body}>
-            <div style={st.h1}>Detalhes — Conta Obra</div>
-            <span style={st.lbl}>Quem solicitou?</span>
-            <input style={st.inp} defaultValue={e.solicitouObra} onChange={ev => upd({ solicitouObra: ev.target.value })} placeholder="Nome do responsável..." />
-            <span style={st.lbl}>Período</span>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <Period sel={e.periodoObra === 'DIA_TODO'} onClick={() => upd({ periodoObra: 'DIA_TODO' })} icon="☀️" label="Dia todo" />
-              <Period sel={e.periodoObra === 'METADE'} onClick={() => upd({ periodoObra: 'METADE' })} icon="🌤" label="Metade" />
+          <div style={css.body}>
+            <div style={css.h1}>Detalhes — Conta Obra</div>
+            <span style={css.lbl}>Quem solicitou?</span>
+            <input style={css.inp} value={solicitou} onChange={ev=>setSolicitou(ev.target.value)} placeholder="Nome do responsável..." />
+            <span style={css.lbl}>Período</span>
+            <div style={{display:'flex',gap:12}}>
+              <div style={css.yn(periodoObra==='DIA_TODO',true)} onClick={()=>setPeriodoObra('DIA_TODO')}>
+                <div style={{fontSize:28,marginBottom:6}}>☀️</div>
+                <div style={{fontSize:13,fontWeight:700}}>Dia todo</div>
+              </div>
+              <div style={css.yn(periodoObra==='METADE',true)} onClick={()=>setPeriodoObra('METADE')}>
+                <div style={{fontSize:28,marginBottom:6}}>🌤</div>
+                <div style={{fontSize:13,fontWeight:700}}>Metade</div>
+              </div>
             </div>
-            <span style={st.lbl}>Serviço executado</span>
-            <textarea style={{ ...st.inp, height: 90, resize: 'none' as const }} defaultValue={e.servicoObra} onChange={ev => upd({ servicoObra: ev.target.value })} placeholder="Descreva o serviço..." />
-            <span style={st.lbl}>Funcionários ({e.funcsObra.length})</span>
-            <Busca todos={e.presentes} selecionados={e.funcsObra} onChange={v => upd({ funcsObra: v })} placeholder="Buscar..." />
+            <span style={css.lbl}>Serviço executado</span>
+            <textarea style={{...css.inp,height:90,resize:'none'}} value={servicoObra} onChange={ev=>setServicoObra(ev.target.value)} placeholder="Descreva o serviço..." />
+            <span style={css.lbl}>Funcionários</span>
+            {presentes.map(f=>(
+              <label key={f.id} style={{display:'flex',alignItems:'center',gap:14,padding:'12px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                <input type="checkbox" checked={funcsObraIds.includes(f.id)}
+                  onChange={ev=>{
+                    if(ev.target.checked) setFuncsObraIds(prev=>[...prev,f.id])
+                    else setFuncsObraIds(prev=>prev.filter(id=>id!==f.id))
+                  }}
+                  style={{width:22,height:22,cursor:'pointer',accentColor:azul}} />
+                <span style={{fontSize:16,color:'#0f172a'}}>{f.nome}</span>
+              </label>
+            ))}
           </div>
-          <div style={st.bot}>
-            <PBtn disabled={!e.solicitouObra || !e.periodoObra || !e.servicoObra || !e.funcsObra.length} onClick={() => ir('conta_mg')} label="Continuar →" />
+          <div style={css.bot}>
+            <button style={css.pbtn(!solicitou||!periodoObra||!servicoObra||!funcsObraIds.length)}
+              disabled={!solicitou||!periodoObra||!servicoObra||!funcsObraIds.length}
+              onClick={()=>ir('conta_mg')}>Continuar →</button>
           </div>
         </>
       )}
 
-      {tela === 'conta_mg' && (
+      {/* CONTA MG? */}
+      {tela==='conta_mg' && (
         <>
-          <div style={st.body}>
-            <div style={st.h1}>Teve diária por conta da MG?</div>
-            <div style={st.sub}>Serviço extra solicitado pela MG Construções</div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <YN sel={e.teveMG === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ teveMG: false, funcsMG: [] })} />
-              <YN sel={e.teveMG === true} verde emoji="✅" label="Sim" onClick={() => upd({ teveMG: true })} />
+          <div style={css.body}>
+            <div style={css.h1}>Teve diária por conta da MG?</div>
+            <div style={{fontSize:14,color:'#64748b',marginBottom:20}}>Serviço extra solicitado pela MG Construções</div>
+            <div style={{display:'flex',gap:12}}>
+              <div style={css.yn(teveMG===false,false)} onClick={()=>{setTeveMG(false);setFuncsMGIds([])}}>
+                <div style={{fontSize:36,marginBottom:8}}>❌</div>
+                <div style={{fontSize:15,fontWeight:700,color:teveMG===false?'#dc2626':'#374151'}}>Não</div>
+              </div>
+              <div style={css.yn(teveMG===true,true)} onClick={()=>setTeveMG(true)}>
+                <div style={{fontSize:36,marginBottom:8}}>✅</div>
+                <div style={{fontSize:15,fontWeight:700,color:teveMG===true?'#059669':'#374151'}}>Sim</div>
+              </div>
             </div>
           </div>
-          <div style={st.bot}><PBtn disabled={e.teveMG === null} onClick={() => ir(e.teveMG ? 'conta_mg_det' : 'confirmacao')} label="Continuar →" /></div>
+          <div style={css.bot}><button style={css.pbtn(teveMG===null)} disabled={teveMG===null} onClick={()=>ir(teveMG?'conta_mg_det':'confirmacao')}>Continuar →</button></div>
         </>
       )}
 
-      {tela === 'conta_mg_det' && (
+      {/* CONTA MG DET */}
+      {tela==='conta_mg_det' && (
         <>
-          <div style={st.body}>
-            <div style={st.h1}>Detalhes — Conta MG</div>
-            <span style={st.lbl}>Período</span>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <Period sel={e.periodoMG === 'DIA_TODO'} onClick={() => upd({ periodoMG: 'DIA_TODO' })} icon="☀️" label="Dia todo" />
-              <Period sel={e.periodoMG === 'METADE'} onClick={() => upd({ periodoMG: 'METADE' })} icon="🌤" label="Metade" />
+          <div style={css.body}>
+            <div style={css.h1}>Detalhes — Conta MG</div>
+            <span style={css.lbl}>Período</span>
+            <div style={{display:'flex',gap:12}}>
+              <div style={css.yn(periodoMG==='DIA_TODO',true)} onClick={()=>setPeriodoMG('DIA_TODO')}>
+                <div style={{fontSize:28,marginBottom:6}}>☀️</div>
+                <div style={{fontSize:13,fontWeight:700}}>Dia todo</div>
+              </div>
+              <div style={css.yn(periodoMG==='METADE',true)} onClick={()=>setPeriodoMG('METADE')}>
+                <div style={{fontSize:28,marginBottom:6}}>🌤</div>
+                <div style={{fontSize:13,fontWeight:700}}>Metade</div>
+              </div>
             </div>
-            <span style={st.lbl}>Serviço executado</span>
-            <textarea style={{ ...st.inp, height: 90, resize: 'none' as const }} defaultValue={e.servicoMG} onChange={ev => upd({ servicoMG: ev.target.value })} placeholder="Descreva o serviço..." />
-            <span style={st.lbl}>Funcionários ({e.funcsMG.length})</span>
-            <Busca todos={e.presentes} selecionados={e.funcsMG} onChange={v => upd({ funcsMG: v })} placeholder="Buscar..." />
+            <span style={css.lbl}>Serviço executado</span>
+            <textarea style={{...css.inp,height:90,resize:'none'}} value={servicoMG} onChange={ev=>setServicoMG(ev.target.value)} placeholder="Descreva o serviço..." />
+            <span style={css.lbl}>Funcionários</span>
+            {presentes.map(f=>(
+              <label key={f.id} style={{display:'flex',alignItems:'center',gap:14,padding:'12px 0',borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}>
+                <input type="checkbox" checked={funcsMGIds.includes(f.id)}
+                  onChange={ev=>{
+                    if(ev.target.checked) setFuncsMGIds(prev=>[...prev,f.id])
+                    else setFuncsMGIds(prev=>prev.filter(id=>id!==f.id))
+                  }}
+                  style={{width:22,height:22,cursor:'pointer',accentColor:azul}} />
+                <span style={{fontSize:16,color:'#0f172a'}}>{f.nome}</span>
+              </label>
+            ))}
           </div>
-          <div style={st.bot}>
-            <PBtn disabled={!e.periodoMG || !e.servicoMG || !e.funcsMG.length} onClick={() => ir('confirmacao')} label="Continuar →" />
+          <div style={css.bot}>
+            <button style={css.pbtn(!periodoMG||!servicoMG||!funcsMGIds.length)}
+              disabled={!periodoMG||!servicoMG||!funcsMGIds.length}
+              onClick={()=>ir('confirmacao')}>Continuar →</button>
           </div>
         </>
       )}
 
-      {tela === 'confirmacao' && (
+      {/* CONFIRMAÇÃO */}
+      {tela==='confirmacao' && (
         <>
-          <div style={st.body}>
-            <div style={st.h1}>Confirmar</div>
-            <div style={st.sub}>Revise antes de salvar</div>
-            <div style={{ background: 'white', border: '2px solid #e2e8f0', borderRadius: 16, padding: 16, marginBottom: 14 }}>
-              <CRow label="Obra" value={e.obra?.nome} color={azul} />
-              <CRow label="Data" value={new Date(e.data + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} />
-              <CRow label="Equipe" value={e.equipe || ''} />
-              <CRow label="Presentes" value={e.presentes.map((f: any) => f.nome).join(', ')} color="#059669" />
-              {e.atrasados.length > 0 && <CRow label="Atrasados" value={e.atrasados.map((f: any) => `${f.nome} (${e.horariosAtrasados[f.id] || '?'})`).join(', ')} color="#92400e" />}
-              {e.saiuCedo.length > 0 && <CRow label="Saíram cedo" value={e.saiuCedo.map((f: any) => `${f.nome} (${e.horariosSaiu[f.id] || '?'})`).join(', ')} color="#92400e" />}
-              {e.teveObra && <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: '14px 0 8px', textTransform: 'uppercase' as const }}>Conta Obra</div>
-                <CRow label="Solicitou" value={e.solicitouObra} />
-                <CRow label="Período" value={e.periodoObra === 'DIA_TODO' ? 'Dia todo' : 'Metade'} />
-                <CRow label="Serviço" value={e.servicoObra} />
-                <CRow label="Funcs" value={e.funcsObra.map((f: any) => f.nome).join(', ')} />
+          <div style={css.body}>
+            <div style={css.h1}>Confirmar</div>
+            <div style={{background:'white',border:'2px solid #e2e8f0',borderRadius:16,padding:16,marginBottom:14}}>
+              <div style={css.row}><span style={{fontSize:13,color:'#64748b'}}>Obra</span><span style={{fontSize:13,fontWeight:700,color:azul}}>{obra?.nome}</span></div>
+              <div style={css.row}><span style={{fontSize:13,color:'#64748b'}}>Data</span><span style={{fontSize:13,fontWeight:600}}>{new Date(data+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</span></div>
+              <div style={css.row}><span style={{fontSize:13,color:'#64748b'}}>Equipe</span><span style={{fontSize:13,fontWeight:600}}>{equipe}</span></div>
+              <div style={css.row}><span style={{fontSize:13,color:'#64748b',minWidth:80}}>Presentes</span><span style={{fontSize:13,fontWeight:600,color:'#059669',textAlign:'right'}}>{presentes.map(f=>f.nome).join(', ')}</span></div>
+              {atrasados.length>0 && <div style={css.row}><span style={{fontSize:13,color:'#64748b',minWidth:80}}>Atrasados</span><span style={{fontSize:13,fontWeight:600,color:'#92400e',textAlign:'right'}}>{atrasados.map(f=>`${f.nome} (${horaAtrasado[f.id]||'?'})`).join(', ')}</span></div>}
+              {saiuCedo.length>0 && <div style={css.row}><span style={{fontSize:13,color:'#64748b',minWidth:80}}>Saíram cedo</span><span style={{fontSize:13,fontWeight:600,color:'#92400e',textAlign:'right'}}>{saiuCedo.map(f=>`${f.nome} (${horaSaiu[f.id]||'?'})`).join(', ')}</span></div>}
+              {teveObra && <>
+                <div style={{fontSize:11,fontWeight:700,color:'#64748b',margin:'14px 0 8px',textTransform:'uppercase'}}>Conta Obra</div>
+                <div style={css.row}><span style={{fontSize:13,color:'#64748b'}}>Solicitou</span><span style={{fontSize:13,fontWeight:600}}>{solicitou}</span></div>
+                <div style={css.row}><span style={{fontSize:13,color:'#64748b'}}>Período</span><span style={{fontSize:13,fontWeight:600}}>{periodoObra==='DIA_TODO'?'Dia todo':'Metade'}</span></div>
+                <div style={css.row}><span style={{fontSize:13,color:'#64748b',minWidth:80}}>Serviço</span><span style={{fontSize:13,fontWeight:600,textAlign:'right'}}>{servicoObra}</span></div>
+                <div style={css.row}><span style={{fontSize:13,color:'#64748b',minWidth:80}}>Funcs</span><span style={{fontSize:13,fontWeight:600,textAlign:'right'}}>{funcsObra.map(f=>f.nome).join(', ')}</span></div>
               </>}
-              {e.teveMG && <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: '14px 0 8px', textTransform: 'uppercase' as const }}>Conta MG</div>
-                <CRow label="Período" value={e.periodoMG === 'DIA_TODO' ? 'Dia todo' : 'Metade'} />
-                <CRow label="Serviço" value={e.servicoMG} />
-                <CRow label="Funcs" value={e.funcsMG.map((f: any) => f.nome).join(', ')} />
+              {teveMG && <>
+                <div style={{fontSize:11,fontWeight:700,color:'#64748b',margin:'14px 0 8px',textTransform:'uppercase'}}>Conta MG</div>
+                <div style={css.row}><span style={{fontSize:13,color:'#64748b'}}>Período</span><span style={{fontSize:13,fontWeight:600}}>{periodoMG==='DIA_TODO'?'Dia todo':'Metade'}</span></div>
+                <div style={css.row}><span style={{fontSize:13,color:'#64748b',minWidth:80}}>Serviço</span><span style={{fontSize:13,fontWeight:600,textAlign:'right'}}>{servicoMG}</span></div>
+                <div style={css.row}><span style={{fontSize:13,color:'#64748b',minWidth:80}}>Funcs</span><span style={{fontSize:13,fontWeight:600,textAlign:'right'}}>{funcsMG.map(f=>f.nome).join(', ')}</span></div>
               </>}
             </div>
           </div>
-          <div style={st.bot}>
-            <PBtn disabled={salvando} onClick={salvar} label={salvando ? '⏳ Salvando...' : '✓ Confirmar e salvar'} />
-            <SBtn onClick={() => ir('dia')} label="Voltar ao início" />
+          <div style={css.bot}>
+            <button style={css.pbtn(salvando)} disabled={salvando} onClick={salvar}>{salvando?'⏳ Salvando...':'✓ Confirmar e salvar'}</button>
+            <button style={css.sbtn} onClick={()=>ir('dia')}>Voltar ao início</button>
           </div>
         </>
       )}
     </div>
   )
 }
+ENDOFFILE
+echo "OK - $(wc -l < /mnt/user-data/outputs/campo-lancar.tsx) linhas"
