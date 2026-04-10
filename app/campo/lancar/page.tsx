@@ -168,6 +168,7 @@ export default function CampoLancar() {
       comp = nova
     }
 
+    // 1. Salvar presenças
     for (const f of e.presentes) {
       const faltou = e.faltaram.find((fa:any) => fa.id === f.id)
       const atrasado = e.atrasados.find((a:any) => a.id === f.id)
@@ -181,27 +182,74 @@ export default function CampoLancar() {
       }, { onConflict: 'funcionario_id,data,competencia_id' })
     }
 
+    // 2. Salvar faltaram (que nao estavam em presentes)
+    for (const f of e.faltaram) {
+      const jaPresente = e.presentes.find((p:any) => p.id === f.id)
+      if (!jaPresente) {
+        await supabase.from('presencas').upsert({
+          competencia_id: comp!.id, funcionario_id: f.id,
+          data: e.data, obra_id: e.obra.id, tipo: 'FALTA', fracao: 0,
+        }, { onConflict: 'funcionario_id,data,competencia_id' })
+      }
+    }
+
+    // 3. Diárias extras — Conta Obra
     if (e.teveObra) {
       for (const f of e.funcsObra) {
         await supabase.from('diarias_extras').insert({
           obra_id: e.obra.id, funcionario_id: f.id, data: e.data,
-          tipo: 'CONTA_OBRA', quantidade: e.periodoObra === 'METADE' ? 0.5 : 1,
-          servico: e.servicoObra, observacao: `Solicitado por: ${e.solicitouObra}`,
+          tipo: 'CONTA_OBRA',
+          quantidade: e.periodoObra === 'METADE' ? 0.5 : 1,
+          servico: e.servicoObra,
+          observacao: `Solicitado por: ${e.solicitouObra} | Período: ${e.periodoObra === 'METADE' ? 'Metade do dia' : 'Dia todo'}`,
+          descontada_producao: false, recebida_medicao: false,
+        })
+      }
+      // Marcar SABADO_EXTRA nas presenças de quem teve diária Conta Obra
+      for (const f of e.funcsObra) {
+        await supabase.from('presencas').upsert({
+          competencia_id: comp!.id, funcionario_id: f.id,
+          data: e.data, obra_id: e.obra.id,
+          tipo: 'SABADO_EXTRA',
+          fracao: e.periodoObra === 'METADE' ? 0.5 : 1,
+        }, { onConflict: 'funcionario_id,data,competencia_id' })
+      }
+    }
+
+    // 4. Diárias extras — Conta MG
+    if (e.teveMG) {
+      for (const f of e.funcsMG) {
+        await supabase.from('diarias_extras').insert({
+          obra_id: e.obra.id, funcionario_id: f.id, data: e.data,
+          tipo: 'CONTA_MG',
+          quantidade: e.periodoMG === 'METADE' ? 0.5 : 1,
+          servico: e.servicoMG,
+          observacao: `Período: ${e.periodoMG === 'METADE' ? 'Metade do dia' : 'Dia todo'}`,
           descontada_producao: false, recebida_medicao: false,
         })
       }
     }
 
-    if (e.teveMG) {
-      for (const f of e.funcsMG) {
-        await supabase.from('diarias_extras').insert({
-          obra_id: e.obra.id, funcionario_id: f.id, data: e.data,
-          tipo: 'CONTA_MG', quantidade: e.periodoMG === 'METADE' ? 0.5 : 1,
-          servico: e.servicoMG,
-          descontada_producao: false, recebida_medicao: false,
-        })
-      }
-    }
+    // 5. Gerar folha de ponto automática
+    const resumoLinhas = [
+      `Equipe: ${e.equipe}`,
+      `Presentes (${e.presentes.length}): ${e.presentes.map((f:any) => f.nome).join(', ')}`,
+      e.atrasados.length > 0 ? `Atrasados: ${e.atrasados.map((f:any) => `${f.nome} (${e.horariosAtrasados[f.id]||'?'})`).join(', ')}` : null,
+      e.saiuCedo.length > 0 ? `Saíram cedo: ${e.saiuCedo.map((f:any) => `${f.nome} (${e.horariosSaiu[f.id]||'?'})`).join(', ')}` : null,
+      e.faltaram.length > 0 ? `Faltaram: ${e.faltaram.map((f:any) => f.nome).join(', ')}` : null,
+      e.teveObra ? `Diária Conta Obra: ${e.servicoObra} | ${e.periodoObra === 'METADE' ? 'Metade' : 'Dia todo'} | Solicitado por: ${e.solicitouObra} | Funcionários: ${e.funcsObra.map((f:any) => f.nome).join(', ')}` : null,
+      e.teveMG ? `Diária Conta MG: ${e.servicoMG} | ${e.periodoMG === 'METADE' ? 'Metade' : 'Dia todo'} | Funcionários: ${e.funcsMG.map((f:any) => f.nome).join(', ')}` : null,
+    ].filter(Boolean).join('
+')
+
+    await supabase.from('folhas_ponto').insert({
+      obra_id: e.obra.id,
+      equipe: e.equipe,
+      data: e.data,
+      tem_diaria_extra: !!(e.teveObra || e.teveMG),
+      observacao: resumoLinhas,
+      processada: false,
+    })
 
     setSalvando(false)
     ir('sucesso')
