@@ -1,429 +1,550 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-type Tela = 'pergunta_obra' | 'detalhes_obra' | 'pergunta_mg' | 'detalhes_mg' | 'confirmacao' | 'sucesso'
+type Tela = 'dia' | 'confirma_dia' | 'obra' | 'equipe' | 'funcionarios' | 'atrasados' | 'saiu_cedo' | 'faltou' | 'conta_obra' | 'conta_obra_det' | 'conta_mg' | 'conta_mg_det' | 'confirmacao' | 'sucesso'
 
 interface Estado {
-  obra: any
   data: string
-  // Conta Obra
+  obra: any
+  equipe: 'ARMAÇÃO' | 'CARPINTARIA' | null
+  presentes: any[]
+  atrasados: any[]
+  horariosAtrasados: Record<string, string>
+  saiuCedo: any[]
+  horariosSaiu: Record<string, string>
+  faltaram: any[]
   teveObra: boolean | null
-  solicitadoPor: string
-  horarioObra: string
-  servicoObra: string
-  funcsObra: string[]
-  // Conta MG
+  solicitouObra: string
+  periodoObra: 'DIA_TODO' | 'METADE' | null
+  funcsObra: any[]
   teveMG: boolean | null
-  horarioMG: string
-  servicoMG: string
-  funcsMG: string[]
+  periodoMG: 'DIA_TODO' | 'METADE' | null
+  funcsMG: any[]
 }
 
+const estadoInicial: Estado = {
+  data: new Date().toISOString().slice(0,10),
+  obra: null, equipe: null,
+  presentes: [], atrasados: [], horariosAtrasados: {},
+  saiuCedo: [], horariosSaiu: {}, faltaram: [],
+  teveObra: null, solicitouObra: '', periodoObra: null, funcsObra: [],
+  teveMG: null, periodoMG: null, funcsMG: [],
+}
+
+const S = {
+  page: { minHeight:'100vh', background:'#f5f6fa', maxWidth:480, margin:'0 auto', display:'flex', flexDirection:'column' as const },
+  top: { background:'#1e3a8a', padding:'14px 16px', display:'flex', alignItems:'center' as const, gap:10 },
+  back: { color:'white', fontSize:22, cursor:'pointer', border:'none', background:'none', lineHeight:1 },
+  title: { color:'white', fontWeight:700, fontSize:16, flex:1 },
+  sub: { color:'rgba(255,255,255,.6)', fontSize:12, marginTop:1 },
+  bar: { background:'#1e3a8a', padding:'0 16px 12px', display:'flex', gap:3 },
+  dot: (done:boolean, active:boolean) => ({ height:4, borderRadius:2, flex:1, background: done?'white':active?'#60a5fa':'rgba(255,255,255,.2)' }),
+  body: { flex:1, padding:'22px 16px', overflowY:'auto' as const },
+  h1: { fontSize:20, fontWeight:700, color:'#1f2937', marginBottom:6 },
+  p: { fontSize:14, color:'#6b7280', marginBottom:24, lineHeight:'1.5' },
+  yesno: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:4 },
+  yn: (sel:boolean, type:'sim'|'nao') => ({
+    padding:'20px 12px', borderRadius:14, cursor:'pointer', textAlign:'center' as const,
+    border: sel ? `2px solid ${type==='sim'?'#059669':'#dc2626'}` : '1.5px solid #e5e7eb',
+    background: sel?(type==='sim'?'#f0fdf4':'#fef2f2'):'#f9fafb',
+    fontSize:28, transition:'all .1s',
+  }),
+  ynLabel: { display:'block' as const, fontSize:14, fontWeight:600, marginTop:6, color:'#374151' },
+  label: { fontSize:12, fontWeight:600, color:'#6b7280', marginBottom:6, marginTop:18, textTransform:'uppercase' as const, letterSpacing:'0.04em' },
+  input: { width:'100%', border:'1.5px solid #e5e7eb', borderRadius:10, padding:'12px 14px', fontSize:15, outline:'none', background:'white', color:'#1f2937' },
+  dropdown: { position:'absolute' as const, top:'100%', left:0, right:0, background:'white', border:'1px solid #e5e7eb', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,.1)', zIndex:50, maxHeight:220, overflowY:'auto' as const },
+  dropItem: { padding:'12px 14px', cursor:'pointer', fontSize:14, color:'#1f2937', borderBottom:'1px solid #f3f4f6' },
+  chip: (cor:string) => ({ display:'inline-flex', alignItems:'center' as const, gap:6, padding:'6px 12px', borderRadius:20, background:cor, fontSize:13, fontWeight:600, marginRight:6, marginBottom:6, cursor:'pointer' }),
+  funcCard: (sel:boolean) => ({
+    display:'flex', alignItems:'center' as const, gap:10, padding:'11px 14px',
+    border: sel?'2px solid #1e3a8a':'1px solid #e5e7eb',
+    borderRadius:10, marginBottom:8, cursor:'pointer', background:sel?'#eff6ff':'white',
+  }),
+  avatar: { width:36, height:36, borderRadius:'50%', background:'#e0e7ff', display:'flex', alignItems:'center' as const, justifyContent:'center', fontSize:12, fontWeight:700, color:'#3730a3', flexShrink:0 },
+  check: (sel:boolean) => ({ width:22, height:22, borderRadius:'50%', border:`2px solid ${sel?'#1e3a8a':'#d1d5db'}`, background:sel?'#1e3a8a':'transparent', display:'flex', alignItems:'center' as const, justifyContent:'center', flexShrink:0 }),
+  bottom: { padding:'14px 16px', background:'white', borderTop:'1px solid #e5e7eb' },
+  btn: (dis?:boolean) => ({ width:'100%', padding:'14px', borderRadius:12, border:'none', background:dis?'#9ca3af':'#1e3a8a', color:'white', fontSize:15, fontWeight:700, cursor:dis?'not-allowed':'pointer' }),
+  btnSec: { width:'100%', padding:'12px', borderRadius:12, border:'1.5px solid #e5e7eb', background:'white', color:'#374151', fontSize:14, fontWeight:600, cursor:'pointer', marginTop:10 },
+  period: (sel:boolean) => ({ flex:1, padding:'14px', borderRadius:12, border:sel?'2px solid #1e3a8a':'1.5px solid #e5e7eb', background:sel?'#eff6ff':'white', cursor:'pointer', textAlign:'center' as const }),
+  confirmRow: { display:'flex', justifyContent:'space-between', padding:'9px 0', borderBottom:'1px solid #f3f4f6', gap:12 },
+  secHead: { fontSize:11, fontWeight:700, color:'#6b7280', letterSpacing:'0.06em', margin:'18px 0 8px', textTransform:'uppercase' as const },
+}
+
+function ini(nome:string) { return nome.split(' ').slice(0,2).map((n:string)=>n[0]).join('').toUpperCase() }
+
+function BuscaFunc({ todos, selecionados, onChange, placeholder }: { todos:any[], selecionados:any[], onChange:(f:any[])=>void, placeholder?:string }) {
+  const [busca, setBusca] = useState('')
+  const [aberto, setAberto] = useState(false)
+  const filtrados = todos.filter(f => !selecionados.find(s=>s.id===f.id) && f.nome.toLowerCase().includes(busca.toLowerCase()))
+  return (
+    <div>
+      <div style={{ position:'relative' }}>
+        <input style={S.input} value={busca} placeholder={placeholder||'Digite o nome...'} autoComplete="off"
+          onChange={e => { setBusca(e.target.value); setAberto(true) }}
+          onFocus={() => setAberto(true)} onBlur={() => setTimeout(()=>setAberto(false),200)} />
+        {aberto && busca && filtrados.length > 0 && (
+          <div style={S.dropdown}>
+            {filtrados.slice(0,8).map(f => (
+              <div key={f.id} style={S.dropItem} onMouseDown={() => { onChange([...selecionados, f]); setBusca(''); setAberto(false) }}>
+                {f.nome}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ marginTop:10, display:'flex', flexWrap:'wrap' as const }}>
+        {selecionados.map(f => (
+          <div key={f.id} style={S.chip('#eff6ff')}>
+            <span style={{ color:'#1e40af' }}>{f.nome.split(' ')[0]}</span>
+            <span style={{ color:'#93c5fd', cursor:'pointer', fontWeight:700 }} onMouseDown={() => onChange(selecionados.filter(s=>s.id!==f.id))}>×</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const TELAS: Tela[] = ['dia','obra','equipe','funcionarios','atrasados','saiu_cedo','faltou','conta_obra','conta_mg','confirmacao']
+
 export default function CampoLancar() {
-  const router = useRouter()
-  const [tela, setTela] = useState<Tela>('pergunta_obra')
+  const [tela, setTela] = useState<Tela>('dia')
   const [obras, setObras] = useState<any[]>([])
   const [funcs, setFuncs] = useState<any[]>([])
-  const [obraSel, setObraSel] = useState<any>(null)
-  const [perfil, setPerfil] = useState<any>(null)
+  const [buscaObra, setBuscaObra] = useState('')
+  const [obraAberta, setObraAberta] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [estado, setEstado] = useState<Estado>({
-    obra: null, data: new Date().toISOString().slice(0,10),
-    teveObra: null, solicitadoPor: '', horarioObra: '', servicoObra: '', funcsObra: [],
-    teveMG: null, horarioMG: '', servicoMG: '', funcsMG: [],
-  })
+  const [e, setE] = useState<Estado>(estadoInicial)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { router.push('/campo'); return }
-      const { data: p } = await supabase.from('perfis').select('*').eq('id', session.user.id).single()
-      setPerfil(p)
-      const { data: os } = await supabase.from('obras').select('id,nome,codigo').eq('status','ATIVA').order('nome')
-      setObras(os || [])
-    })
+    supabase.from('obras').select('id,nome,codigo').eq('status','ATIVA').order('nome').then(({data})=>setObras(data||[]))
   }, [])
 
-  async function selecionarObra(obra: any) {
-    setObraSel(obra)
-    setEstado(e => ({ ...e, obra }))
-    const { data: fs } = await supabase.from('funcionarios')
-      .select('id,nome,equipe').eq('ativo',true).order('nome')
-    setFuncs(fs || [])
-  }
+  useEffect(() => {
+    if (e.equipe) {
+      supabase.from('funcionarios').select('id,nome,equipe').eq('ativo',true).eq('equipe',e.equipe).order('nome').then(({data})=>setFuncs(data||[]))
+    }
+  }, [e.equipe])
 
-  function toggleFunc(id: string, tipo: 'obra'|'mg') {
-    setEstado(e => {
-      const key = tipo === 'obra' ? 'funcsObra' : 'funcsMG'
-      const list = e[key] as string[]
-      return { ...e, [key]: list.includes(id) ? list.filter(x => x !== id) : [...list, id] }
-    })
-  }
+  function set(k: Partial<Estado>) { setE(prev=>({...prev,...k})) }
+  function ir(t:Tela) { setTela(t) }
+
+  const step = TELAS.indexOf(tela)+1
+  const total = TELAS.length
+
+  const obrasFiltradas = obras.filter(o => o.nome.toLowerCase().includes(buscaObra.toLowerCase()))
 
   async function salvar() {
     setSalvando(true)
-    const mes = estado.data.slice(0,7)
+    const mes = e.data.slice(0,7)
     let { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
     if (!comp) {
       const { data: nova } = await supabase.from('competencias').insert({ mes_ano: mes, status:'ABERTA' }).select().single()
       comp = nova
     }
 
-    const inserts = []
+    // Registrar presenças
+    for (const f of e.presentes) {
+      const atrasado = e.atrasados.find(a=>a.id===f.id)
+      const saiu = e.saiuCedo.find(s=>s.id===f.id)
+      const faltou = e.faltaram.find(fa=>fa.id===f.id)
+      let tipo = 'NORMAL', fracao = 1
+      if (faltou) { tipo = 'FALTA'; fracao = 0 }
+      else if (atrasado || saiu) { tipo = 'NORMAL'; fracao = 0.5 }
+      await supabase.from('presencas').upsert({
+        competencia_id: comp!.id, funcionario_id: f.id,
+        data: e.data, obra_id: e.obra.id, tipo, fracao,
+      }, { onConflict: 'funcionario_id,data,competencia_id' })
+    }
 
-    // Conta Obra
-    if (estado.teveObra && estado.funcsObra.length > 0) {
-      for (const fid of estado.funcsObra) {
-        inserts.push(supabase.from('diarias_extras').insert({
-          obra_id: estado.obra.id, funcionario_id: fid,
-          data: estado.data, tipo: 'CONTA_OBRA', quantidade: 1,
-          servico: estado.servicoObra,
-          observacao: `Solicitado por: ${estado.solicitadoPor} | Horário: ${estado.horarioObra}`,
-          descontada_producao: false, recebida_medicao: false,
-        }))
+    // Diárias extras
+    const inserirDiaria = async (fid:string, tipo:string, periodo:string, obs:string) => {
+      await supabase.from('diarias_extras').insert({
+        obra_id: e.obra.id, funcionario_id: fid,
+        data: e.data, tipo,
+        quantidade: periodo === 'METADE' ? 0.5 : 1,
+        servico: obs,
+        descontada_producao: false, recebida_medicao: false,
+      })
+    }
+
+    if (e.teveObra) {
+      for (const f of e.funcsObra) {
+        await inserirDiaria(f.id, 'CONTA_OBRA', e.periodoObra||'DIA_TODO', `Solicitado por: ${e.solicitouObra}`)
+      }
+    }
+    if (e.teveMG) {
+      for (const f of e.funcsMG) {
+        await inserirDiaria(f.id, 'CONTA_MG', e.periodoMG||'DIA_TODO', '')
       }
     }
 
-    // Conta MG
-    if (estado.teveMG && estado.funcsMG.length > 0) {
-      for (const fid of estado.funcsMG) {
-        inserts.push(supabase.from('diarias_extras').insert({
-          obra_id: estado.obra.id, funcionario_id: fid,
-          data: estado.data, tipo: 'CONTA_MG', quantidade: 1,
-          servico: estado.servicoMG,
-          observacao: `Horário: ${estado.horarioMG}`,
-          descontada_producao: false, recebida_medicao: false,
-        }))
-      }
-    }
-
-    await Promise.all(inserts)
     setSalvando(false)
-    setTela('sucesso')
+    ir('sucesso')
   }
 
-  function novo() {
-    setTela('pergunta_obra')
-    setObraSel(null)
-    setEstado({ obra: null, data: new Date().toISOString().slice(0,10), teveObra: null, solicitadoPor: '', horarioObra: '', servicoObra: '', funcsObra: [], teveMG: null, horarioMG: '', servicoMG: '', funcsMG: [] })
-  }
-
-  const steps: Record<Tela, number> = { pergunta_obra:1, detalhes_obra:2, pergunta_mg:3, detalhes_mg:4, confirmacao:5, sucesso:6 }
-  const total = 5
-  const atual = Math.min(steps[tela], total)
-
-  const S = {
-    container: { minHeight:'100vh', background:'#f5f6fa', display:'flex', flexDirection:'column' as const, maxWidth:480, margin:'0 auto' },
-    topbar: { background:'#1e3a8a', padding:'14px 16px', display:'flex', alignItems:'center' as const, gap:10 },
-    back: { color:'white', fontSize:20, cursor:'pointer', opacity:.7, border:'none', background:'none' },
-    title: { color:'white', fontWeight:700, fontSize:16 },
-    sub: { color:'rgba(255,255,255,.6)', fontSize:12, marginTop:2 },
-    progress: { background:'#1e3a8a', padding:'0 16px 14px', display:'flex', gap:4 },
-    dot: (done: boolean, active: boolean) => ({ height:4, borderRadius:2, flex:1, background: done?'white':active?'#60a5fa':'rgba(255,255,255,.2)' }),
-    content: { flex:1, padding:'20px 16px', overflowY:'auto' as const },
-    bigLabel: { fontSize:20, fontWeight:700, color:'#1f2937', marginBottom:6 },
-    subLabel: { fontSize:14, color:'#6b7280', marginBottom:24, lineHeight:'1.5' },
-    yesno: { display:'flex', gap:12, marginTop:8 },
-    yn: (sel?: boolean, type?: 'sim'|'nao') => ({
-      flex:1, padding:'20px 12px', borderRadius:14, cursor:'pointer', textAlign:'center' as const,
-      border: sel ? `2px solid ${type==='sim'?'#059669':'#dc2626'}` : '1.5px solid #e5e7eb',
-      background: sel ? (type==='sim'?'#f0fdf4':'#fef2f2') : '#f9fafb',
-      fontSize:28,
-    }),
-    ynLabel: { display:'block' as const, fontSize:14, fontWeight:600, marginTop:6, color:'#374151' },
-    fieldLabel: { fontSize:12, fontWeight:600, color:'#6b7280', marginBottom:6, marginTop:16, textTransform:'uppercase' as const, letterSpacing:'0.04em' },
-    input: { width:'100%', border:'1.5px solid #e5e7eb', borderRadius:10, padding:'12px 14px', fontSize:14, outline:'none', background:'white', color:'#1f2937' },
-    funcCard: (sel: boolean) => ({
-      display:'flex', alignItems:'center' as const, gap:10, padding:'12px 14px',
-      border: sel ? '2px solid #1e3a8a' : '1px solid #e5e7eb',
-      borderRadius:10, marginBottom:8, cursor:'pointer', background: sel?'#eff6ff':'white',
-    }),
-    avatar: (name: string) => ({ width:36, height:36, borderRadius:'50%', background:'#e0e7ff', display:'flex', alignItems:'center' as const, justifyContent:'center', fontSize:12, fontWeight:700, color:'#3730a3', flexShrink:0 }),
-    check: (sel: boolean) => ({ width:22, height:22, borderRadius:'50%', border:`1.5px solid ${sel?'#1e3a8a':'#d1d5db'}`, background:sel?'#1e3a8a':'transparent', display:'flex', alignItems:'center' as const, justifyContent:'center', flexShrink:0 }),
-    bottomBar: { padding:'14px 16px', background:'white', borderTop:'1px solid #e5e7eb' },
-    btn: { width:'100%', padding:'14px', borderRadius:12, border:'none', background:'#1e3a8a', color:'white', fontSize:16, fontWeight:700, cursor:'pointer' },
-    btnSec: { width:'100%', padding:'12px', borderRadius:12, border:'1.5px solid #e5e7eb', background:'white', color:'#374151', fontSize:14, fontWeight:600, cursor:'pointer', marginTop:10 },
-    confirmRow: { display:'flex', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid #f3f4f6' },
-    sectionHead: { fontSize:11, fontWeight:700, color:'#6b7280', letterSpacing:'0.06em', margin:'20px 0 8px', textTransform:'uppercase' as const },
-  }
-
-  // Se não selecionou obra ainda, mostra seleção de obra primeiro
-  if (!obraSel) {
-    return (
-      <div style={S.container}>
-        <div style={S.topbar}>
-          <div>
-            <div style={S.title}>MG Campo</div>
-            <div style={S.sub}>Olá, {perfil?.nome?.split(' ')[0] || 'Encarregado'}</div>
-          </div>
-        </div>
-        <div style={S.content}>
-          <div style={S.bigLabel}>Selecione a obra</div>
-          <div style={{ fontSize:14, color:'#6b7280', marginBottom:20 }}>
-            {new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}
-          </div>
-          <div style={S.fieldLabel}>Data do lançamento</div>
-          <input type="date" value={estado.data} onChange={e => setEstado(s => ({...s, data:e.target.value}))}
-            style={{...S.input, marginBottom:20}} />
-          <div style={S.fieldLabel}>Obra</div>
-          {obras.map(o => (
-            <div key={o.id} onClick={() => selecionarObra(o)}
-              style={{ padding:'14px 16px', border:'1px solid #e5e7eb', borderRadius:12, marginBottom:10, cursor:'pointer', background:'white', display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:40, height:40, borderRadius:10, background:'#eff6ff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>🏗</div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:14, color:'#1f2937' }}>{o.nome}</div>
-                <div style={{ fontSize:12, color:'#6b7280' }}>{o.codigo}</div>
-              </div>
-              <div style={{ marginLeft:'auto', color:'#9ca3af', fontSize:20 }}>›</div>
-            </div>
-          ))}
-        </div>
-        <div style={S.bottomBar}>
-          <button onClick={() => supabase.auth.signOut().then(() => router.push('/campo'))}
-            style={{...S.btnSec, color:'#dc2626', borderColor:'#fecaca'}}>Sair da conta</button>
-        </div>
+  if (tela === 'sucesso') return (
+    <div style={S.page}>
+      <div style={S.top}><div style={S.title}>MG Campo</div></div>
+      <div style={{...S.body, display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', paddingTop:60}}>
+        <div style={{ width:80, height:80, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:40, marginBottom:20 }}>✅</div>
+        <div style={{ fontSize:22, fontWeight:700, color:'#1f2937', marginBottom:8 }}>Salvo com sucesso!</div>
+        <div style={{ fontSize:15, color:'#6b7280', marginBottom:40 }}>Lançamento registrado no sistema.</div>
+        <button style={{...S.btn(), maxWidth:280}} onClick={() => { setE(estadoInicial); ir('dia') }}>Novo lançamento</button>
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
-    <div style={S.container}>
-      {/* TOPBAR */}
-      <div style={S.topbar}>
-        {tela !== 'pergunta_obra' && tela !== 'sucesso' && (
-          <button style={S.back} onClick={() => {
-            if (tela==='detalhes_obra') setTela('pergunta_obra')
-            else if (tela==='pergunta_mg') setTela(estado.teveObra?'detalhes_obra':'pergunta_obra')
-            else if (tela==='detalhes_mg') setTela('pergunta_mg')
-            else if (tela==='confirmacao') setTela(estado.teveMG?'detalhes_mg':'pergunta_mg')
-          }}>←</button>
-        )}
+    <div style={S.page}>
+      <div style={S.top}>
+        {tela !== 'dia' && <button style={S.back} onClick={() => {
+          const idx = TELAS.indexOf(tela)
+          if (tela==='confirma_dia') ir('dia')
+          else if (tela==='conta_obra_det') ir('conta_obra')
+          else if (tela==='conta_mg_det') ir('conta_mg')
+          else if (idx > 0) ir(TELAS[idx-1])
+        }}>←</button>}
         <div style={{ flex:1 }}>
-          <div style={S.title}>{obraSel.nome}</div>
-          <div style={S.sub}>{new Date(estado.data+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'})}</div>
+          <div style={S.title}>MG Campo</div>
+          <div style={S.sub}>{e.obra ? e.obra.nome : 'Lançamento diário'}</div>
         </div>
       </div>
+      <div style={S.bar}>
+        {TELAS.map((_,i) => <div key={i} style={S.dot(i+1<step, i+1===step)} />)}
+      </div>
 
-      {/* PROGRESS */}
-      {tela !== 'sucesso' && (
-        <div style={S.progress}>
-          {Array.from({length:total}).map((_,i) => (
-            <div key={i} style={S.dot(i+1 < atual, i+1 === atual)} />
-          ))}
-        </div>
+      {/* TELA: DIA */}
+      {tela === 'dia' && (
+        <>
+          <div style={S.body}>
+            <div style={S.h1}>Essa diária é de hoje?</div>
+            <div style={S.p}>{new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+            <div style={S.yesno}>
+              <div style={S.yn(false,'sim')} onClick={() => { set({ data: new Date().toISOString().slice(0,10) }); ir('obra') }}>
+                ✅<span style={S.ynLabel}>Sim, hoje</span>
+              </div>
+              <div style={S.yn(false,'nao')} onClick={() => ir('confirma_dia')}>
+                📅<span style={S.ynLabel}>Outro dia</span>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* TELA 1: CONTA OBRA? */}
-      {tela === 'pergunta_obra' && (
+      {/* TELA: CONFIRMA DIA */}
+      {tela === 'confirma_dia' && (
         <>
-          <div style={S.content}>
-            <div style={S.bigLabel}>Teve diária por conta da obra?</div>
-            <div style={S.subLabel}>Serviço extra solicitado pelo cliente/obra</div>
+          <div style={S.body}>
+            <div style={S.h1}>Qual a data?</div>
+            <div style={S.label}>Selecione o dia</div>
+            <input type="date" style={S.input} value={e.data} onChange={ev => set({ data: ev.target.value })} />
+          </div>
+          <div style={S.bottom}>
+            <button style={S.btn(!e.data)} disabled={!e.data} onClick={() => ir('obra')}>Confirmar →</button>
+          </div>
+        </>
+      )}
+
+      {/* TELA: OBRA */}
+      {tela === 'obra' && (
+        <>
+          <div style={S.body}>
+            <div style={S.h1}>Selecione a obra</div>
+            <div style={S.p}>Digite o nome para buscar</div>
+            <div style={{ position:'relative' }}>
+              <input style={S.input} value={buscaObra} placeholder="Ex: Barreiro, Savassi..."
+                onChange={ev => { setBuscaObra(ev.target.value); setObraAberta(true) }}
+                onFocus={() => setObraAberta(true)} onBlur={() => setTimeout(()=>setObraAberta(false),200)} />
+              {obraAberta && obrasFiltradas.length > 0 && (
+                <div style={S.dropdown}>
+                  {obrasFiltradas.map(o => (
+                    <div key={o.id} style={S.dropItem} onMouseDown={() => { set({ obra: o }); setBuscaObra(o.nome); setObraAberta(false) }}>
+                      <div style={{ fontWeight:600 }}>{o.nome}</div>
+                      <div style={{ fontSize:12, color:'#9ca3af' }}>{o.codigo}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {e.obra && (
+              <div style={{ marginTop:12, padding:'12px 14px', background:'#eff6ff', borderRadius:10, border:'2px solid #1e3a8a' }}>
+                <div style={{ fontWeight:700, color:'#1e3a8a' }}>✓ {e.obra.nome}</div>
+              </div>
+            )}
+          </div>
+          <div style={S.bottom}>
+            <button style={S.btn(!e.obra)} disabled={!e.obra} onClick={() => ir('equipe')}>Continuar →</button>
+          </div>
+        </>
+      )}
+
+      {/* TELA: EQUIPE */}
+      {tela === 'equipe' && (
+        <>
+          <div style={S.body}>
+            <div style={S.h1}>Selecione a equipe</div>
+            <div style={S.p}>Qual equipe está na obra hoje?</div>
             <div style={S.yesno}>
-              <div style={S.yn(estado.teveObra===true,'sim')} onClick={() => setEstado(e => ({...e,teveObra:true}))}>
+              <div style={S.yn(e.equipe==='ARMAÇÃO','sim')} onClick={() => set({ equipe:'ARMAÇÃO', presentes:[], atrasados:[], saiuCedo:[], faltaram:[] })}>
+                🔩<span style={S.ynLabel}>Armação</span>
+              </div>
+              <div style={S.yn(e.equipe==='CARPINTARIA','sim')} onClick={() => set({ equipe:'CARPINTARIA', presentes:[], atrasados:[], saiuCedo:[], faltaram:[] })}>
+                🪵<span style={S.ynLabel}>Carpintaria</span>
+              </div>
+            </div>
+          </div>
+          <div style={S.bottom}>
+            <button style={S.btn(!e.equipe)} disabled={!e.equipe} onClick={() => ir('funcionarios')}>Continuar →</button>
+          </div>
+        </>
+      )}
+
+      {/* TELA: FUNCIONÁRIOS */}
+      {tela === 'funcionarios' && (
+        <>
+          <div style={S.body}>
+            <div style={S.h1}>Quem estava na obra?</div>
+            <div style={S.p}>Digite o nome para buscar e selecionar</div>
+            <BuscaFunc todos={funcs} selecionados={e.presentes} onChange={v => set({ presentes:v })} placeholder="Buscar funcionário..." />
+          </div>
+          <div style={S.bottom}>
+            <button style={S.btn(!e.presentes.length)} disabled={!e.presentes.length} onClick={() => ir('atrasados')}>Continuar →</button>
+          </div>
+        </>
+      )}
+
+      {/* TELA: ATRASADOS */}
+      {tela === 'atrasados' && (
+        <>
+          <div style={S.body}>
+            <div style={S.h1}>Alguém chegou atrasado?</div>
+            <div style={S.yesno}>
+              <div style={S.yn(e.atrasados.length>0,'nao')} onClick={() => set({ atrasados:{} as any })}>
+                ✅<span style={S.ynLabel}>Não</span>
+              </div>
+              <div style={S.yn(false,'sim')} onClick={() => {}}>
+                ⏰<span style={S.ynLabel}>Sim</span>
+              </div>
+            </div>
+            {(e.atrasados.length > 0 || true) && (
+              <div style={{ marginTop:20 }}>
+                <div style={S.label}>Quem chegou atrasado?</div>
+                <BuscaFunc todos={e.presentes} selecionados={e.atrasados} onChange={v => set({ atrasados:v })} placeholder="Buscar..." />
+                {e.atrasados.map((f:any) => (
+                  <div key={f.id} style={{ marginTop:8 }}>
+                    <div style={{ fontSize:13, color:'#374151', marginBottom:4 }}>{f.nome.split(' ')[0]} — horário de chegada:</div>
+                    <input type="time" style={S.input} value={e.horariosAtrasados[f.id]||''}
+                      onChange={ev => set({ horariosAtrasados:{ ...e.horariosAtrasados, [f.id]:ev.target.value } })} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={S.bottom}>
+            <button style={S.btn()} onClick={() => ir('saiu_cedo')}>Continuar →</button>
+          </div>
+        </>
+      )}
+
+      {/* TELA: SAIU CEDO */}
+      {tela === 'saiu_cedo' && (
+        <>
+          <div style={S.body}>
+            <div style={S.h1}>Alguém saiu mais cedo?</div>
+            <div style={S.label}>Quem saiu antes do horário?</div>
+            <BuscaFunc todos={e.presentes} selecionados={e.saiuCedo} onChange={v => set({ saiuCedo:v })} placeholder="Buscar..." />
+            {e.saiuCedo.map((f:any) => (
+              <div key={f.id} style={{ marginTop:8 }}>
+                <div style={{ fontSize:13, color:'#374151', marginBottom:4 }}>{f.nome.split(' ')[0]} — horário de saída:</div>
+                <input type="time" style={S.input} value={e.horariosSaiu[f.id]||''}
+                  onChange={ev => set({ horariosSaiu:{ ...e.horariosSaiu, [f.id]:ev.target.value } })} />
+              </div>
+            ))}
+          </div>
+          <div style={S.bottom}>
+            <button style={S.btn()} onClick={() => ir('faltou')}>Continuar →</button>
+          </div>
+        </>
+      )}
+
+      {/* TELA: FALTOU */}
+      {tela === 'faltou' && (
+        <>
+          <div style={S.body}>
+            <div style={S.h1}>Alguém faltou?</div>
+            <div style={S.label}>Quem não compareceu?</div>
+            <BuscaFunc todos={e.presentes} selecionados={e.faltaram} onChange={v => set({ faltaram:v })} placeholder="Buscar..." />
+          </div>
+          <div style={S.bottom}>
+            <button style={S.btn()} onClick={() => ir('conta_obra')}>Continuar →</button>
+          </div>
+        </>
+      )}
+
+      {/* TELA: CONTA OBRA? */}
+      {tela === 'conta_obra' && (
+        <>
+          <div style={S.body}>
+            <div style={S.h1}>Teve diária por conta da obra?</div>
+            <div style={S.p}>Serviço extra solicitado pelo cliente</div>
+            <div style={S.yesno}>
+              <div style={S.yn(e.teveObra===true,'sim')} onClick={() => set({ teveObra:true })}>
                 ✅<span style={S.ynLabel}>Sim</span>
               </div>
-              <div style={S.yn(estado.teveObra===false,'nao')} onClick={() => setEstado(e => ({...e,teveObra:false}))}>
+              <div style={S.yn(e.teveObra===false,'nao')} onClick={() => set({ teveObra:false, funcsObra:[] })}>
                 ❌<span style={S.ynLabel}>Não</span>
               </div>
             </div>
           </div>
-          <div style={S.bottomBar}>
-            <button style={{...S.btn, opacity:estado.teveObra===null?.4:1}} disabled={estado.teveObra===null}
-              onClick={() => setTela(estado.teveObra?'detalhes_obra':'pergunta_mg')}>
-              Continuar →
-            </button>
+          <div style={S.bottom}>
+            <button style={S.btn(e.teveObra===null)} disabled={e.teveObra===null}
+              onClick={() => ir(e.teveObra ? 'conta_obra_det' : 'conta_mg')}>Continuar →</button>
           </div>
         </>
       )}
 
-      {/* TELA 2: DETALHES OBRA */}
-      {tela === 'detalhes_obra' && (
+      {/* TELA: CONTA OBRA DETALHES */}
+      {tela === 'conta_obra_det' && (
         <>
-          <div style={S.content}>
-            <div style={S.bigLabel}>Detalhes — Conta Obra</div>
-            <div style={S.fieldLabel}>Quem solicitou?</div>
-            <input style={S.input} value={estado.solicitadoPor} onChange={e => setEstado(s => ({...s,solicitadoPor:e.target.value}))} placeholder="Nome do responsável..." />
-            <div style={S.fieldLabel}>Horário de realização</div>
-            <input type="time" style={S.input} value={estado.horarioObra} onChange={e => setEstado(s => ({...s,horarioObra:e.target.value}))} />
-            <div style={S.fieldLabel}>Serviço executado</div>
-            <textarea style={{...S.input, height:80, resize:'none' as const}} value={estado.servicoObra}
-              onChange={e => setEstado(s => ({...s,servicoObra:e.target.value}))} placeholder="Descreva o serviço..." />
-            <div style={S.fieldLabel}>Funcionários ({estado.funcsObra.length} selecionados)</div>
-            {funcs.map(f => {
-              const sel = estado.funcsObra.includes(f.id)
-              const ini = f.nome.split(' ').slice(0,2).map((n:string)=>n[0]).join('')
-              return (
-                <div key={f.id} style={S.funcCard(sel)} onClick={() => toggleFunc(f.id,'obra')}>
-                  <div style={S.avatar(f.nome)}>{ini}</div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:14, fontWeight:600, color:'#1f2937' }}>{f.nome.split(' ').slice(0,3).join(' ')}</div>
-                    <div style={{ fontSize:12, color:'#6b7280' }}>{f.equipe}</div>
-                  </div>
-                  <div style={S.check(sel)}>
-                    {sel && <div style={{ width:8, height:8, borderRadius:'50%', background:'white' }} />}
-                  </div>
-                </div>
-              )
-            })}
+          <div style={S.body}>
+            <div style={S.h1}>Detalhes — Conta Obra</div>
+            <div style={S.label}>Quem solicitou?</div>
+            <input style={S.input} value={e.solicitouObra} onChange={ev => set({ solicitouObra:ev.target.value })} placeholder="Nome do responsável..." />
+            <div style={S.label}>Período de realização</div>
+            <div style={{ display:'flex', gap:10, marginTop:4 }}>
+              <div style={S.period(e.periodoObra==='DIA_TODO')} onClick={() => set({ periodoObra:'DIA_TODO' })}>
+                <div style={{ fontSize:22 }}>☀️</div>
+                <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginTop:4 }}>Dia todo</div>
+              </div>
+              <div style={S.period(e.periodoObra==='METADE')} onClick={() => set({ periodoObra:'METADE' })}>
+                <div style={{ fontSize:22 }}>🌤</div>
+                <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginTop:4 }}>Metade</div>
+              </div>
+            </div>
+            <div style={S.label}>Funcionários ({e.funcsObra.length} selecionados)</div>
+            <BuscaFunc todos={e.presentes} selecionados={e.funcsObra} onChange={v => set({ funcsObra:v })} placeholder="Buscar da lista de presentes..." />
           </div>
-          <div style={S.bottomBar}>
-            <button style={{...S.btn, opacity:!estado.solicitadoPor||!estado.horarioObra||!estado.servicoObra||!estado.funcsObra.length?.4:1}}
-              disabled={!estado.solicitadoPor||!estado.horarioObra||!estado.servicoObra||!estado.funcsObra.length}
-              onClick={() => setTela('pergunta_mg')}>Continuar →</button>
+          <div style={S.bottom}>
+            <button style={S.btn(!e.solicitouObra||!e.periodoObra||!e.funcsObra.length)}
+              disabled={!e.solicitouObra||!e.periodoObra||!e.funcsObra.length}
+              onClick={() => ir('conta_mg')}>Continuar →</button>
           </div>
         </>
       )}
 
-      {/* TELA 3: CONTA MG? */}
-      {tela === 'pergunta_mg' && (
+      {/* TELA: CONTA MG? */}
+      {tela === 'conta_mg' && (
         <>
-          <div style={S.content}>
-            <div style={S.bigLabel}>Teve diária por conta da MG?</div>
-            <div style={S.subLabel}>Serviço extra solicitado pela MG Construções</div>
+          <div style={S.body}>
+            <div style={S.h1}>Teve diária por conta da MG?</div>
+            <div style={S.p}>Serviço extra solicitado pela MG Construções</div>
             <div style={S.yesno}>
-              <div style={S.yn(estado.teveMG===true,'sim')} onClick={() => setEstado(e => ({...e,teveMG:true}))}>
+              <div style={S.yn(e.teveMG===true,'sim')} onClick={() => set({ teveMG:true })}>
                 ✅<span style={S.ynLabel}>Sim</span>
               </div>
-              <div style={S.yn(estado.teveMG===false,'nao')} onClick={() => setEstado(e => ({...e,teveMG:false}))}>
+              <div style={S.yn(e.teveMG===false,'nao')} onClick={() => set({ teveMG:false, funcsMG:[] })}>
                 ❌<span style={S.ynLabel}>Não</span>
               </div>
             </div>
           </div>
-          <div style={S.bottomBar}>
-            <button style={{...S.btn, opacity:estado.teveMG===null?.4:1}} disabled={estado.teveMG===null}
-              onClick={() => setTela(estado.teveMG?'detalhes_mg':'confirmacao')}>
-              Continuar →
-            </button>
+          <div style={S.bottom}>
+            <button style={S.btn(e.teveMG===null)} disabled={e.teveMG===null}
+              onClick={() => ir(e.teveMG ? 'conta_mg_det' : 'confirmacao')}>Continuar →</button>
           </div>
         </>
       )}
 
-      {/* TELA 4: DETALHES MG */}
-      {tela === 'detalhes_mg' && (
+      {/* TELA: CONTA MG DETALHES */}
+      {tela === 'conta_mg_det' && (
         <>
-          <div style={S.content}>
-            <div style={S.bigLabel}>Detalhes — Conta MG</div>
-            <div style={S.fieldLabel}>Horário de realização</div>
-            <input type="time" style={S.input} value={estado.horarioMG} onChange={e => setEstado(s => ({...s,horarioMG:e.target.value}))} />
-            <div style={S.fieldLabel}>Serviço executado</div>
-            <textarea style={{...S.input, height:80, resize:'none' as const}} value={estado.servicoMG}
-              onChange={e => setEstado(s => ({...s,servicoMG:e.target.value}))} placeholder="Descreva o serviço..." />
-            <div style={S.fieldLabel}>Funcionários ({estado.funcsMG.length} selecionados)</div>
-            {funcs.map(f => {
-              const sel = estado.funcsMG.includes(f.id)
-              const ini = f.nome.split(' ').slice(0,2).map((n:string)=>n[0]).join('')
-              return (
-                <div key={f.id} style={S.funcCard(sel)} onClick={() => toggleFunc(f.id,'mg')}>
-                  <div style={S.avatar(f.nome)}>{ini}</div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:14, fontWeight:600, color:'#1f2937' }}>{f.nome.split(' ').slice(0,3).join(' ')}</div>
-                    <div style={{ fontSize:12, color:'#6b7280' }}>{f.equipe}</div>
-                  </div>
-                  <div style={S.check(sel)}>
-                    {sel && <div style={{ width:8, height:8, borderRadius:'50%', background:'white' }} />}
-                  </div>
-                </div>
-              )
-            })}
+          <div style={S.body}>
+            <div style={S.h1}>Detalhes — Conta MG</div>
+            <div style={S.label}>Período de realização</div>
+            <div style={{ display:'flex', gap:10, marginTop:4 }}>
+              <div style={S.period(e.periodoMG==='DIA_TODO')} onClick={() => set({ periodoMG:'DIA_TODO' })}>
+                <div style={{ fontSize:22 }}>☀️</div>
+                <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginTop:4 }}>Dia todo</div>
+              </div>
+              <div style={S.period(e.periodoMG==='METADE')} onClick={() => set({ periodoMG:'METADE' })}>
+                <div style={{ fontSize:22 }}>🌤</div>
+                <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginTop:4 }}>Metade</div>
+              </div>
+            </div>
+            <div style={S.label}>Funcionários ({e.funcsMG.length} selecionados)</div>
+            <BuscaFunc todos={e.presentes} selecionados={e.funcsMG} onChange={v => set({ funcsMG:v })} placeholder="Buscar da lista de presentes..." />
           </div>
-          <div style={S.bottomBar}>
-            <button style={{...S.btn, opacity:!estado.horarioMG||!estado.servicoMG||!estado.funcsMG.length?.4:1}}
-              disabled={!estado.horarioMG||!estado.servicoMG||!estado.funcsMG.length}
-              onClick={() => setTela('confirmacao')}>Continuar →</button>
+          <div style={S.bottom}>
+            <button style={S.btn(!e.periodoMG||!e.funcsMG.length)} disabled={!e.periodoMG||!e.funcsMG.length}
+              onClick={() => ir('confirmacao')}>Continuar →</button>
           </div>
         </>
       )}
 
-      {/* TELA 5: CONFIRMAÇÃO */}
+      {/* TELA: CONFIRMAÇÃO */}
       {tela === 'confirmacao' && (
         <>
-          <div style={S.content}>
-            <div style={S.bigLabel}>Confirmar lançamento</div>
-            <div style={{ fontSize:14, color:'#6b7280', marginBottom:16 }}>Revise os dados antes de salvar</div>
-
+          <div style={S.body}>
+            <div style={S.h1}>Confirmar lançamento</div>
             <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 16px' }}>
               <div style={S.confirmRow}>
                 <span style={{ fontSize:13, color:'#6b7280' }}>Obra</span>
-                <span style={{ fontSize:13, fontWeight:700, color:'#1f2937' }}>{obraSel.nome}</span>
+                <span style={{ fontSize:13, fontWeight:700, color:'#1f2937' }}>{e.obra?.nome}</span>
               </div>
               <div style={S.confirmRow}>
                 <span style={{ fontSize:13, color:'#6b7280' }}>Data</span>
-                <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{new Date(estado.data+'T12:00').toLocaleDateString('pt-BR')}</span>
+                <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{new Date(e.data+'T12:00').toLocaleDateString('pt-BR')}</span>
               </div>
-
-              {estado.teveObra && (
+              <div style={S.confirmRow}>
+                <span style={{ fontSize:13, color:'#6b7280' }}>Equipe</span>
+                <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{e.equipe}</span>
+              </div>
+              <div style={{...S.confirmRow, borderBottom:'none'}}>
+                <span style={{ fontSize:13, color:'#6b7280' }}>Presentes</span>
+                <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{e.presentes.length} funcionários</span>
+              </div>
+              {e.teveObra && (
                 <>
-                  <div style={S.sectionHead}>Conta Obra</div>
+                  <div style={S.secHead}>Conta Obra</div>
                   <div style={S.confirmRow}>
                     <span style={{ fontSize:13, color:'#6b7280' }}>Solicitado por</span>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{estado.solicitadoPor}</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{e.solicitouObra}</span>
                   </div>
                   <div style={S.confirmRow}>
-                    <span style={{ fontSize:13, color:'#6b7280' }}>Horário</span>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{estado.horarioObra}</span>
-                  </div>
-                  <div style={S.confirmRow}>
-                    <span style={{ fontSize:13, color:'#6b7280' }}>Serviço</span>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937', maxWidth:180, textAlign:'right' }}>{estado.servicoObra}</span>
+                    <span style={{ fontSize:13, color:'#6b7280' }}>Período</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{e.periodoObra==='DIA_TODO'?'Dia todo':'Metade do dia'}</span>
                   </div>
                   <div style={{...S.confirmRow, borderBottom:'none'}}>
                     <span style={{ fontSize:13, color:'#6b7280' }}>Funcionários</span>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937', maxWidth:180, textAlign:'right' }}>
-                      {estado.funcsObra.length} selecionados
-                    </span>
+                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{e.funcsObra.length} selecionados</span>
                   </div>
                 </>
               )}
-
-              {estado.teveMG && (
+              {e.teveMG && (
                 <>
-                  <div style={S.sectionHead}>Conta MG</div>
+                  <div style={S.secHead}>Conta MG</div>
                   <div style={S.confirmRow}>
-                    <span style={{ fontSize:13, color:'#6b7280' }}>Horário</span>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{estado.horarioMG}</span>
-                  </div>
-                  <div style={S.confirmRow}>
-                    <span style={{ fontSize:13, color:'#6b7280' }}>Serviço</span>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937', maxWidth:180, textAlign:'right' }}>{estado.servicoMG}</span>
+                    <span style={{ fontSize:13, color:'#6b7280' }}>Período</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{e.periodoMG==='DIA_TODO'?'Dia todo':'Metade do dia'}</span>
                   </div>
                   <div style={{...S.confirmRow, borderBottom:'none'}}>
                     <span style={{ fontSize:13, color:'#6b7280' }}>Funcionários</span>
-                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{estado.funcsMG.length} selecionados</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:'#1f2937' }}>{e.funcsMG.length} selecionados</span>
                   </div>
                 </>
-              )}
-
-              {!estado.teveObra && !estado.teveMG && (
-                <div style={{ padding:'16px 0', textAlign:'center', color:'#6b7280', fontSize:14 }}>
-                  Nenhuma diária extra registrada hoje.
-                </div>
               )}
             </div>
-
-            <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:10, padding:'12px 14px', marginTop:16, fontSize:12, color:'#92400e' }}>
-              Após confirmar, os dados aparecem em tempo real no sistema principal.
+            <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:10, padding:'12px 14px', marginTop:14, fontSize:12, color:'#166534' }}>
+              Os dados serão salvos em tempo real no sistema principal.
             </div>
           </div>
-          <div style={S.bottomBar}>
-            <button style={{...S.btn, opacity:salvando?.7:1}} disabled={salvando} onClick={salvar}>
+          <div style={S.bottom}>
+            <button style={S.btn(salvando)} disabled={salvando} onClick={salvar}>
               {salvando ? 'Salvando...' : '✓ Confirmar e salvar'}
             </button>
-            <button style={S.btnSec} onClick={() => setTela('pergunta_obra')}>Voltar e editar</button>
+            <button style={S.btnSec} onClick={() => ir('dia')}>Voltar ao início</button>
           </div>
         </>
-      )}
-
-      {/* TELA 6: SUCESSO */}
-      {tela === 'sucesso' && (
-        <div style={{...S.content, display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', paddingTop:60}}>
-          <div style={{ width:80, height:80, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, marginBottom:20 }}>✅</div>
-          <div style={{ fontSize:22, fontWeight:800, color:'#1f2937', marginBottom:8 }}>Salvo!</div>
-          <div style={{ fontSize:15, color:'#6b7280', marginBottom:40 }}>As diárias foram registradas no sistema em tempo real.</div>
-          <button style={{...S.btn, maxWidth:280}} onClick={novo}>Novo lançamento</button>
-          <button style={{...S.btnSec, maxWidth:280}} onClick={() => setObraSel(null)}>Trocar de obra</button>
-        </div>
       )}
     </div>
   )
