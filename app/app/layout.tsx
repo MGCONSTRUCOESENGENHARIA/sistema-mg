@@ -21,6 +21,7 @@ const MENUS = [
     { href: '/app/presenca',        label: 'Grade de Presença' },
     { href: '/app/avulsos',         label: 'Descontos / Vales' },
     { href: '/app/folhas',          label: 'Folhas de Ponto' },
+    { href: '/campo',               label: 'App Campo (Encarregado)' },
   ]},
   { label: 'Financeiro', items: [
     { href: '/app/passagem-cafe?q=1', label: 'Passagem & Café — Dia 16' },
