@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 
 type Tela = 'dia' | 'confirma_dia' | 'obra' | 'equipe' | 'funcionarios' |
@@ -29,37 +29,47 @@ const INIT: Estado = {
 
 const STEPS: Tela[] = ['dia', 'obra', 'equipe', 'funcionarios', 'atrasados', 'saiu_cedo', 'conta_obra', 'conta_mg', 'confirmacao']
 
+// Busca SEM re-render no pai — usa ref interno para o valor
 function Busca({ todos, selecionados, onChange, placeholder }: {
   todos: any[], selecionados: any[], onChange: (v: any[]) => void, placeholder?: string
 }) {
-  const [q, setQ] = useState('')
-  const [mostrar, setMostrar] = useState<any[]>([])
+  const [resultados, setResultados] = useState<any[]>([])
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (q.length === 0) { setMostrar([]); return }
+  const buscar = useCallback((q: string) => {
+    if (!q) { setResultados([]); return }
     const disp = todos.filter((f: any) =>
       !selecionados.find((s: any) => s.id === f.id) &&
       f.nome.toLowerCase().includes(q.toLowerCase())
     ).slice(0, 8)
-    setMostrar(disp)
-  }, [q, todos, selecionados])
+    setResultados(disp)
+  }, [todos, selecionados])
+
+  function selecionar(f: any) {
+    onChange([...selecionados, f])
+    setResultados([])
+    if (inputRef.current) { inputRef.current.value = ''; inputRef.current.focus() }
+  }
 
   return (
     <div>
       <input
-        type="search"
-        value={q}
+        ref={inputRef}
+        type="text"
         placeholder={placeholder || 'Digite o nome...'}
         autoComplete="off"
-        style={{ width: '100%', padding: '14px 16px', fontSize: 16, border: '2px solid #cbd5e1', borderRadius: 12, outline: 'none', background: 'white', boxSizing: 'border-box' as const, color: '#111' }}
-        onChange={e => setQ(e.target.value)}
+        autoCorrect="off"
+        spellCheck={false}
+        style={{ width: '100%', padding: '14px 16px', fontSize: 16, border: '2px solid #cbd5e1', borderRadius: 12, outline: 'none', background: 'white', boxSizing: 'border-box' as const, color: '#111', WebkitAppearance: 'none' }}
+        onChange={e => buscar(e.target.value)}
       />
-      {mostrar.length > 0 && (
+      {resultados.length > 0 && (
         <div style={{ background: 'white', border: '2px solid #cbd5e1', borderRadius: 12, marginTop: 6, overflow: 'hidden' }}>
-          {mostrar.map((f: any) => (
+          {resultados.map((f: any) => (
             <div key={f.id}
-              style={{ padding: '16px', fontSize: 15, color: '#111', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', background: 'white' }}
-              onClick={() => { onChange([...selecionados, f]); setQ(''); setMostrar([]) }}>
+              style={{ padding: '16px', fontSize: 15, color: '#111', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+              onMouseDown={ev => { ev.preventDefault(); selecionar(f) }}
+              onTouchEnd={ev => { ev.preventDefault(); selecionar(f) }}>
               {f.nome}
             </div>
           ))}
@@ -162,7 +172,7 @@ export default function CampoLancar() {
     ir('sucesso')
   }
 
-  const s = {
+  const st = {
     page: { minHeight: '100vh', background: '#f8fafc', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column' as const },
     top: { background: azul, padding: '16px 20px', display: 'flex', alignItems: 'center' as const, gap: 12 },
     body: { flex: 1, padding: '24px 20px', overflowY: 'auto' as const },
@@ -174,18 +184,11 @@ export default function CampoLancar() {
   }
 
   function PBtn({ disabled, onClick, label }: any) {
-    return (
-      <button disabled={disabled} onClick={onClick}
-        style={{ width: '100%', padding: 16, borderRadius: 14, border: 'none', background: disabled ? '#94a3b8' : azul, color: 'white', fontSize: 16, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer' }}>
-        {label}
-      </button>
-    )
+    return <button disabled={disabled} onClick={onClick} style={{ width: '100%', padding: 16, borderRadius: 14, border: 'none', background: disabled ? '#94a3b8' : azul, color: 'white', fontSize: 16, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer' }}>{label}</button>
   }
-
   function SBtn({ onClick, label }: any) {
     return <button onClick={onClick} style={{ width: '100%', padding: 14, borderRadius: 14, border: '2px solid #e2e8f0', background: 'white', color: '#374151', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 10 }}>{label}</button>
   }
-
   function YN({ sel, verde, emoji, label, onClick }: any) {
     return (
       <div onClick={onClick} style={{ flex: 1, padding: '20px 12px', borderRadius: 16, textAlign: 'center' as const, cursor: 'pointer', border: sel ? `2px solid ${verde ? '#059669' : '#dc2626'}` : '2px solid #e2e8f0', background: sel ? (verde ? '#d1fae5' : '#fee2e2') : 'white' }}>
@@ -194,7 +197,6 @@ export default function CampoLancar() {
       </div>
     )
   }
-
   function Period({ sel, onClick, icon, label }: any) {
     return (
       <div onClick={onClick} style={{ flex: 1, padding: '18px 12px', borderRadius: 14, border: sel ? `2px solid ${azul}` : '2px solid #e2e8f0', background: sel ? '#dbeafe' : 'white', cursor: 'pointer', textAlign: 'center' as const }}>
@@ -203,7 +205,6 @@ export default function CampoLancar() {
       </div>
     )
   }
-
   function CRow({ label, value, color }: any) {
     return (
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f1f5f9', gap: 12 }}>
@@ -214,9 +215,9 @@ export default function CampoLancar() {
   }
 
   if (tela === 'sucesso') return (
-    <div style={s.page}>
-      <div style={s.top}><span style={{ color: 'white', fontWeight: 800, fontSize: 18 }}>MG Campo</span></div>
-      <div style={{ ...s.body, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', textAlign: 'center', paddingTop: 48 }}>
+    <div style={st.page}>
+      <div style={st.top}><span style={{ color: 'white', fontWeight: 800, fontSize: 18 }}>MG Campo</span></div>
+      <div style={{ ...st.body, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', textAlign: 'center', paddingTop: 48 }}>
         <div style={{ width: 96, height: 96, borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, marginBottom: 24 }}>✅</div>
         <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Salvo!</div>
         <div style={{ fontSize: 15, color: '#64748b', marginBottom: 32 }}>Lançamento registrado no sistema.</div>
@@ -233,27 +234,22 @@ export default function CampoLancar() {
   }
 
   return (
-    <div style={s.page}>
-      <div style={s.top}>
-        {tela !== 'dia' && (
-          <button onClick={goBack} style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,.2)', color: 'white', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>←</button>
-        )}
+    <div style={st.page}>
+      <div style={st.top}>
+        {tela !== 'dia' && <button onClick={goBack} style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,.2)', color: 'white', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>←</button>}
         <div>
           <div style={{ color: 'white', fontWeight: 800, fontSize: 17 }}>MG Campo</div>
           {e.obra && <div style={{ color: 'rgba(255,255,255,.6)', fontSize: 12 }}>{e.obra.nome}</div>}
         </div>
       </div>
-
       <div style={{ background: '#1e40af', padding: '0 20px 12px', display: 'flex', gap: 4 }}>
-        {STEPS.map((_, i) => (
-          <div key={i} style={{ height: 3, flex: 1, borderRadius: 2, background: i + 1 < step ? 'white' : i + 1 === step ? '#93c5fd' : 'rgba(255,255,255,.25)' }} />
-        ))}
+        {STEPS.map((_, i) => <div key={i} style={{ height: 3, flex: 1, borderRadius: 2, background: i + 1 < step ? 'white' : i + 1 === step ? '#93c5fd' : 'rgba(255,255,255,.25)' }} />)}
       </div>
 
       {tela === 'dia' && (
-        <div style={s.body}>
-          <div style={s.h1}>Essa diária é de hoje?</div>
-          <div style={s.sub}>{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+        <div style={st.body}>
+          <div style={st.h1}>Essa diária é de hoje?</div>
+          <div style={st.sub}>{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
           <div style={{ display: 'flex', gap: 12 }}>
             <YN sel={false} verde emoji="✅" label="Sim, hoje" onClick={() => { upd({ data: new Date().toISOString().slice(0, 10) }); ir('obra') }} />
             <YN sel={false} verde={false} emoji="📅" label="Outro dia" onClick={() => ir('confirma_dia')} />
@@ -263,54 +259,50 @@ export default function CampoLancar() {
 
       {tela === 'confirma_dia' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Qual a data?</div>
-            <input type="date" style={{ ...s.inp, minHeight: 54 }}
-              value={e.data} max={new Date().toISOString().slice(0, 10)}
-              onChange={ev => upd({ data: ev.target.value })} />
-            {e.data && (
-              <div style={{ marginTop: 14, padding: '14px 16px', background: '#dbeafe', borderRadius: 12, fontWeight: 700, color: azul }}>
-                📅 {new Date(e.data + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </div>
-            )}
+          <div style={st.body}>
+            <div style={st.h1}>Qual a data?</div>
+            <div style={st.sub}>Toque para selecionar</div>
+            <input
+              type="date"
+              defaultValue={e.data}
+              max={new Date().toISOString().slice(0, 10)}
+              style={{ ...st.inp, minHeight: 54 }}
+              onChange={ev => { if (ev.target.value) upd({ data: ev.target.value }) }}
+            />
           </div>
-          <div style={s.bot}><PBtn disabled={!e.data} onClick={() => ir('obra')} label="Confirmar →" /></div>
+          <div style={st.bot}><PBtn disabled={!e.data} onClick={() => ir('obra')} label="Confirmar →" /></div>
         </>
       )}
 
       {tela === 'obra' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Qual a obra?</div>
-            <div style={s.sub}>Digite para buscar</div>
-            <Busca
-              todos={obras}
-              selecionados={e.obra ? [e.obra] : []}
-              onChange={v => upd({ obra: v.length ? v[v.length - 1] : null })}
-              placeholder="Ex: Barreiro, Savassi..."
-            />
+          <div style={st.body}>
+            <div style={st.h1}>Qual a obra?</div>
+            <div style={st.sub}>Digite para buscar</div>
+            <Busca todos={obras} selecionados={e.obra ? [e.obra] : []} onChange={v => upd({ obra: v.length ? v[v.length - 1] : null })} placeholder="Ex: Barreiro, Savassi..." />
+            {e.obra && <div style={{ marginTop: 14, padding: '14px 16px', background: '#dbeafe', borderRadius: 12, fontWeight: 700, color: azul }}>🏗 {e.obra.nome}</div>}
           </div>
-          <div style={s.bot}><PBtn disabled={!e.obra} onClick={() => ir('equipe')} label="Continuar →" /></div>
+          <div style={st.bot}><PBtn disabled={!e.obra} onClick={() => ir('equipe')} label="Continuar →" /></div>
         </>
       )}
 
       {tela === 'equipe' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Qual a equipe?</div>
+          <div style={st.body}>
+            <div style={st.h1}>Qual a equipe?</div>
             <div style={{ display: 'flex', gap: 12 }}>
               <YN sel={e.equipe === 'ARMAÇÃO'} verde emoji="🔩" label="Armação" onClick={() => upd({ equipe: 'ARMAÇÃO', presentes: [] })} />
               <YN sel={e.equipe === 'CARPINTARIA'} verde emoji="🪵" label="Carpintaria" onClick={() => upd({ equipe: 'CARPINTARIA', presentes: [] })} />
             </div>
           </div>
-          <div style={s.bot}><PBtn disabled={!e.equipe} onClick={() => ir('funcionarios')} label="Continuar →" /></div>
+          <div style={st.bot}><PBtn disabled={!e.equipe} onClick={() => ir('funcionarios')} label="Continuar →" /></div>
         </>
       )}
 
       {tela === 'funcionarios' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Quem estava na obra?</div>
+          <div style={st.body}>
+            <div style={st.h1}>Quem estava na obra?</div>
             {funcsDisp.length === 0 && funcs.length > 0 ? (
               <div style={{ padding: 32, background: '#d1fae5', borderRadius: 14, textAlign: 'center' as const }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
@@ -320,102 +312,95 @@ export default function CampoLancar() {
               <Busca todos={funcsDisp} selecionados={e.presentes} onChange={v => upd({ presentes: v })} placeholder="Buscar funcionário..." />
             )}
           </div>
-          <div style={s.bot}><PBtn disabled={!e.presentes.length} onClick={() => ir('atrasados')} label="Continuar →" /></div>
+          <div style={st.bot}><PBtn disabled={!e.presentes.length} onClick={() => ir('atrasados')} label="Continuar →" /></div>
         </>
       )}
 
       {tela === 'atrasados' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Alguém chegou atrasado?</div>
+          <div style={st.body}>
+            <div style={st.h1}>Alguém chegou atrasado?</div>
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
               <YN sel={e.simAtrasado === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ simAtrasado: false, atrasados: [], horariosAtrasados: {} })} />
               <YN sel={e.simAtrasado === true} verde emoji="✅" label="Sim" onClick={() => upd({ simAtrasado: true })} />
             </div>
             {e.simAtrasado === true && (
               <>
-                <span style={s.lbl}>Quem?</span>
+                <span style={st.lbl}>Quem?</span>
                 <Busca todos={e.presentes} selecionados={e.atrasados} onChange={v => upd({ atrasados: v })} placeholder="Buscar..." />
                 {e.atrasados.map((f: any) => (
                   <div key={f.id} style={{ marginTop: 12, background: 'white', border: '2px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>⏰ {f.nome.split(' ')[0]} — que horas chegou?</div>
-                    <input type="time" style={s.inp} value={e.horariosAtrasados[f.id] || ''}
-                      onChange={ev => upd({ horariosAtrasados: { ...e.horariosAtrasados, [f.id]: ev.target.value } })} />
+                    <input type="time" style={st.inp} value={e.horariosAtrasados[f.id] || ''} onChange={ev => upd({ horariosAtrasados: { ...e.horariosAtrasados, [f.id]: ev.target.value } })} />
                   </div>
                 ))}
               </>
             )}
           </div>
-          <div style={s.bot}>
-            <PBtn
-              disabled={e.simAtrasado === null || (e.simAtrasado === true && (!e.atrasados.length || e.atrasados.some((f: any) => !e.horariosAtrasados[f.id])))}
-              onClick={() => ir('saiu_cedo')} label="Continuar →" />
+          <div style={st.bot}>
+            <PBtn disabled={e.simAtrasado === null || (e.simAtrasado === true && (!e.atrasados.length || e.atrasados.some((f: any) => !e.horariosAtrasados[f.id])))} onClick={() => ir('saiu_cedo')} label="Continuar →" />
           </div>
         </>
       )}
 
       {tela === 'saiu_cedo' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Alguém saiu mais cedo?</div>
+          <div style={st.body}>
+            <div style={st.h1}>Alguém saiu mais cedo?</div>
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
               <YN sel={e.simSaiu === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ simSaiu: false, saiuCedo: [], horariosSaiu: {} })} />
               <YN sel={e.simSaiu === true} verde emoji="✅" label="Sim" onClick={() => upd({ simSaiu: true })} />
             </div>
             {e.simSaiu === true && (
               <>
-                <span style={s.lbl}>Quem?</span>
+                <span style={st.lbl}>Quem?</span>
                 <Busca todos={e.presentes} selecionados={e.saiuCedo} onChange={v => upd({ saiuCedo: v })} placeholder="Buscar..." />
                 {e.saiuCedo.map((f: any) => (
                   <div key={f.id} style={{ marginTop: 12, background: 'white', border: '2px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>🚪 {f.nome.split(' ')[0]} — que horas saiu?</div>
-                    <input type="time" style={s.inp} value={e.horariosSaiu[f.id] || ''}
-                      onChange={ev => upd({ horariosSaiu: { ...e.horariosSaiu, [f.id]: ev.target.value } })} />
+                    <input type="time" style={st.inp} value={e.horariosSaiu[f.id] || ''} onChange={ev => upd({ horariosSaiu: { ...e.horariosSaiu, [f.id]: ev.target.value } })} />
                   </div>
                 ))}
               </>
             )}
           </div>
-          <div style={s.bot}>
-            <PBtn
-              disabled={e.simSaiu === null || (e.simSaiu === true && (!e.saiuCedo.length || e.saiuCedo.some((f: any) => !e.horariosSaiu[f.id])))}
-              onClick={() => ir('conta_obra')} label="Continuar →" />
+          <div style={st.bot}>
+            <PBtn disabled={e.simSaiu === null || (e.simSaiu === true && (!e.saiuCedo.length || e.saiuCedo.some((f: any) => !e.horariosSaiu[f.id])))} onClick={() => ir('conta_obra')} label="Continuar →" />
           </div>
         </>
       )}
 
       {tela === 'conta_obra' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Teve diária por conta da obra?</div>
-            <div style={s.sub}>Serviço extra solicitado pelo cliente</div>
+          <div style={st.body}>
+            <div style={st.h1}>Teve diária por conta da obra?</div>
+            <div style={st.sub}>Serviço extra solicitado pelo cliente</div>
             <div style={{ display: 'flex', gap: 12 }}>
               <YN sel={e.teveObra === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ teveObra: false, funcsObra: [] })} />
               <YN sel={e.teveObra === true} verde emoji="✅" label="Sim" onClick={() => upd({ teveObra: true })} />
             </div>
           </div>
-          <div style={s.bot}><PBtn disabled={e.teveObra === null} onClick={() => ir(e.teveObra ? 'conta_obra_det' : 'conta_mg')} label="Continuar →" /></div>
+          <div style={st.bot}><PBtn disabled={e.teveObra === null} onClick={() => ir(e.teveObra ? 'conta_obra_det' : 'conta_mg')} label="Continuar →" /></div>
         </>
       )}
 
       {tela === 'conta_obra_det' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Detalhes — Conta Obra</div>
-            <span style={s.lbl}>Quem solicitou?</span>
-            <input style={s.inp} value={e.solicitouObra} onChange={ev => upd({ solicitouObra: ev.target.value })} placeholder="Nome do responsável..." />
-            <span style={s.lbl}>Período</span>
+          <div style={st.body}>
+            <div style={st.h1}>Detalhes — Conta Obra</div>
+            <span style={st.lbl}>Quem solicitou?</span>
+            <input style={st.inp} defaultValue={e.solicitouObra} onChange={ev => upd({ solicitouObra: ev.target.value })} placeholder="Nome do responsável..." />
+            <span style={st.lbl}>Período</span>
             <div style={{ display: 'flex', gap: 12 }}>
               <Period sel={e.periodoObra === 'DIA_TODO'} onClick={() => upd({ periodoObra: 'DIA_TODO' })} icon="☀️" label="Dia todo" />
               <Period sel={e.periodoObra === 'METADE'} onClick={() => upd({ periodoObra: 'METADE' })} icon="🌤" label="Metade" />
             </div>
-            <span style={s.lbl}>Serviço executado</span>
-            <textarea style={{ ...s.inp, height: 90, resize: 'none' as const }} value={e.servicoObra}
-              onChange={ev => upd({ servicoObra: ev.target.value })} placeholder="Descreva o serviço..." />
-            <span style={s.lbl}>Funcionários ({e.funcsObra.length})</span>
+            <span style={st.lbl}>Serviço executado</span>
+            <textarea style={{ ...st.inp, height: 90, resize: 'none' as const }} defaultValue={e.servicoObra} onChange={ev => upd({ servicoObra: ev.target.value })} placeholder="Descreva o serviço..." />
+            <span style={st.lbl}>Funcionários ({e.funcsObra.length})</span>
             <Busca todos={e.presentes} selecionados={e.funcsObra} onChange={v => upd({ funcsObra: v })} placeholder="Buscar..." />
           </div>
-          <div style={s.bot}>
+          <div style={st.bot}>
             <PBtn disabled={!e.solicitouObra || !e.periodoObra || !e.servicoObra || !e.funcsObra.length} onClick={() => ir('conta_mg')} label="Continuar →" />
           </div>
         </>
@@ -423,34 +408,33 @@ export default function CampoLancar() {
 
       {tela === 'conta_mg' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Teve diária por conta da MG?</div>
-            <div style={s.sub}>Serviço extra solicitado pela MG Construções</div>
+          <div style={st.body}>
+            <div style={st.h1}>Teve diária por conta da MG?</div>
+            <div style={st.sub}>Serviço extra solicitado pela MG Construções</div>
             <div style={{ display: 'flex', gap: 12 }}>
               <YN sel={e.teveMG === false} verde={false} emoji="❌" label="Não" onClick={() => upd({ teveMG: false, funcsMG: [] })} />
               <YN sel={e.teveMG === true} verde emoji="✅" label="Sim" onClick={() => upd({ teveMG: true })} />
             </div>
           </div>
-          <div style={s.bot}><PBtn disabled={e.teveMG === null} onClick={() => ir(e.teveMG ? 'conta_mg_det' : 'confirmacao')} label="Continuar →" /></div>
+          <div style={st.bot}><PBtn disabled={e.teveMG === null} onClick={() => ir(e.teveMG ? 'conta_mg_det' : 'confirmacao')} label="Continuar →" /></div>
         </>
       )}
 
       {tela === 'conta_mg_det' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Detalhes — Conta MG</div>
-            <span style={s.lbl}>Período</span>
+          <div style={st.body}>
+            <div style={st.h1}>Detalhes — Conta MG</div>
+            <span style={st.lbl}>Período</span>
             <div style={{ display: 'flex', gap: 12 }}>
               <Period sel={e.periodoMG === 'DIA_TODO'} onClick={() => upd({ periodoMG: 'DIA_TODO' })} icon="☀️" label="Dia todo" />
               <Period sel={e.periodoMG === 'METADE'} onClick={() => upd({ periodoMG: 'METADE' })} icon="🌤" label="Metade" />
             </div>
-            <span style={s.lbl}>Serviço executado</span>
-            <textarea style={{ ...s.inp, height: 90, resize: 'none' as const }} value={e.servicoMG}
-              onChange={ev => upd({ servicoMG: ev.target.value })} placeholder="Descreva o serviço..." />
-            <span style={s.lbl}>Funcionários ({e.funcsMG.length})</span>
+            <span style={st.lbl}>Serviço executado</span>
+            <textarea style={{ ...st.inp, height: 90, resize: 'none' as const }} defaultValue={e.servicoMG} onChange={ev => upd({ servicoMG: ev.target.value })} placeholder="Descreva o serviço..." />
+            <span style={st.lbl}>Funcionários ({e.funcsMG.length})</span>
             <Busca todos={e.presentes} selecionados={e.funcsMG} onChange={v => upd({ funcsMG: v })} placeholder="Buscar..." />
           </div>
-          <div style={s.bot}>
+          <div style={st.bot}>
             <PBtn disabled={!e.periodoMG || !e.servicoMG || !e.funcsMG.length} onClick={() => ir('confirmacao')} label="Continuar →" />
           </div>
         </>
@@ -458,9 +442,9 @@ export default function CampoLancar() {
 
       {tela === 'confirmacao' && (
         <>
-          <div style={s.body}>
-            <div style={s.h1}>Confirmar</div>
-            <div style={s.sub}>Revise antes de salvar</div>
+          <div style={st.body}>
+            <div style={st.h1}>Confirmar</div>
+            <div style={st.sub}>Revise antes de salvar</div>
             <div style={{ background: 'white', border: '2px solid #e2e8f0', borderRadius: 16, padding: 16, marginBottom: 14 }}>
               <CRow label="Obra" value={e.obra?.nome} color={azul} />
               <CRow label="Data" value={new Date(e.data + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} />
@@ -469,21 +453,21 @@ export default function CampoLancar() {
               {e.atrasados.length > 0 && <CRow label="Atrasados" value={e.atrasados.map((f: any) => `${f.nome} (${e.horariosAtrasados[f.id] || '?'})`).join(', ')} color="#92400e" />}
               {e.saiuCedo.length > 0 && <CRow label="Saíram cedo" value={e.saiuCedo.map((f: any) => `${f.nome} (${e.horariosSaiu[f.id] || '?'})`).join(', ')} color="#92400e" />}
               {e.teveObra && <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Conta Obra</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: '14px 0 8px', textTransform: 'uppercase' as const }}>Conta Obra</div>
                 <CRow label="Solicitou" value={e.solicitouObra} />
                 <CRow label="Período" value={e.periodoObra === 'DIA_TODO' ? 'Dia todo' : 'Metade'} />
                 <CRow label="Serviço" value={e.servicoObra} />
                 <CRow label="Funcs" value={e.funcsObra.map((f: any) => f.nome).join(', ')} />
               </>}
               {e.teveMG && <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Conta MG</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', margin: '14px 0 8px', textTransform: 'uppercase' as const }}>Conta MG</div>
                 <CRow label="Período" value={e.periodoMG === 'DIA_TODO' ? 'Dia todo' : 'Metade'} />
                 <CRow label="Serviço" value={e.servicoMG} />
                 <CRow label="Funcs" value={e.funcsMG.map((f: any) => f.nome).join(', ')} />
               </>}
             </div>
           </div>
-          <div style={s.bot}>
+          <div style={st.bot}>
             <PBtn disabled={salvando} onClick={salvar} label={salvando ? '⏳ Salvando...' : '✓ Confirmar e salvar'} />
             <SBtn onClick={() => ir('dia')} label="Voltar ao início" />
           </div>
