@@ -146,7 +146,8 @@ export default function AdiantamentoPage() {
 
   function recalcular(linha: Linha) {
     const ed = editando[linha.func_id] || { hora_extra: 0, complemento: 0, descontos: linha.descontos }
-    return linha.adiantamento + linha.extra_folha_valor + ed.hora_extra + ed.complemento - ed.descontos
+    const heEfetivo = ed.hora_extra !== 0 ? ed.hora_extra : linha.extra_folha_valor
+    return linha.adiantamento + heEfetivo + ed.complemento - ed.descontos
   }
 
   const totalDiarias = linhas.reduce((s, l) => s + l.total_diarias, 0)
@@ -202,12 +203,11 @@ export default function AdiantamentoPage() {
                 {/* Cabeçalhos */}
                 {[
                   { label: 'FUNCIONÁRIO', bg: '#1a3a5c', min: 220, sticky: true },
-                  { label: 'TOTAL DIÁRIAS', bg: '#1e4d2b' },
-                  { label: 'DIÁRIAS EXTRA FOLHA', bg: '#4c1d95' },
-                  { label: 'VALOR DA DIÁRIA', bg: '#1a3a5c' },
+                  { label: 'DIAS TRABALHADOS', bg: '#1e4d2b' },
+                  { label: 'SÁBADOS E FERIADOS', bg: '#4c1d95' },
+                  { label: 'VALOR', bg: '#1a3a5c' },
                   { label: 'SALÁRIO BASE', bg: '#1a3a5c' },
                   { label: 'ADIANTAMENTO', bg: '#065f46' },
-                  { label: 'EXTRA FOLHA', bg: '#4c1d95' },
                   { label: 'HORA EXTRA', bg: '#7c2d12' },
                   { label: 'COMPLEMENTO', bg: '#7c2d12' },
                   { label: 'DESCONTOS', bg: '#991b1b' },
@@ -254,13 +254,11 @@ export default function AdiantamentoPage() {
                     <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: '#065f46', background: '#f0fdf4', fontSize: 13 }}>
                       {formatR$(l.adiantamento)}
                     </td>
-                    <td style={{ padding: '7px 10px', textAlign: 'right', color: '#6d28d9', background: '#f5f3ff', fontSize: 12 }}>
-                      {l.extra_folha_valor > 0 ? formatR$(l.extra_folha_valor) : '—'}
-                    </td>
+
                     {/* Hora Extra editável */}
                     <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
                       <input type="number" step="0.01" style={inputStyle}
-                        value={ed.hora_extra || ''}
+                        value={ed.hora_extra !== 0 ? ed.hora_extra : (l.extra_folha_valor || '')}
                         placeholder="0,00"
                         onChange={e => setEdit(l.func_id, 'hora_extra', parseFloat(e.target.value) || 0)}
                       />
@@ -335,12 +333,11 @@ export default function AdiantamentoPage() {
           </div>
           <div style={{ padding:20 }}>
             {[
-              { label:'Total Diárias', val: modalFunc.l.total_diarias.toFixed(1), unit:' dias', color:'#166534' },
-              { label:'Diárias Extra Folha', val: modalFunc.l.extras_folha.toFixed(1), unit:' dias', color:'#6d28d9' },
-              { label:'Valor da Diária', val: formatR$(modalFunc.l.valor_diaria), color:'#1a3a5c' },
+              { label:'Dias Trabalhados', val: modalFunc.l.total_diarias.toFixed(1), unit:' dias', color:'#166534' },
+              { label:'Sábados e Feriados', val: modalFunc.l.extras_folha.toFixed(1), unit:' dias', color:'#6d28d9' },
+              { label:'Valor', val: formatR$(modalFunc.l.valor_diaria), color:'#1a3a5c' },
               { label:'Salário Base', val: formatR$(modalFunc.l.salario_base), color:'#1a3a5c' },
               { label:'Adiantamento (50%)', val: formatR$(modalFunc.l.adiantamento), color:'#065f46', bold:true },
-              { label:'Extra Folha', val: modalFunc.l.extra_folha_valor > 0 ? formatR$(modalFunc.l.extra_folha_valor) : '—', color:'#6d28d9' },
               { label:'Hora Extra', val: formatR$(modalFunc.ed.hora_extra || 0), color:'#92400e' },
               { label:'Complemento', val: formatR$(modalFunc.ed.complemento || 0), color:'#92400e' },
               { label:'Descontos', val: '-' + formatR$(modalFunc.ed.descontos || 0), color:'#dc2626' },

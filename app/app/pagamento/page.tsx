@@ -277,16 +277,15 @@ export default function PagamentoPage() {
   const COLS = [
     { label: 'FUNCIONÁRIO', bg: '#1a3a5c', min: 200, sticky: true },
     { label: 'TIPO', bg: '#1a3a5c', min: 100 },
-    { label: 'DIÁRIAS', bg: '#1e4d2b' },
-    { label: 'EXTRAS FOLHA', bg: '#4c1d95' },
+    { label: 'DIAS TRABALHADOS', bg: '#1e4d2b' },
+    { label: 'SÁBADOS/FERIADOS', bg: '#4c1d95' },
     { label: 'DIAS ÚTEIS', bg: '#1e4d2b' },
     { label: 'FALTAS', bg: '#7f1d1d' },
     { label: 'AUSENTE', bg: '#6b7280' },
     { label: 'DSR', bg: '#92400e' },
-    { label: 'VL DIÁRIA', bg: '#1a3a5c' },
+    { label: 'VALOR', bg: '#1a3a5c' },
     { label: 'SALÁRIO', bg: '#1a3a5c' },
     { label: 'ADIANTAMENTO', bg: '#065f46' },
-    { label: 'EXTRA FOLHA R$', bg: '#4c1d95' },
     { label: 'HORA EXTRA', bg: '#7c2d12' },
     { label: 'COMPLEMENTO', bg: '#7c2d12' },
     { label: 'DESC. MAT.', bg: '#991b1b' },
@@ -377,10 +376,9 @@ export default function PagamentoPage() {
                     <td style={{ padding:'7px 8px', textAlign:'right', fontSize:12 }}>{formatR$(l.valor_diaria)}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', fontSize:12 }}>{tipo==='SALÁRIO'?formatR$(salarioLiq):formatR$(l.salario_base)}</td>
                     <td style={{ padding:'7px 8px', textAlign:'right', color:'#dc2626', fontSize:12 }}>-{formatR$(l.adiantamento_valor)}</td>
-                    <td style={{ padding:'7px 8px', textAlign:'right', color:'#6d28d9', background:'#f5f3ff', fontSize:12 }}>{l.extra_folha_valor>0?formatR$(l.extra_folha_valor):'—'}</td>
                     {/* Editáveis amarelo */}
                     <td style={{ padding:'4px 4px', textAlign:'center', background:'#fff7ed' }}>
-                      <input type="number" step="0.01" style={inp()} value={ed.hora_extra||''} placeholder="0,00" onChange={e => setEdit(l.func_id,'hora_extra',parseFloat(e.target.value)||0)} />
+                      <input type="number" step="0.01" style={inp()} value={ed.hora_extra||(l.extra_folha_valor||'')} placeholder="0,00" onChange={e => setEdit(l.func_id,'hora_extra',parseFloat(e.target.value)||0)} />
                     </td>
                     <td style={{ padding:'4px 4px', textAlign:'center', background:'#fff7ed' }}>
                       <input type="number" step="0.01" style={inp()} value={ed.complemento||''} placeholder="0,00" onChange={e => setEdit(l.func_id,'complemento',parseFloat(e.target.value)||0)} />
@@ -408,7 +406,7 @@ export default function PagamentoPage() {
               })}
               <tr style={{ background:'#1a3a5c', fontWeight:700 }}>
                 <td style={{ padding:'9px 12px', color:'#fff', fontSize:12, position:'sticky', left:0, background:'#1a3a5c', zIndex:2 }}>TOTAL {equipe}</td>
-                <td colSpan={20} style={{ padding:'9px 8px' }}></td>
+                <td colSpan={19} style={{ padding:'9px 8px' }}></td>
                 <td style={{ padding:'9px 8px', textAlign:'right', color:'#86efac', fontSize:13 }}>{formatR$(totalGeral)}</td>
                 <td style={{ padding:'9px 8px', textAlign:'right', color:'#93c5fd', fontSize:13 }}>{formatR$(totalCC)}</td>
               </tr>
@@ -432,13 +430,12 @@ export default function PagamentoPage() {
           <div style={{ padding:20 }}>
             {[
               { label:'Tipo', val: modalFunc.ed.tipo_pagamento || 'DIÁRIA', color:'#1a3a5c' },
-              { label:'Total Diárias', val: modalFunc.l.total_diarias.toFixed(1) + ' dias', color:'#166534' },
+              { label:'Dias Trabalhados', val: modalFunc.l.total_diarias.toFixed(1) + ' dias', color:'#166534' },
               { label:'Extras Folha', val: modalFunc.l.extras_folha.toFixed(1) + ' dias', color:'#6d28d9' },
               { label:'Dias Úteis', val: modalFunc.l.dias_uteis.toFixed(1), color:'#1a3a5c' },
               { label:'Faltas', val: modalFunc.l.faltas, color:'#dc2626' },
-              { label:'Valor da Diária', val: formatR$(modalFunc.l.valor_diaria), color:'#1a3a5c' },
+              { label:'Valor', val: formatR$(modalFunc.l.valor_diaria), color:'#1a3a5c' },
               { label:'Salário Base', val: formatR$(modalFunc.l.salario_base), color:'#1a3a5c' },
-              { label:'Extra Folha R$', val: formatR$(modalFunc.l.extra_folha_valor), color:'#6d28d9' },
               { label:'Hora Extra', val: formatR$(modalFunc.ed.hora_extra || 0), color:'#92400e' },
               { label:'Complemento', val: formatR$(modalFunc.ed.complemento || 0), color:'#92400e' },
               { label:'(-) Adiantamento', val: '-' + formatR$(modalFunc.l.adiantamento_valor), color:'#dc2626' },
