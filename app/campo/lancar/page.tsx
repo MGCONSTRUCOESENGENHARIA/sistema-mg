@@ -320,26 +320,24 @@ export default function CampoLancar() {
           <div style={S.body}>
             <div style={S.h1}>Alguém chegou atrasado?</div>
             <div style={S.yesno}>
-              <div style={S.yn(e.atrasados.length>0,'nao')} onClick={() => set({ atrasados:{} as any })}>
+              <div style={S.yn(e.atrasados.length===0,'sim')} onClick={() => set({ atrasados:[] })}>
                 ✅<span style={S.ynLabel}>Não</span>
               </div>
-              <div style={S.yn(false,'sim')} onClick={() => {}}>
+              <div style={S.yn(e.atrasados.length>0,'nao')} onClick={() => {}}>
                 ⏰<span style={S.ynLabel}>Sim</span>
               </div>
             </div>
-            {(e.atrasados.length > 0 || true) && (
-              <div style={{ marginTop:20 }}>
-                <div style={S.label}>Quem chegou atrasado?</div>
-                <BuscaFunc todos={e.presentes} selecionados={e.atrasados} onChange={v => set({ atrasados:v })} placeholder="Buscar..." />
-                {e.atrasados.map((f:any) => (
-                  <div key={f.id} style={{ marginTop:8 }}>
-                    <div style={{ fontSize:13, color:'#374151', marginBottom:4 }}>{f.nome.split(' ')[0]} — horário de chegada:</div>
-                    <input type="time" style={S.input} value={e.horariosAtrasados[f.id]||''}
-                      onChange={ev => set({ horariosAtrasados:{ ...e.horariosAtrasados, [f.id]:ev.target.value } })} />
-                  </div>
-                ))}
-              </div>
-            )}
+            <div style={{ marginTop:20 }}>
+              <div style={S.label}>Quem chegou atrasado?</div>
+              <BuscaFunc todos={e.presentes} selecionados={e.atrasados} onChange={v => set({ atrasados:v })} placeholder="Buscar..." />
+              {e.atrasados.map((f:any) => (
+                <div key={f.id} style={{ marginTop:8 }}>
+                  <div style={{ fontSize:13, color:'#374151', marginBottom:4 }}>{f.nome.split(' ')[0]} — horário de chegada:</div>
+                  <input type="time" style={S.input} value={e.horariosAtrasados[f.id]||''}
+                    onChange={ev => set({ horariosAtrasados:{ ...e.horariosAtrasados, [f.id]:ev.target.value } })} />
+                </div>
+              ))}
+            </div>
           </div>
           <div style={S.bottom}>
             <button style={S.btn()} onClick={() => ir('saiu_cedo')}>Continuar →</button>
