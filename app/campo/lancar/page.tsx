@@ -378,13 +378,13 @@ export default function CampoLancar() {
           <div style={css.body}>
             <div style={css.h1}>Alguém chegou atrasado?</div>
             <div style={css.grid2}>
-              <div style={yn(e.simAtrasado===false,'verde')}
+              <div style={yn(e.simAtrasado===false,'vermelho')}
                 onClick={() => upd({ simAtrasado: false, atrasados: [], horariosAtrasados: {} })}>
-                ✅<span style={css.ynLabel}>Não</span>
+                ❌<span style={css.ynLabel}>Não</span>
               </div>
-              <div style={yn(e.simAtrasado===true,'vermelho')}
+              <div style={yn(e.simAtrasado===true,'verde')}
                 onClick={() => upd({ simAtrasado: true })}>
-                ⏰<span style={css.ynLabel}>Sim</span>
+                ✅<span style={css.ynLabel}>Sim</span>
               </div>
             </div>
             {e.simAtrasado === true && (
@@ -415,13 +415,13 @@ export default function CampoLancar() {
           <div style={css.body}>
             <div style={css.h1}>Alguém saiu mais cedo?</div>
             <div style={css.grid2}>
-              <div style={yn(e.simSaiu===false,'verde')}
+              <div style={yn(e.simSaiu===false,'vermelho')}
                 onClick={() => upd({ simSaiu: false, saiuCedo: [], horariosSaiu: {} })}>
-                ✅<span style={css.ynLabel}>Não</span>
+                ❌<span style={css.ynLabel}>Não</span>
               </div>
-              <div style={yn(e.simSaiu===true,'vermelho')}
+              <div style={yn(e.simSaiu===true,'verde')}
                 onClick={() => upd({ simSaiu: true })}>
-                🚪<span style={css.ynLabel}>Sim</span>
+                ✅<span style={css.ynLabel}>Sim</span>
               </div>
             </div>
             {e.simSaiu === true && (
@@ -452,13 +452,13 @@ export default function CampoLancar() {
           <div style={css.body}>
             <div style={css.h1}>Alguém faltou?</div>
             <div style={css.grid2}>
-              <div style={yn(e.simFaltou===false,'verde')}
+              <div style={yn(e.simFaltou===false,'vermelho')}
                 onClick={() => upd({ simFaltou: false, faltaram: [] })}>
-                ✅<span style={css.ynLabel}>Não</span>
+                ❌<span style={css.ynLabel}>Não</span>
               </div>
-              <div style={yn(e.simFaltou===true,'vermelho')}
+              <div style={yn(e.simFaltou===true,'verde')}
                 onClick={() => upd({ simFaltou: true })}>
-                ❌<span style={css.ynLabel}>Sim</span>
+                ✅<span style={css.ynLabel}>Sim</span>
               </div>
             </div>
             {e.simFaltou === true && (
@@ -483,11 +483,11 @@ export default function CampoLancar() {
             <div style={css.h1}>Teve diária por conta da obra?</div>
             <div style={css.sub}>Serviço extra solicitado pelo cliente</div>
             <div style={css.grid2}>
-              <div style={yn(e.teveObra===true,'verde')} onClick={() => upd({ teveObra: true })}>
-                ✅<span style={css.ynLabel}>Sim</span>
-              </div>
               <div style={yn(e.teveObra===false,'vermelho')} onClick={() => upd({ teveObra: false, funcsObra: [] })}>
                 ❌<span style={css.ynLabel}>Não</span>
+              </div>
+              <div style={yn(e.teveObra===true,'verde')} onClick={() => upd({ teveObra: true })}>
+                ✅<span style={css.ynLabel}>Sim</span>
               </div>
             </div>
           </div>
@@ -529,11 +529,11 @@ export default function CampoLancar() {
             <div style={css.h1}>Teve diária por conta da MG?</div>
             <div style={css.sub}>Serviço extra solicitado pela MG Construções</div>
             <div style={css.grid2}>
-              <div style={yn(e.teveMG===true,'verde')} onClick={() => upd({ teveMG: true })}>
-                ✅<span style={css.ynLabel}>Sim</span>
-              </div>
               <div style={yn(e.teveMG===false,'vermelho')} onClick={() => upd({ teveMG: false, funcsMG: [] })}>
                 ❌<span style={css.ynLabel}>Não</span>
+              </div>
+              <div style={yn(e.teveMG===true,'verde')} onClick={() => upd({ teveMG: true })}>
+                ✅<span style={css.ynLabel}>Sim</span>
               </div>
             </div>
           </div>
