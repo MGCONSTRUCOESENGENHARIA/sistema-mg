@@ -205,15 +205,7 @@ export default function CampoLancar() {
           descontada_producao: false, recebida_medicao: false,
         })
       }
-      // Marcar SABADO_EXTRA nas presenças de quem teve diária Conta Obra
-      for (const f of e.funcsObra) {
-        await supabase.from('presencas').upsert({
-          competencia_id: comp!.id, funcionario_id: f.id,
-          data: e.data, obra_id: e.obra.id,
-          tipo: 'SABADO_EXTRA',
-          fracao: e.periodoObra === 'METADE' ? 0.5 : 1,
-        }, { onConflict: 'funcionario_id,data,competencia_id' })
-      }
+
     }
 
     // 4. Diárias extras — Conta MG
@@ -241,14 +233,16 @@ export default function CampoLancar() {
       e.teveMG ? `Diária Conta MG: ${e.servicoMG} | ${e.periodoMG === 'METADE' ? 'Metade' : 'Dia todo'} | Funcionários: ${e.funcsMG.map((f:any) => f.nome).join(', ')}` : null,
     ].filter(Boolean).join('\n')
 
-    await supabase.from('folhas_ponto').insert({
+    const { error: folhaError } = await supabase.from('folhas_ponto').insert({
       obra_id: e.obra.id,
       equipe: e.equipe,
       data: e.data,
+      foto_url: '',
       tem_diaria_extra: !!(e.teveObra || e.teveMG),
       observacao: resumoLinhas,
       processada: false,
     })
+    if (folhaError) console.error('Erro folha:', folhaError.message)
 
     setSalvando(false)
     ir('sucesso')
