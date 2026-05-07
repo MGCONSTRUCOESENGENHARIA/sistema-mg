@@ -146,8 +146,8 @@ export default function AdiantamentoPage() {
 
   function recalcular(linha: Linha) {
     const ed = editando[linha.func_id] || { hora_extra: 0, complemento: 0, descontos: linha.descontos }
-    const heEfetivo = ed.hora_extra !== 0 ? ed.hora_extra : linha.extra_folha_valor
-    return linha.adiantamento + heEfetivo + ed.complemento - ed.descontos
+    const horaExtraCalculada = linha.extras_folha * linha.valor_diaria
+    return linha.adiantamento + horaExtraCalculada + ed.complemento - ed.descontos
   }
 
   const totalDiarias = linhas.reduce((s, l) => s + l.total_diarias, 0)
@@ -255,13 +255,9 @@ export default function AdiantamentoPage() {
                       {formatR$(l.adiantamento)}
                     </td>
 
-                    {/* Hora Extra editável */}
-                    <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
-                      <input type="number" step="0.01" style={inputStyle}
-                        value={ed.hora_extra !== 0 ? ed.hora_extra : (l.extra_folha_valor || '')}
-                        placeholder="0,00"
-                        onChange={e => setEdit(l.func_id, 'hora_extra', parseFloat(e.target.value) || 0)}
-                      />
+                    {/* Hora Extra automática: sábados/feriados x valor da diária */}
+                    <td style={{ padding: '7px 10px', textAlign: 'right', background: '#fff7ed', fontWeight: 700, color: '#92400e', fontSize: 12 }}>
+                      {formatR$(l.extras_folha * l.valor_diaria)}
                     </td>
                     {/* Complemento editável */}
                     <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
@@ -289,77 +285,28 @@ export default function AdiantamentoPage() {
 
               {/* Totais */}
               <tr style={{ background: '#1a3a5c', fontWeight: 700 }}>
-                <td style={{
-                  padding: '9px 12px',
-                  color: '#fff',
-                  fontSize: 12,
-                  position: 'sticky',
-                  left: 0,
-                  background: '#1a3a5c',
-                  zIndex: 1
-                }}>
+                <td style={{ padding: '9px 12px', color: '#fff', fontSize: 12, position: 'sticky', left: 0, background: '#1a3a5c', zIndex: 1 }}>
                   TOTAL {equipe}
                 </td>
-
-                <td style={{
-                  padding: '9px 10px',
-                  textAlign: 'center',
-                  color: '#86efac',
-                  fontSize: 13
-                }}>
+                <td style={{ padding: '9px 10px', textAlign: 'center', color: '#86efac', fontSize: 13 }}>
                   {totalDiarias.toFixed(1)}
                 </td>
-
-                <td style={{
-                  padding: '9px 10px',
-                  textAlign: 'center',
-                  color: '#c4b5fd',
-                  fontSize: 13
-                }}>
+                <td style={{ padding: '9px 10px', textAlign: 'center', color: '#c4b5fd', fontSize: 13 }}>
                   {totalExtras.toFixed(1)}
                 </td>
-
                 <td style={{ padding: '9px 10px' }}></td>
-
                 <td style={{ padding: '9px 10px' }}></td>
-
-                <td style={{
-                  padding: '9px 10px',
-                  textAlign: 'right',
-                  color: '#86efac',
-                  fontSize: 13
-                }}>
+                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#86efac', fontSize: 13 }}>
                   {formatR$(totalAdiant)}
                 </td>
-
-                <td style={{
-                  padding: '9px 10px',
-                  textAlign: 'right',
-                  color: '#c4b5fd',
-                  fontSize: 12
-                }}>
-                  {totalExtraFolha > 0
-                    ? formatR$(totalExtraFolha)
-                    : '—'}
+                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#c4b5fd', fontSize: 12 }}>
+                  {totalExtraFolha > 0 ? formatR$(totalExtraFolha) : '—'}
                 </td>
-
                 <td style={{ padding: '9px 10px' }}></td>
-
-                <td style={{
-                  padding: '9px 10px',
-                  textAlign: 'right',
-                  color: '#fca5a5',
-                  fontSize: 12
-                }}>
+                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#fca5a5', fontSize: 12 }}>
                   -{formatR$(totalDesc)}
                 </td>
-
-                <td style={{
-                  padding: '9px 10px',
-                  textAlign: 'right',
-                  color: '#86efac',
-                  fontSize: 14
-                }}>
+                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#86efac', fontSize: 14 }}>
                   {formatR$(totalGeral)}
                 </td>
               </tr>
@@ -388,7 +335,7 @@ export default function AdiantamentoPage() {
               { label:'Valor', val: formatR$(modalFunc.l.valor_diaria), color:'#1a3a5c' },
               { label:'Salário Base', val: formatR$(modalFunc.l.salario_base), color:'#1a3a5c' },
               { label:'Adiantamento (50%)', val: formatR$(modalFunc.l.adiantamento), color:'#065f46', bold:true },
-              { label:'Hora Extra', val: formatR$(modalFunc.ed.hora_extra || 0), color:'#92400e' },
+              { label:'Hora Extra', val: formatR$(modalFunc.l.extras_folha * modalFunc.l.valor_diaria), color:'#92400e' },
               { label:'Complemento', val: formatR$(modalFunc.ed.complemento || 0), color:'#92400e' },
               { label:'Descontos', val: '-' + formatR$(modalFunc.ed.descontos || 0), color:'#dc2626' },
             ].map((item, i) => (
