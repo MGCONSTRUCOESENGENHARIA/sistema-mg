@@ -289,27 +289,77 @@ export default function AdiantamentoPage() {
 
               {/* Totais */}
               <tr style={{ background: '#1a3a5c', fontWeight: 700 }}>
-                <td style={{ padding: '9px 12px', color: '#fff', fontSize: 12, position: 'sticky', left: 0, background: '#1a3a5c', zIndex: 1 }}>
+                <td style={{
+                  padding: '9px 12px',
+                  color: '#fff',
+                  fontSize: 12,
+                  position: 'sticky',
+                  left: 0,
+                  background: '#1a3a5c',
+                  zIndex: 1
+                }}>
                   TOTAL {equipe}
                 </td>
-                <td style={{ padding: '9px 10px', textAlign: 'center', color: '#86efac', fontSize: 13 }}>
+
+                <td style={{
+                  padding: '9px 10px',
+                  textAlign: 'center',
+                  color: '#86efac',
+                  fontSize: 13
+                }}>
                   {totalDiarias.toFixed(1)}
                 </td>
-                <td style={{ padding: '9px 10px', textAlign: 'center', color: '#c4b5fd', fontSize: 13 }}>
+
+                <td style={{
+                  padding: '9px 10px',
+                  textAlign: 'center',
+                  color: '#c4b5fd',
+                  fontSize: 13
+                }}>
                   {totalExtras.toFixed(1)}
                 </td>
-                <td colSpan={2} style={{ padding: '9px 10px' }}></td>
-                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#86efac', fontSize: 13 }}>
+
+                <td style={{ padding: '9px 10px' }}></td>
+
+                <td style={{ padding: '9px 10px' }}></td>
+
+                <td style={{
+                  padding: '9px 10px',
+                  textAlign: 'right',
+                  color: '#86efac',
+                  fontSize: 13
+                }}>
                   {formatR$(totalAdiant)}
                 </td>
-                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#c4b5fd', fontSize: 12 }}>
-                  {totalExtraFolha > 0 ? formatR$(totalExtraFolha) : '—'}
+
+                <td style={{
+                  padding: '9px 10px',
+                  textAlign: 'right',
+                  color: '#c4b5fd',
+                  fontSize: 12
+                }}>
+                  {totalExtraFolha > 0
+                    ? formatR$(totalExtraFolha)
+                    : '—'}
                 </td>
-                <td colSpan={2} style={{ padding: '9px 10px' }}></td>
-                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#fca5a5', fontSize: 12 }}>
+
+                <td style={{ padding: '9px 10px' }}></td>
+
+                <td style={{
+                  padding: '9px 10px',
+                  textAlign: 'right',
+                  color: '#fca5a5',
+                  fontSize: 12
+                }}>
                   -{formatR$(totalDesc)}
                 </td>
-                <td style={{ padding: '9px 10px', textAlign: 'right', color: '#86efac', fontSize: 14 }}>
+
+                <td style={{
+                  padding: '9px 10px',
+                  textAlign: 'right',
+                  color: '#86efac',
+                  fontSize: 14
+                }}>
                   {formatR$(totalGeral)}
                 </td>
               </tr>
