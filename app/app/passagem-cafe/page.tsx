@@ -139,8 +139,8 @@ export default function PassagemCafePage() {
       presFunci.forEach(p => {
         if (['FALTA', ...AUSENCIAS].includes(p.tipo)) return
 
-        const fracao1 = p.fracao || 0
-        const fracao2 = p.fracao2 || 0
+        const fracao1 = Number(p.fracao || 0)
+        const fracao2 = Number(p.fracao2 || 0)
         const soma = fracao1 + fracao2
 
         diasTrabalhados += soma
@@ -155,18 +155,18 @@ export default function PassagemCafePage() {
           : null
 
         if (fop1) {
-          valorGasto += (fop1.valor_passagem || 0) * fracao1
+          valorGasto += Number(fop1.valor_passagem || 0) * fracao1
 
           if (fop1.tipo_passagem === 'PRA FRENTE') {
-            ultimoValorPraFrente = fop1.valor_passagem || 0
+            ultimoValorPraFrente = Number(fop1.valor_passagem || 0)
           }
         }
 
         if (fop2) {
-          valorGasto += (fop2.valor_passagem || 0) * fracao2
+          valorGasto += Number(fop2.valor_passagem || 0) * fracao2
 
           if (fop2.tipo_passagem === 'PRA FRENTE') {
-            ultimoValorPraFrente = fop2.valor_passagem || 0
+            ultimoValorPraFrente = Number(fop2.valor_passagem || 0)
           }
         }
       })
@@ -186,13 +186,12 @@ export default function PassagemCafePage() {
       const diasProj = Number(pqFunci?.dias_proj ?? (tipoFinal === 'PRA FRENTE' ? diasTrabalhados : 0))
       const adicional = Number(pqFunci?.adicional ?? 0)
 
-      const valorFixo =
-        Number(
-          pqFunci?.valor_fixo ??
-          ultimoValorPraFrente ??
-          tiposFunc.find(x => x.tipo_passagem === 'PRA FRENTE')?.valor_passagem ??
-          0
-        )
+      const valorFixo = Number(
+        pqFunci?.valor_fixo ??
+        ultimoValorPraFrente ??
+        tiposFunc.find(x => x.tipo_passagem === 'PRA FRENTE')?.valor_passagem ??
+        0
+      )
 
       const linhaBase: Linha = {
         func_id: func.id,
@@ -238,9 +237,7 @@ export default function PassagemCafePage() {
       .eq('mes_ano', mes)
       .maybeSingle()
 
-    if (erroBusca) {
-      throw new Error(erroBusca.message)
-    }
+    if (erroBusca) throw new Error(erroBusca.message)
 
     if (!comp) {
       const { data: nova, error: erroComp } = await supabase
@@ -249,9 +246,7 @@ export default function PassagemCafePage() {
         .select('id')
         .single()
 
-      if (erroComp) {
-        throw new Error(erroComp.message)
-      }
+      if (erroComp) throw new Error(erroComp.message)
 
       comp = nova
     }
@@ -277,36 +272,13 @@ export default function PassagemCafePage() {
       valor_fixo: linhaCalculada.valor_fixo,
     }
 
-    const { data: existente, error: erroBusca } = await supabase
+    const { error } = await supabase
       .from('passagens_quinzena')
-      .select('id')
-      .eq('competencia_id', competenciaId)
-      .eq('funcionario_id', linhaCalculada.func_id)
-      .eq('quinzena', quinzena)
-      .maybeSingle()
+      .upsert(payload, {
+        onConflict: 'competencia_id,funcionario_id,quinzena',
+      })
 
-    if (erroBusca) {
-      throw new Error(erroBusca.message)
-    }
-
-    if (existente?.id) {
-      const { error } = await supabase
-        .from('passagens_quinzena')
-        .update(payload)
-        .eq('id', existente.id)
-
-      if (error) {
-        throw new Error(error.message)
-      }
-    } else {
-      const { error } = await supabase
-        .from('passagens_quinzena')
-        .insert(payload)
-
-      if (error) {
-        throw new Error(error.message)
-      }
-    }
+    if (error) throw new Error(error.message)
   }
 
   async function salvarLinha(l: Linha) {
