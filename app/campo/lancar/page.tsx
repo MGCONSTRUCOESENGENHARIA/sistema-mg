@@ -162,6 +162,62 @@ export default function CampoLancar() {
     ir('sucesso')
   }
 
+  function podeAvancarEnter() {
+    if (tela === 'dia') return true
+    if (tela === 'confirma_dia') return !!data
+    if (tela === 'obra') return !!obraId
+    if (tela === 'equipe') return !!equipe
+    if (tela === 'funcionarios') return presentesIds.length > 0
+    if (tela === 'atrasados') {
+      return simAtrasado !== null && !(simAtrasado === true && (!atrasadosIds.length || atrasadosIds.some(id => !horaAtrasado[id])))
+    }
+    if (tela === 'saiu_cedo') {
+      return simSaiu !== null && !(simSaiu === true && (!saiuIds.length || saiuIds.some(id => !horaSaiu[id])))
+    }
+    if (tela === 'conta_obra') return teveObra !== null
+    if (tela === 'conta_obra_det') return !!solicitou && !!periodoObra && !!servicoObra && funcsObraIds.length > 0
+    if (tela === 'conta_mg') return teveMG !== null
+    if (tela === 'conta_mg_det') return !!periodoMG && !!servicoMG && funcsMGIds.length > 0
+    if (tela === 'confirmacao') return !salvando
+    if (tela === 'sucesso') return true
+    return false
+  }
+
+  function avancarEnter() {
+    if (!podeAvancarEnter()) return
+
+    if (tela === 'dia') { setData(new Date().toISOString().slice(0,10)); ir('obra'); return }
+    if (tela === 'confirma_dia') { ir('obra'); return }
+    if (tela === 'obra') { ir('equipe'); return }
+    if (tela === 'equipe') { ir('funcionarios'); return }
+    if (tela === 'funcionarios') { ir('atrasados'); return }
+    if (tela === 'atrasados') { ir('saiu_cedo'); return }
+    if (tela === 'saiu_cedo') { ir('conta_obra'); return }
+    if (tela === 'conta_obra') { ir(teveObra ? 'conta_obra_det' : 'conta_mg'); return }
+    if (tela === 'conta_obra_det') { ir('conta_mg'); return }
+    if (tela === 'conta_mg') { ir(teveMG ? 'conta_mg_det' : 'confirmacao'); return }
+    if (tela === 'conta_mg_det') { ir('confirmacao'); return }
+    if (tela === 'confirmacao') { salvar(); return }
+    if (tela === 'sucesso') { resetar(); return }
+  }
+
+  useEffect(() => {
+    function handleEnter(e: KeyboardEvent) {
+      if (e.key !== 'Enter') return
+
+      const alvo = e.target as HTMLElement | null
+      if (alvo?.tagName === 'TEXTAREA' && e.shiftKey) return
+
+      if (podeAvancarEnter()) {
+        e.preventDefault()
+        avancarEnter()
+      }
+    }
+
+    window.addEventListener('keydown', handleEnter)
+    return () => window.removeEventListener('keydown', handleEnter)
+  })
+
   if (tela==='sucesso') return (
     <div style={css.page}>
       <div style={css.top}><span style={{color:'white',fontWeight:800,fontSize:18}}>MG Campo</span></div>
