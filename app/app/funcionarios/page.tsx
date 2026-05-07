@@ -13,7 +13,6 @@ interface Func {
   salario_base: number
   ativo: boolean
   empresa: string
-  telefone?: string
 }
 
 const EMPRESAS: Record<string, { cor: string; bg: string; sigla: string }> = {
@@ -42,7 +41,6 @@ export default function FuncionariosPage() {
     valor_diaria: '',
     salario_base: '',
     empresa: '',
-    telefone: '',
   })
 
   useEffect(() => {
@@ -85,7 +83,6 @@ export default function FuncionariosPage() {
       valor_diaria: parseFloat(form.valor_diaria) || 0,
       salario_base: parseFloat(form.salario_base) || 0,
       empresa: form.empresa || 'NÃO REGISTRADO',
-      telefone: form.telefone || '',
       ativo: true,
     }
 
@@ -115,7 +112,6 @@ export default function FuncionariosPage() {
       valor_diaria: '',
       salario_base: '',
       empresa: '',
-      telefone: '',
     })
 
     await carregar()
@@ -136,7 +132,6 @@ export default function FuncionariosPage() {
         valor_diaria: modal.valor_diaria,
         salario_base: modal.salario_base,
         empresa: modal.empresa,
-        telefone: modal.telefone || '',
       })
       .eq('id', modal.id)
 
