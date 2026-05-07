@@ -134,7 +134,6 @@ export default function PassagemCafePage() {
       let valorGasto = 0
       let diasTrabalhados = 0
       let totalCafe = 0
-
       let ultimoValorPraFrente = 0
 
       presFunci.forEach(p => {
@@ -183,15 +182,17 @@ export default function PassagemCafePage() {
       const tipoFinal =
         Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'MG'
 
-      const recebidoAnt = pqFunci?.recebido_ant ?? 0
-      const diasProj = pqFunci?.dias_proj ?? (tipoFinal === 'PRA FRENTE' ? diasTrabalhados : 0)
-      const adicional = pqFunci?.adicional ?? 0
+      const recebidoAnt = Number(pqFunci?.recebido_ant ?? 0)
+      const diasProj = Number(pqFunci?.dias_proj ?? (tipoFinal === 'PRA FRENTE' ? diasTrabalhados : 0))
+      const adicional = Number(pqFunci?.adicional ?? 0)
 
       const valorFixo =
-        pqFunci?.valor_fixo ??
-        ultimoValorPraFrente ??
-        tiposFunc.find(x => x.tipo_passagem === 'PRA FRENTE')?.valor_passagem ??
-        0
+        Number(
+          pqFunci?.valor_fixo ??
+          ultimoValorPraFrente ??
+          tiposFunc.find(x => x.tipo_passagem === 'PRA FRENTE')?.valor_passagem ??
+          0
+        )
 
       const linhaBase: Linha = {
         func_id: func.id,
@@ -230,29 +231,39 @@ export default function PassagemCafePage() {
     )
   }
 
-  async function salvarLinha(l: Linha) {
-    setSalvando(l.func_id)
-
-    let { data: comp } = await supabase
+  async function obterCompetencia() {
+    let { data: comp, error: erroBusca } = await supabase
       .from('competencias')
       .select('id')
       .eq('mes_ano', mes)
       .maybeSingle()
 
+    if (erroBusca) {
+      throw new Error(erroBusca.message)
+    }
+
     if (!comp) {
-      const { data: nova } = await supabase
+      const { data: nova, error: erroComp } = await supabase
         .from('competencias')
         .insert({ mes_ano: mes, status: 'ABERTA' })
-        .select()
+        .select('id')
         .single()
+
+      if (erroComp) {
+        throw new Error(erroComp.message)
+      }
 
       comp = nova
     }
 
+    return comp
+  }
+
+  async function salvarLinhaNoBanco(l: Linha, competenciaId: string) {
     const linhaCalculada = calcularLinha(l)
 
     const payload = {
-      competencia_id: comp!.id,
+      competencia_id: competenciaId,
       funcionario_id: linhaCalculada.func_id,
       quinzena,
       total_passagem: linhaCalculada.total_passagem,
@@ -263,34 +274,78 @@ export default function PassagemCafePage() {
       dias_proj: linhaCalculada.dias_projetados,
       valor_proj: linhaCalculada.valor_projetado,
       adicional: linhaCalculada.adicional,
+      valor_fixo: linhaCalculada.valor_fixo,
     }
 
-    if (linhaCalculada.passagem_id) {
-      await supabase
+    const { data: existente, error: erroBusca } = await supabase
+      .from('passagens_quinzena')
+      .select('id')
+      .eq('competencia_id', competenciaId)
+      .eq('funcionario_id', linhaCalculada.func_id)
+      .eq('quinzena', quinzena)
+      .maybeSingle()
+
+    if (erroBusca) {
+      throw new Error(erroBusca.message)
+    }
+
+    if (existente?.id) {
+      const { error } = await supabase
         .from('passagens_quinzena')
         .update(payload)
-        .eq('id', linhaCalculada.passagem_id)
+        .eq('id', existente.id)
+
+      if (error) {
+        throw new Error(error.message)
+      }
     } else {
-      await supabase.from('passagens_quinzena').insert(payload)
+      const { error } = await supabase
+        .from('passagens_quinzena')
+        .insert(payload)
+
+      if (error) {
+        throw new Error(error.message)
+      }
     }
+  }
 
-    setMsg('✅ Salvo!')
-    setTimeout(() => setMsg(''), 2000)
+  async function salvarLinha(l: Linha) {
+    try {
+      setSalvando(l.func_id)
 
-    await carregar()
-    setSalvando(null)
+      const comp = await obterCompetencia()
+      await salvarLinhaNoBanco(l, comp.id)
+
+      setMsg('✅ Salvo!')
+      setTimeout(() => setMsg(''), 2000)
+
+      await carregar()
+    } catch (error: any) {
+      alert('Erro ao salvar: ' + error.message)
+    } finally {
+      setSalvando(null)
+    }
   }
 
   async function salvarTodos() {
-    setSalvando('all')
+    try {
+      setSalvando('all')
 
-    for (const l of linhas) {
-      await salvarLinha(l)
+      const comp = await obterCompetencia()
+
+      for (const l of linhas) {
+        await salvarLinhaNoBanco(l, comp.id)
+      }
+
+      setMsg('✅ Todos salvos!')
+      setTimeout(() => setMsg(''), 2500)
+
+      await carregar()
+    } catch (error: any) {
+      alert('Erro ao salvar todos: ' + error.message)
+    } finally {
+      setSalvando(null)
     }
-
-    setSalvando(null)
-    setMsg('✅ Todos salvos!')
-    setTimeout(() => setMsg(''), 2500)
   }
 
   const totPassagem = linhas.reduce((s, l) => s + l.total_passagem, 0)
