@@ -350,8 +350,24 @@ export default function PassagemCafePage() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div
+      style={{
+        width: '100%',
+        maxWidth: 1500,
+        margin: '0 auto',
+        padding: '16px 20px 32px',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 14,
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+        }}
+      >
         <button style={btnEq('ARMAÇÃO')} onClick={() => setEquipe('ARMAÇÃO')}>Armação</button>
         <button style={btnEq('CARPINTARIA')} onClick={() => setEquipe('CARPINTARIA')}>Carpintaria</button>
 
@@ -433,7 +449,14 @@ export default function PassagemCafePage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 14 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 12,
+          marginBottom: 14,
+        }}
+      >
         {[
           { label: 'Total a Receber de Passagem', val: totPassagem, color: '#1e40af' },
           { label: `Total Café da Manhã (R$${CAFE_DIA}/dia)`, val: totCafe, color: '#166534' },
@@ -449,8 +472,23 @@ export default function PassagemCafePage() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 48, color: '#9ca3af' }}>Calculando...</div>
       ) : (
-        <div style={{ overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <table style={{ borderCollapse: 'collapse', minWidth: 'max-content' }}>
+        <div
+          style={{
+            width: '100%',
+            overflowX: 'auto',
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 12,
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
+          }}
+        >
+          <table
+            style={{
+              borderCollapse: 'collapse',
+              width: '100%',
+              minWidth: 1380,
+            }}
+          >
             <thead>
               <tr>
                 {[
