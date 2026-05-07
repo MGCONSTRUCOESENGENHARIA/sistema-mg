@@ -99,7 +99,7 @@ export default function PassagensPage() {
       .select('*').eq('funcionario_id', funcId)
     setPassagens(prev => {
       const next = { ...prev }
-      ;(novos || []).forEach((p: any) => { next[p.funcionario_id + '_' + p.obra_id] = p })
+      ;(novos || []).forEach((p: any) => { next[p.funcionario_id + '|' + p.obra_id] = p })
       return next
     })
     setSalvando(null)
@@ -113,13 +113,13 @@ export default function PassagensPage() {
       await supabase.from('funcionario_obra_passagem')
         .update({ valor_passagem: valor }).eq('id', p.id)
       // Atualizar só esse item localmente
-      setPassagens(prev => ({ ...prev, [funcId + '_' + obraId]: { ...p, valor_passagem: valor } }))
+      setPassagens(prev => ({ ...prev, [funcId + '|' + obraId]: { ...p, valor_passagem: valor } }))
     } else {
       const { data: novo } = await supabase.from('funcionario_obra_passagem').insert({
         funcionario_id: funcId, obra_id: obraId,
         tipo_passagem: tipo, valor_passagem: valor,
       }).select().single()
-      if (novo) setPassagens(prev => ({ ...prev, [funcId + '_' + obraId]: novo }))
+      if (novo) setPassagens(prev => ({ ...prev, [funcId + '|' + obraId]: novo }))
     }
   }
 
@@ -225,51 +225,58 @@ export default function PassagensPage() {
                         <option value="NÃO TEM">Não Tem</option>
                       </select>
                     </td>
-                    {/* Legenda */}
-                    <div
-                      style={{
-                        marginTop: 12,
-                        display: 'flex',
-                        gap: 16,
-                        fontSize: 11,
-                        color: '#6b7280',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span>
-                        <span
-                          style={{
-                            background: '#dcfce7',
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            color: '#166534',
-                            fontWeight: 600,
-                          }}
-                        >
-                          verde
-                        </span>{' '}
-                        = passagem preenchida
-                      </span>
+                    {/* Células de valor por obra */}
+                    {obras.map(obra => {
+                      const p = getPass(func.id, obra.id)
+                      const temPresenca = obrasComPresenca.has(`${func.id}|${obra.id}`)
+                      const key = `${func.id}|${obra.id}`
+                      const valorPreenchido = !!p?.valor_passagem && p.valor_passagem > 0
+                      const precisaPreencher = temPresenca && !isMgOuNaoTem && !valorPreenchido
+                      const passagemPreenchida = temPresenca && !isMgOuNaoTem && valorPreenchido
 
-                      <span>
-                        <span
-                          style={{
-                            background: '#fee2e2',
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            color: '#b91c1c',
-                            fontWeight: 600,
-                          }}
-                        >
-                          vermelho
-                        </span>{' '}
-                        = precisa preencher
-                      </span>
-
-                      <span>
-                        Pressione <strong>Enter</strong> ou <strong>Tab</strong> para salvar
-                      </span>
-                    </div>
+                      return (
+                        <td key={obra.id} style={{
+                          padding: '2px 4px', minWidth: 90,
+                          background: passagemPreenchida ? '#dcfce7' : precisaPreencher ? '#fee2e2' : bg,
+                          borderBottom: '1px solid #f3f4f6',
+                          borderLeft: passagemPreenchida ? '2px solid #22c55e' : precisaPreencher ? '2px solid #ef4444' : undefined,
+                        }}>
+                          {isMgOuNaoTem ? (
+                            <div style={{ textAlign: 'center', fontSize: 10, color: '#9ca3af', padding: '4px 0' }}>
+                              —
+                            </div>
+                          ) : (
+                            <input
+                              ref={el => { inputRefs.current[key] = el }}
+                              type="number"
+                              step="0.01"
+                              defaultValue={p?.valor_passagem || ''}
+                              placeholder={temPresenca ? '⚠' : '0'}
+                              onBlur={e => {
+                                const val = e.target.value
+                                if (val !== String(p?.valor_passagem || '')) {
+                                  salvarValor(func.id, obra.id, val)
+                                }
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' || e.key === 'Tab') {
+                                  const val = (e.target as HTMLInputElement).value
+                                  if (val !== String(p?.valor_passagem || '')) {
+                                    salvarValor(func.id, obra.id, val)
+                                  }
+                                }
+                              }}
+                              style={{
+                                width: '100%', border: 'none', background: 'transparent',
+                                textAlign: 'center', fontSize: 12, padding: '4px 2px',
+                                outline: 'none', fontWeight: valorPreenchido ? 700 : 400,
+                                color: precisaPreencher ? '#b91c1c' : valorPreenchido ? '#166534' : '#1a3a5c',
+                              }}
+                            />
+                          )}
+                        </td>
+                      )
+                    })}
                   </tr>
                 )
               })}
@@ -280,8 +287,8 @@ export default function PassagensPage() {
 
       {/* Legenda */}
       <div style={{ marginTop: 12, display: 'flex', gap: 16, fontSize: 11, color: '#6b7280', flexWrap: 'wrap' }}>
-        <span><span style={{ background: '#dbeafe', padding: '2px 8px', borderRadius: 4, color: '#1e40af', fontWeight: 600 }}>azul</span> = teve presença neste mês</span>
-        <span><span style={{ color: '#dc2626', fontWeight: 700 }}>vermelho</span> = tem presença mas sem valor cadastrado</span>
+        <span><span style={{ background: '#dcfce7', padding: '2px 8px', borderRadius: 4, color: '#166534', fontWeight: 600 }}>verde</span> = passagem preenchida</span>
+        <span><span style={{ background: '#fee2e2', padding: '2px 8px', borderRadius: 4, color: '#b91c1c', fontWeight: 600 }}>vermelho</span> = precisa preencher</span>
         <span>Pressione <strong>Enter</strong> ou <strong>Tab</strong> para salvar o valor</span>
       </div>
     </div>
