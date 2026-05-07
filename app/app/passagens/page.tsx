@@ -225,54 +225,51 @@ export default function PassagensPage() {
                         <option value="NÃO TEM">Não Tem</option>
                       </select>
                     </td>
-                    {/* Células de valor por obra */}
-                    {obras.map(obra => {
-                      const p = getPass(func.id, obra.id)
-                      const temPresenca = obrasComPresenca.has(`${func.id}|${obra.id}`)
-                      const key = `${func.id}|${obra.id}`
-                      return (
-                        <td key={obra.id} style={{
-                          padding: '2px 4px', minWidth: 90,
-                          background: temPresenca ? '#dbeafe' : bg,
-                          borderBottom: '1px solid #f3f4f6',
-                          borderLeft: temPresenca ? '2px solid #93c5fd' : undefined,
-                        }}>
-                          {isMgOuNaoTem ? (
-                            <div style={{ textAlign: 'center', fontSize: 10, color: '#9ca3af', padding: '4px 0' }}>
-                              {temPresenca ? <span style={{ color: '#1e40af', fontWeight: 700 }}>—</span> : '—'}
-                            </div>
-                          ) : (
-                            <input
-                              ref={el => { inputRefs.current[key] = el }}
-                              type="number"
-                              step="0.01"
-                              defaultValue={p?.valor_passagem || ''}
-                              placeholder={temPresenca ? '⚠' : '0'}
-                              onBlur={e => {
-                                const val = e.target.value
-                                if (val !== String(p?.valor_passagem || '')) {
-                                  salvarValor(func.id, obra.id, val)
-                                }
-                              }}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter' || e.key === 'Tab') {
-                                  const val = (e.target as HTMLInputElement).value
-                                  if (val !== String(p?.valor_passagem || '')) {
-                                    salvarValor(func.id, obra.id, val)
-                                  }
-                                }
-                              }}
-                              style={{
-                                width: '100%', border: 'none', background: 'transparent',
-                                textAlign: 'center', fontSize: 12, padding: '4px 2px',
-                                outline: 'none', fontWeight: p?.valor_passagem ? 700 : 400,
-                                color: temPresenca && !p?.valor_passagem ? '#dc2626' : '#1a3a5c',
-                              }}
-                            />
-                          )}
-                        </td>
-                      )
-                    })}
+                    {/* Legenda */}
+                    <div
+                      style={{
+                        marginTop: 12,
+                        display: 'flex',
+                        gap: 16,
+                        fontSize: 11,
+                        color: '#6b7280',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span>
+                        <span
+                          style={{
+                            background: '#dcfce7',
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            color: '#166534',
+                            fontWeight: 600,
+                          }}
+                        >
+                          verde
+                        </span>{' '}
+                        = passagem preenchida
+                      </span>
+
+                      <span>
+                        <span
+                          style={{
+                            background: '#fee2e2',
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            color: '#b91c1c',
+                            fontWeight: 600,
+                          }}
+                        >
+                          vermelho
+                        </span>{' '}
+                        = precisa preencher
+                      </span>
+
+                      <span>
+                        Pressione <strong>Enter</strong> ou <strong>Tab</strong> para salvar
+                      </span>
+                    </div>
                   </tr>
                 )
               })}
