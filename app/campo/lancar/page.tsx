@@ -26,6 +26,21 @@ const css = {
   chk: { width:22, height:22, cursor:'pointer', accentColor:azul } as any,
 }
 
+
+const FERIADOS_2026 = new Set([
+  '2026-01-01','2026-04-03','2026-04-21','2026-05-01',
+  '2026-06-04','2026-08-15','2026-09-07','2026-10-12',
+  '2026-11-02','2026-11-15','2026-11-20','2026-12-08',
+  '2026-12-12','2026-12-25'
+])
+
+function tipoPresenca(data: string): 'SABADO_EXTRA' | 'NORMAL' {
+  const d = new Date(data + 'T12:00')
+  const diaSemana = d.getDay() // 0=domingo, 6=sábado
+  if (diaSemana === 6 || FERIADOS_2026.has(data)) return 'SABADO_EXTRA'
+  return 'NORMAL'
+}
+
 export default function CampoLancar() {
   const [tela, setTela] = useState<Tela>('dia')
   const [obras, setObras] = useState<any[]>([])
@@ -110,7 +125,7 @@ export default function CampoLancar() {
       const at = atrasados.find(a=>a.id===f.id)
       const sc = saiuCedo.find(s=>s.id===f.id)
       await supabase.from('presencas').upsert({
-        competencia_id:comp!.id, funcionario_id:f.id, data, obra_id:obraId, tipo:'NORMAL', fracao:(at||sc)?0.5:1
+        competencia_id:comp!.id, funcionario_id:f.id, data, obra_id:obraId, tipo:tipoPresenca(data), fracao:(at||sc)?0.5:1
       },{onConflict:'funcionario_id,data,competencia_id'})
     }
     if (teveObra) {
