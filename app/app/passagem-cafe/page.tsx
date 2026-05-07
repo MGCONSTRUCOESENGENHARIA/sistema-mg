@@ -19,7 +19,6 @@ interface Linha {
   saldo_vt: number
   valor_projetado: number
   total_passagem: number
-  passagem_id: string | null
 }
 
 function calcularLinha(l: Linha): Linha {
@@ -77,7 +76,7 @@ export default function PassagemCafePage() {
 
     const { data: funcs } = await supabase
       .from('funcionarios')
-      .select('id,nome,equipe,valor_diaria')
+      .select('id,nome,equipe')
       .eq('equipe', equipe)
       .eq('ativo', true)
       .order('nome')
@@ -187,9 +186,8 @@ export default function PassagemCafePage() {
       const adicional = Number(pqFunci?.adicional ?? 0)
 
       const valorFixo = Number(
-        pqFunci?.valor_fixo ??
-        ultimoValorPraFrente ??
-        tiposFunc.find(x => x.tipo_passagem === 'PRA FRENTE')?.valor_passagem ??
+        ultimoValorPraFrente ||
+        tiposFunc.find(x => x.tipo_passagem === 'PRA FRENTE')?.valor_passagem ||
         0
       )
 
@@ -207,7 +205,6 @@ export default function PassagemCafePage() {
         saldo_vt: 0,
         valor_projetado: 0,
         total_passagem: 0,
-        passagem_id: pqFunci?.id || null,
       }
 
       return calcularLinha(linhaBase)
@@ -269,7 +266,6 @@ export default function PassagemCafePage() {
       dias_proj: linhaCalculada.dias_projetados,
       valor_proj: linhaCalculada.valor_projetado,
       adicional: linhaCalculada.adicional,
-      valor_fixo: linhaCalculada.valor_fixo,
     }
 
     const { error } = await supabase
