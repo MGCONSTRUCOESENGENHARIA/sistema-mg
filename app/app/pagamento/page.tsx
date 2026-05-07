@@ -1,23 +1,46 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { mesAtual, nomeMes, formatR$, diasDoMes, formatDate, fim1Quinzena, AUSENCIAS } from '@/lib/utils'
+import { mesAtual, nomeMes, formatR$, formatDate } from '@/lib/utils'
 
 const TABELA_INSS: [number, number][] = [
-  [4000, 368.60], [3866.67, 352.60], [3733.33, 336.60],
-  [2800, 227.68], [2706.67, 219.28], [2613.33, 210.88],
-  [2520, 202.48], [2426.67, 194.08], [2333.33, 185.68],
-  [2240, 177.28], [2146.67, 168.88], [2050, 160.18],
-  [1981.67, 154.03], [1913.33, 147.88], [1845, 141.73],
-  [1776.67, 135.58], [1708.33, 129.43], [1640, 123.28],
-  [1571.67, 117.87], [1800, 137.68],
+  [4000, 368.60],
+  [3866.67, 352.60],
+
+  [2800, 227.68],
+  [2706.67, 219.28],
+  [2613.33, 210.88],
+  [2520, 202.48],
+  [2426.67, 194.08],
+  [2333.33, 185.68],
+  [2146.67, 168.88],
+
+  [2050, 160.18],
+  [1981.67, 154.03],
+  [1913.33, 147.88],
+  [1845, 141.73],
+  [1776.67, 135.58],
+  [1708.33, 129.43],
+  [1640, 123.28],
+  [1571.67, 117.87],
+
+  [1800, 137.68],
+  [1740, 132.28],
+  [1680, 126.88],
+  [1620, 121.50],
+  [1560, 117.00],
+  [1500, 112.50],
+  [1440, 108.00],
+  [1380, 103.50],
 ]
 
-function calcINSS(salario: number): number {
+function calcINSS(salarioFinal: number): number {
   const sorted = [...TABELA_INSS].sort((a, b) => b[0] - a[0])
+
   for (const [base, desc] of sorted) {
-    if (salario >= base) return desc
+    if (salarioFinal >= base) return desc
   }
+
   return 0
 }
 
@@ -43,14 +66,10 @@ function calcDSR(presencasDatas: { data: string; tipo: string }[], mes: string):
     const domingo = new Date(falta)
     domingo.setDate(falta.getDate() + (7 - falta.getDay()) % 7)
 
-    if (domingo.getDay() !== 0) continue
-
     const domKey = formatDate(domingo)
     const estaNoMes = domingosMes.some(dom => formatDate(dom) === domKey)
 
-    if (estaNoMes) {
-      domingosPenalizados.add(domKey)
-    }
+    if (estaNoMes) domingosPenalizados.add(domKey)
   }
 
   return domingosPenalizados.size
@@ -76,7 +95,7 @@ interface Linha {
 
 function calcRow(l: Linha, ed: any) {
   const tipo = ed.tipo_pagamento || l.tipo_pagamento
-  const faltas = l.faltas
+  const faltasEAusentes = l.faltas + l.ausentes
   const naoRegistrado = l.empresa === 'NÃO REGISTRADO'
   const taxaSindicato = naoRegistrado ? 0 : 17.66
   const horaExtraAuto = l.extras_folha * l.valor_diaria
@@ -95,25 +114,23 @@ function calcRow(l: Linha, ed: any) {
       (ed.desc_pensao || 0) -
       taxaSindicato
 
-    const contracheque = total - horaExtraAuto
-
     return {
       dsr: 0,
       inss: 0,
       salarioLiq: 0,
       horaExtra: horaExtraAuto,
       total,
-      contracheque,
+      contracheque: total - horaExtraAuto,
       sindicato: taxaSindicato,
     }
   }
 
-  if (tipo === 'SALÁRIO') {
-    const salBase = l.salario_base
-    const salLiq = salBase - (salBase / 30) * faltas
+  const salBase = l.salario_base
+  const salarioFinal = salBase - (salBase / 30) * faltasEAusentes
 
+  if (tipo === 'SALÁRIO') {
     const total =
-      salLiq -
+      salarioFinal -
       l.adiantamento_valor +
       horaExtraAuto +
       (ed.complemento || 0) -
@@ -123,26 +140,22 @@ function calcRow(l: Linha, ed: any) {
       (ed.desc_pensao || 0) -
       taxaSindicato
 
-    const contracheque = total - horaExtraAuto
-
     return {
       dsr: 0,
       inss: 0,
-      salarioLiq: salLiq,
+      salarioLiq: salarioFinal,
       horaExtra: horaExtraAuto,
       total,
-      contracheque,
+      contracheque: total - horaExtraAuto,
       sindicato: taxaSindicato,
     }
   }
 
-  const salBase = l.salario_base
-  const salLiq = salBase - (salBase / 30) * faltas
-  const dsrCalc = (salLiq * 2) / 30 * (ed.dsr_qtd || 0)
-  const inss = calcINSS(salBase)
+  const dsrCalc = (salarioFinal * 2) / 30 * (ed.dsr_qtd || 0)
+  const inss = calcINSS(salarioFinal)
 
   const total =
-    salLiq -
+    salarioFinal -
     l.adiantamento_valor +
     horaExtraAuto +
     (ed.complemento || 0) -
@@ -154,15 +167,13 @@ function calcRow(l: Linha, ed: any) {
     taxaSindicato -
     inss
 
-  const contracheque = total - horaExtraAuto
-
   return {
     dsr: dsrCalc,
     inss,
-    salarioLiq: salLiq,
+    salarioLiq: salarioFinal,
     horaExtra: horaExtraAuto,
     total,
-    contracheque,
+    contracheque: total - horaExtraAuto,
     sindicato: taxaSindicato,
   }
 }
@@ -218,24 +229,11 @@ export default function PagamentoPage() {
     if (comp?.id) {
       const { data: adt } = await supabase
         .from('pagamentos')
-        .select('funcionario_id, total_pagamento')
+        .select('funcionario_id,total_pagamento')
         .eq('competencia_id', comp.id)
         .eq('tipo', 'adiantamento')
 
       adiantamentos = adt || []
-    }
-
-    let avulsosPF: any[] = []
-
-    if (comp?.id) {
-      const { data: av } = await supabase
-        .from('avulso_parcelas')
-        .select('*, avulsos(funcionario_id)')
-        .eq('mes_ano', mes)
-        .eq('quando', 'pagamento_final')
-        .eq('descontado', false)
-
-      avulsosPF = av || []
     }
 
     const resultado: Linha[] = funcs.map((func: any) => {
@@ -250,24 +248,17 @@ export default function PagamentoPage() {
         const data = new Date(p.data + 'T12:00')
         const dia = data.getDate()
 
-        if (p.tipo === 'FALTA') {
-          faltas++
-        } else if (p.tipo === 'AUSENTE') {
-          ausentes++
-        } else if (p.tipo === 'SABADO_EXTRA' && dia > 16) {
+        if (p.tipo === 'FALTA') faltas++
+        else if (p.tipo === 'AUSENTE') ausentes++
+        else if (p.tipo === 'SABADO_EXTRA' && dia > 16) {
           extrasfolha += Number(p.fracao || 1) + Number(p.fracao2 || 0)
         } else if (p.tipo === 'NORMAL') {
           totalDiarias += Number(p.fracao || 1) + Number(p.fracao2 || 0)
         }
       })
 
-      const diasUteis = totalDiarias + faltas
+      const diasUteis = totalDiarias + faltas + ausentes
       const adtObj = adiantamentos.find(a => a.funcionario_id === func.id)
-      const adiantamentoValor = Number(adtObj?.total_pagamento || 0)
-
-      const descAvulsos = avulsosPF
-        .filter((a: any) => a.avulsos?.funcionario_id === func.id)
-        .reduce((s: number, a: any) => s + Number(a.valor || 0), 0)
 
       return {
         func_id: func.id,
@@ -283,7 +274,7 @@ export default function PagamentoPage() {
         faltas,
         ausentes,
         extra_folha_valor: extrasfolha * Number(func.valor_diaria || 0),
-        adiantamento_valor: adiantamentoValor,
+        adiantamento_valor: Number(adtObj?.total_pagamento || 0),
         presencas_datas: pAll.map(p => ({ data: p.data, tipo: p.tipo })),
       }
     })
@@ -301,9 +292,7 @@ export default function PagamentoPage() {
       ajustes = aj || []
     }
 
-    setLinhas(resultado)
-
-    const newEdit: typeof editando = {}
+    const newEdit: Record<string, any> = {}
 
     resultado.forEach(l => {
       const aj = ajustes.find(a => a.funcionario_id === l.func_id)
@@ -330,6 +319,7 @@ export default function PagamentoPage() {
           }
     })
 
+    setLinhas(resultado)
     setEditando(newEdit)
     setLoading(false)
   }
@@ -395,27 +385,9 @@ export default function PagamentoPage() {
   })
 
   function corTipo(tipo: string) {
-    if (tipo === 'SALÁRIO') {
-      return {
-        bg: '#eff6ff',
-        border: '#93c5fd',
-        color: '#1d4ed8',
-      }
-    }
-
-    if (tipo === 'SINDICATO') {
-      return {
-        bg: '#dcfce7',
-        border: '#86efac',
-        color: '#166534',
-      }
-    }
-
-    return {
-      bg: '#fefce8',
-      border: '#fbbf24',
-      color: '#92400e',
-    }
+    if (tipo === 'SALÁRIO') return { bg: '#eff6ff', border: '#93c5fd', color: '#1d4ed8' }
+    if (tipo === 'SINDICATO') return { bg: '#dcfce7', border: '#86efac', color: '#166534' }
+    return { bg: '#fefce8', border: '#fbbf24', color: '#92400e' }
   }
 
   const inp = (red?: boolean) => ({
@@ -443,7 +415,7 @@ export default function PagamentoPage() {
     { label: 'AUSENTE', bg: '#6b7280' },
     { label: 'DSR', bg: '#92400e' },
     { label: 'VALOR', bg: '#1a3a5c' },
-    { label: 'SALÁRIO', bg: '#1a3a5c' },
+    { label: 'SALÁRIO FINAL', bg: '#1a3a5c' },
     { label: 'ADIANTAMENTO', bg: '#065f46' },
     { label: 'HORA EXTRA', bg: '#7c2d12' },
     { label: 'COMPLEMENTO', bg: '#7c2d12' },
@@ -479,15 +451,12 @@ export default function PagamentoPage() {
           })}
         </select>
 
-        <button
-          onClick={() => window.print()}
-          style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #6b7280', background: '#fff', cursor: 'pointer', fontSize: 13 }}
-        >
+        <button onClick={() => window.print()} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #6b7280', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
           🖨 Imprimir
         </button>
 
         <span style={{ marginLeft: 'auto', fontSize: 12, color: '#6b7280' }}>
-          Hora extra automática = sábados/feriados após dia 16 × diária
+          Salário final desconta faltas + ausentes
         </span>
       </div>
 
@@ -507,22 +476,19 @@ export default function PagamentoPage() {
             <thead>
               <tr>
                 {COLS.map((h, i) => (
-                  <th
-                    key={i}
-                    style={{
-                      background: h.bg,
-                      color: '#fff',
-                      padding: '8px 8px',
-                      textAlign: i === 0 ? 'left' : 'center',
-                      fontSize: 9,
-                      fontWeight: 700,
-                      minWidth: h.min || 85,
-                      whiteSpace: 'nowrap',
-                      position: h.sticky ? 'sticky' : undefined,
-                      left: h.sticky ? 0 : undefined,
-                      zIndex: h.sticky ? 20 : undefined,
-                    }}
-                  >
+                  <th key={i} style={{
+                    background: h.bg,
+                    color: '#fff',
+                    padding: '8px 8px',
+                    textAlign: i === 0 ? 'left' : 'center',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    minWidth: h.min || 85,
+                    whiteSpace: 'nowrap',
+                    position: h.sticky ? 'sticky' : undefined,
+                    left: h.sticky ? 0 : undefined,
+                    zIndex: h.sticky ? 20 : undefined,
+                  }}>
                     {h.label}
                   </th>
                 ))}
@@ -535,25 +501,12 @@ export default function PagamentoPage() {
                 const tipo = ed.tipo_pagamento || l.tipo_pagamento
                 const cores = corTipo(tipo)
                 const calc = calcRow(l, ed)
-                const { dsr, inss, salarioLiq, total, contracheque, sindicato, horaExtra } = calc
                 const bg = fi % 2 === 0 ? '#fff' : '#f9fafb'
 
                 return (
                   <tr key={l.func_id} style={{ background: bg }}>
                     <td
-                      style={{
-                        padding: '7px 12px',
-                        fontWeight: 600,
-                        color: '#1a3a5c',
-                        fontSize: 12,
-                        position: 'sticky',
-                        left: 0,
-                        background: bg,
-                        zIndex: 2,
-                        borderRight: '2px solid #e5e7eb',
-                        whiteSpace: 'nowrap',
-                        cursor: 'pointer',
-                      }}
+                      style={{ padding: '7px 12px', fontWeight: 600, color: '#1a3a5c', fontSize: 12, position: 'sticky', left: 0, background: bg, zIndex: 2, borderRight: '2px solid #e5e7eb', whiteSpace: 'nowrap', cursor: 'pointer' }}
                       onClick={() => setModalFunc({ l, ed, calc })}
                     >
                       <span style={{ borderBottom: '1px dashed #93c5fd' }}>{l.nome}</span>
@@ -563,16 +516,7 @@ export default function PagamentoPage() {
                       <select
                         value={tipo}
                         onChange={e => setEdit(l.func_id, 'tipo_pagamento', e.target.value)}
-                        style={{
-                          border: `1px solid ${cores.border}`,
-                          borderRadius: 4,
-                          padding: '3px 4px',
-                          fontSize: 10,
-                          fontWeight: 700,
-                          outline: 'none',
-                          background: cores.bg,
-                          color: cores.color,
-                        }}
+                        style={{ border: `1px solid ${cores.border}`, borderRadius: 4, padding: '3px 4px', fontSize: 10, fontWeight: 700, outline: 'none', background: cores.bg, color: cores.color }}
                       >
                         <option value="DIÁRIA">DIÁRIA</option>
                         <option value="SALÁRIO">SALÁRIO</option>
@@ -587,33 +531,19 @@ export default function PagamentoPage() {
                     <td style={{ padding: '7px 8px', textAlign: 'center', color: '#6b7280', fontSize: 13 }}>{l.ausentes || '—'}</td>
 
                     <td style={{ padding: '4px 4px', textAlign: 'center', background: '#fff7ed' }}>
-                      <input
-                        type="number"
-                        step="1"
-                        style={{ ...inp(), width: 50 }}
-                        value={ed.dsr_qtd ?? ''}
-                        placeholder="0"
-                        onChange={e => setEdit(l.func_id, 'dsr_qtd', parseFloat(e.target.value) || 0)}
-                      />
+                      <input type="number" step="1" style={{ ...inp(), width: 50 }} value={ed.dsr_qtd ?? ''} placeholder="0" onChange={e => setEdit(l.func_id, 'dsr_qtd', parseFloat(e.target.value) || 0)} />
                     </td>
 
                     <td style={{ padding: '7px 8px', textAlign: 'right', fontSize: 12 }}>{formatR$(l.valor_diaria)}</td>
-                    <td style={{ padding: '7px 8px', textAlign: 'right', fontSize: 12 }}>{tipo === 'DIÁRIA' ? formatR$(l.salario_base) : formatR$(salarioLiq)}</td>
+                    <td style={{ padding: '7px 8px', textAlign: 'right', fontSize: 12 }}>{tipo === 'DIÁRIA' ? formatR$(l.salario_base) : formatR$(calc.salarioLiq)}</td>
                     <td style={{ padding: '7px 8px', textAlign: 'right', color: '#dc2626', fontSize: 12 }}>-{formatR$(l.adiantamento_valor)}</td>
 
                     <td style={{ padding: '7px 8px', textAlign: 'right', background: '#fff7ed', fontWeight: 700, color: '#92400e', fontSize: 12 }}>
-                      {formatR$(horaExtra)}
+                      {formatR$(calc.horaExtra)}
                     </td>
 
                     <td style={{ padding: '4px 4px', textAlign: 'center', background: '#fff7ed' }}>
-                      <input
-                        type="number"
-                        step="0.01"
-                        style={inp()}
-                        value={ed.complemento || ''}
-                        placeholder="0,00"
-                        onChange={e => setEdit(l.func_id, 'complemento', parseFloat(e.target.value) || 0)}
-                      />
+                      <input type="number" step="0.01" style={inp()} value={ed.complemento || ''} placeholder="0,00" onChange={e => setEdit(l.func_id, 'complemento', parseFloat(e.target.value) || 0)} />
                     </td>
 
                     <td style={{ padding: '4px 4px', textAlign: 'center', background: '#fef2f2' }}>
@@ -632,12 +562,12 @@ export default function PagamentoPage() {
                       <input type="number" step="0.01" style={inp(true)} value={ed.desc_pensao || ''} placeholder="0,00" onChange={e => setEdit(l.func_id, 'desc_pensao', parseFloat(e.target.value) || 0)} />
                     </td>
 
-                    <td style={{ padding: '7px 8px', textAlign: 'right', color: '#dc2626', fontSize: 12 }}>{tipo === 'SINDICATO' ? formatR$(dsr) : '—'}</td>
-                    <td style={{ padding: '7px 8px', textAlign: 'right', color: '#dc2626', fontSize: 12 }}>{l.empresa === 'NÃO REGISTRADO' ? '—' : formatR$(sindicato)}</td>
-                    <td style={{ padding: '7px 8px', textAlign: 'right', color: '#dc2626', fontSize: 12 }}>{tipo === 'SINDICATO' ? formatR$(inss) : '—'}</td>
+                    <td style={{ padding: '7px 8px', textAlign: 'right', color: '#dc2626', fontSize: 12 }}>{tipo === 'SINDICATO' ? formatR$(calc.dsr) : '—'}</td>
+                    <td style={{ padding: '7px 8px', textAlign: 'right', color: '#dc2626', fontSize: 12 }}>{l.empresa === 'NÃO REGISTRADO' ? '—' : formatR$(calc.sindicato)}</td>
+                    <td style={{ padding: '7px 8px', textAlign: 'right', color: '#dc2626', fontSize: 12 }}>{tipo === 'SINDICATO' ? formatR$(calc.inss) : '—'}</td>
 
-                    <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: '#065f46', background: '#dcfce7', fontSize: 13 }}>{formatR$(total)}</td>
-                    <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: '#1e40af', background: '#eff6ff', fontSize: 13 }}>{formatR$(contracheque)}</td>
+                    <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: '#065f46', background: '#dcfce7', fontSize: 13 }}>{formatR$(calc.total)}</td>
+                    <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: '#1e40af', background: '#eff6ff', fontSize: 13 }}>{formatR$(calc.contracheque)}</td>
                   </tr>
                 )
               })}
@@ -654,14 +584,8 @@ export default function PagamentoPage() {
       )}
 
       {modalFunc && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-          onClick={() => setModalFunc(null)}
-        >
-          <div
-            style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 440, overflow: 'hidden' }}
-            onClick={e => e.stopPropagation()}
-          >
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setModalFunc(null)}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 440, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1a3a5c', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ color: 'white', fontWeight: 700, fontSize: 15 }}>{modalFunc.l.nome}</div>
@@ -675,10 +599,11 @@ export default function PagamentoPage() {
                 { label: 'Tipo', val: modalFunc.ed.tipo_pagamento || 'DIÁRIA', color: '#1a3a5c' },
                 { label: 'Dias Trabalhados', val: modalFunc.l.total_diarias.toFixed(1) + ' dias', color: '#166534' },
                 { label: 'Sábados/Feriados após dia 16', val: modalFunc.l.extras_folha.toFixed(1) + ' dias', color: '#6d28d9' },
-                { label: 'Dias Úteis', val: modalFunc.l.dias_uteis.toFixed(1), color: '#1a3a5c' },
                 { label: 'Faltas', val: modalFunc.l.faltas, color: '#dc2626' },
+                { label: 'Ausentes', val: modalFunc.l.ausentes, color: '#dc2626' },
                 { label: 'Valor Diária', val: formatR$(modalFunc.l.valor_diaria), color: '#1a3a5c' },
                 { label: 'Salário Base', val: formatR$(modalFunc.l.salario_base), color: '#1a3a5c' },
+                { label: 'Salário Final', val: formatR$(modalFunc.calc.salarioLiq), color: '#1d4ed8' },
                 { label: 'Hora Extra', val: formatR$(modalFunc.calc.horaExtra), color: '#92400e' },
                 { label: 'Complemento', val: formatR$(modalFunc.ed.complemento || 0), color: '#92400e' },
                 { label: '(-) Adiantamento', val: '-' + formatR$(modalFunc.l.adiantamento_valor), color: '#dc2626' },
