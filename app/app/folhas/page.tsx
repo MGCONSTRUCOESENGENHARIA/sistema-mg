@@ -58,7 +58,7 @@ export default function FolhasPage() {
       supabase
         .from('folhas_ponto')
         .select('*, obras(nome,codigo)')
-        .order('data', { ascending: false }),
+        .order('data', { ascending: true }).order('data', { ascending: true }),
       supabase
         .from('obras')
         .select('id,nome')
@@ -229,7 +229,7 @@ export default function FolhasPage() {
     return Object.entries(grupos)
       .map(([obra, itens]) => ({
         obra,
-        itens: itens.sort((a, b) => String(b.data).localeCompare(String(a.data))),
+        itens: itens.sort((a, b) => String(a.data).localeCompare(String(b.data))),
       }))
       .sort((a, b) => a.obra.localeCompare(b.obra))
   }, [filtradas])
