@@ -272,70 +272,6 @@ export default function AdiantamentoPage() {
 
   return (
     <div>
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: A4 landscape;
-            margin: 8mm;
-          }
-
-          html,
-          body {
-            background: #ffffff !important;
-          }
-
-          body * {
-            visibility: hidden !important;
-          }
-
-          .print-resumo,
-          .print-resumo * {
-            visibility: visible !important;
-          }
-
-          .print-resumo {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-width: none !important;
-            max-height: none !important;
-            overflow: visible !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            background: #ffffff !important;
-          }
-
-          .print-resumo-scroll {
-            overflow: visible !important;
-            padding: 10px !important;
-          }
-
-          .print-resumo table {
-            width: 100% !important;
-            min-width: 0 !important;
-            border-collapse: collapse !important;
-            page-break-inside: auto !important;
-          }
-
-          .print-resumo tr {
-            page-break-inside: avoid !important;
-            page-break-after: auto !important;
-          }
-
-          .print-resumo th,
-          .print-resumo td {
-            font-size: 9px !important;
-            padding: 5px 6px !important;
-          }
-
-          .no-print {
-            display: none !important;
-            visibility: hidden !important;
-          }
-        }
-      `}</style>
-
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <button style={btnEq('ARMAÇÃO')} onClick={() => setEquipe('ARMAÇÃO')}>Armação</button>
         <button style={btnEq('CARPINTARIA')} onClick={() => setEquipe('CARPINTARIA')}>Carpintaria</button>
@@ -533,7 +469,6 @@ export default function AdiantamentoPage() {
           onClick={() => setMostrarResumo(false)}
         >
           <div
-            className="print-resumo"
             style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 900, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
             onClick={e => e.stopPropagation()}
           >
@@ -542,7 +477,7 @@ export default function AdiantamentoPage() {
                 <div style={{ color: 'white', fontWeight: 800, fontSize: 16 }}>Resumo para pagamento — {equipe}</div>
                 <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12 }}>{nomeMes(mes)} · Adiantamento líquido = adiantamento - descontos</div>
               </div>
-              <div className="no-print" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button
                   onClick={copiarResumo}
                   style={{ background: '#fff', border: 'none', color: '#1a3a5c', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
@@ -559,7 +494,7 @@ export default function AdiantamentoPage() {
               </div>
             </div>
 
-            <div className="print-resumo-scroll" style={{ padding: 16, overflow: 'auto' }}>
+            <div style={{ padding: 16, overflow: 'auto' }}>
               <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 980 }}>
                 <thead>
                   <tr>
