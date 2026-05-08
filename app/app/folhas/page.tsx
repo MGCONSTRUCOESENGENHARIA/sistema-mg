@@ -20,6 +20,24 @@ interface Folha {
   public_url?: string | null
 }
 
+type ResumoExtra = {
+  tipo: 'Conta Obra' | 'Conta MG'
+  solicitou?: string
+  periodo?: string
+  servico?: string
+  funcs?: string
+}
+
+type ResumoFolha = {
+  equipe?: string
+  presentes?: string
+  atrasados?: string
+  saiuCedo?: string
+  extras: ResumoExtra[]
+}
+
+const azul = '#1e3a8a'
+
 export default function FolhasPage() {
   const [folhas, setFolhas] = useState<Folha[]>([])
   const [obras, setObras] = useState<any[]>([])
@@ -125,6 +143,67 @@ export default function FolhasPage() {
     )
   }
 
+  function periodoBonito(periodo?: string) {
+    if (!periodo) return ''
+    if (periodo === 'DIA_TODO') return 'Dia todo'
+    if (periodo === 'METADE') return 'Metade'
+    return periodo
+  }
+
+  function parseResumo(f: Folha): ResumoFolha {
+    const linhas = (f.observacao || '').split('\n').map(l => l.trim()).filter(Boolean)
+    const resumo: ResumoFolha = { equipe: f.equipe, extras: [] }
+
+    for (const linha of linhas) {
+      if (linha.startsWith('Equipe:')) {
+        resumo.equipe = linha.replace('Equipe:', '').trim()
+        continue
+      }
+
+      if (linha.startsWith('Presentes')) {
+        const idx = linha.indexOf(':')
+        resumo.presentes = idx >= 0 ? linha.slice(idx + 1).trim() : linha
+        continue
+      }
+
+      if (linha.startsWith('Atrasados:')) {
+        resumo.atrasados = linha.replace('Atrasados:', '').trim()
+        continue
+      }
+
+      if (linha.startsWith('Saíram cedo:')) {
+        resumo.saiuCedo = linha.replace('Saíram cedo:', '').trim()
+        continue
+      }
+
+      if (linha.startsWith('Conta Obra:')) {
+        const texto = linha.replace('Conta Obra:', '').trim()
+        const partes = texto.split('|').map(p => p.trim())
+        resumo.extras.push({
+          tipo: 'Conta Obra',
+          servico: partes[0] || '',
+          periodo: periodoBonito(partes[1]),
+          solicitou: partes[2] || '',
+          funcs: partes.slice(3).join(' | ') || '',
+        })
+        continue
+      }
+
+      if (linha.startsWith('Conta MG:')) {
+        const texto = linha.replace('Conta MG:', '').trim()
+        const partes = texto.split('|').map(p => p.trim())
+        resumo.extras.push({
+          tipo: 'Conta MG',
+          servico: partes[0] || '',
+          periodo: periodoBonito(partes[1]),
+          funcs: partes.slice(2).join(' | ') || '',
+        })
+      }
+    }
+
+    return resumo
+  }
+
   const filtradas = folhas.filter(f => {
     if (obraFiltro && f.obra_id !== obraFiltro) return false
     if (equipe && f.equipe !== equipe) return false
@@ -175,6 +254,79 @@ export default function FolhasPage() {
     borderRadius: 999,
     textTransform: 'uppercase' as const,
   })
+
+  const linhaResumo = (label: string, valor?: string, color = '#111827') => {
+    if (!valor) return null
+
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 14,
+        padding: '9px 0',
+        borderBottom: '1px solid #f1f5f9',
+      }}>
+        <span style={{ fontSize: 13, color: '#64748b', minWidth: 78 }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color, textAlign: 'right' }}>{valor}</span>
+      </div>
+    )
+  }
+
+  function CardResumoVisual({ folha, grande = false }: { folha: Folha; grande?: boolean }) {
+    const resumo = parseResumo(folha)
+    const extras = resumo.extras
+
+    return (
+      <div style={{
+        width: '100%',
+        maxWidth: grande ? 520 : 430,
+        background: '#fff',
+        border: '2px solid #e2e8f0',
+        borderRadius: 16,
+        padding: grande ? 18 : 14,
+        boxShadow: grande ? '0 10px 24px rgba(15,23,42,.16)' : 'none',
+      }}>
+        {linhaResumo('Obra', folha.obras?.nome || 'Sem obra', azul)}
+        {linhaResumo('Data', dataLonga(folha.data))}
+        {linhaResumo('Equipe', resumo.equipe || folha.equipe)}
+        {linhaResumo('Presentes', resumo.presentes, '#059669')}
+        {resumo.atrasados && linhaResumo('Atrasados', resumo.atrasados, '#92400e')}
+        {resumo.saiuCedo && linhaResumo('Saíram cedo', resumo.saiuCedo, '#92400e')}
+
+        {extras.length > 0 ? extras.map((extra, idx) => (
+          <div key={idx}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 900,
+              color: '#64748b',
+              margin: '15px 0 7px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}>
+              {extra.tipo}
+            </div>
+
+            {extra.solicitou && linhaResumo('Solicitou', extra.solicitou)}
+            {linhaResumo('Período', extra.periodo)}
+            {linhaResumo('Serviço', extra.servico)}
+            {linhaResumo('Funcs', extra.funcs)}
+          </div>
+        )) : (
+          <div style={{
+            marginTop: 14,
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            padding: 12,
+            color: '#64748b',
+            fontSize: 13,
+          }}>
+            Sem diária extra registrada.
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div style={{ maxWidth: 1680, margin: '0 auto', padding: '18px 22px' }}>
@@ -287,14 +439,12 @@ export default function FolhasPage() {
                       >
                         <div style={{ height: 128, background: '#f3f4f6', overflow: 'hidden', position: 'relative' }}>
                           {img ? (
-                            <img
-                              src={img}
-                              alt={`Folha ${dataCurta(f.data)}`}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                            />
+                            <img src={img} alt={`Folha ${dataCurta(f.data)}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                           ) : (
-                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 32 }}>
-                              📄
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, background: '#f8fafc' }}>
+                              <div style={{ width: '100%', transform: 'scale(.55)', transformOrigin: 'center', pointerEvents: 'none' }}>
+                                <CardResumoVisual folha={f} />
+                              </div>
                             </div>
                           )}
 
@@ -381,18 +531,11 @@ export default function FolhasPage() {
             style={{ width: '100%', maxWidth: 980, maxHeight: '92vh', background: '#fff', borderRadius: 16, overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(320px,1.2fr) minmax(280px,.8fr)' }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ background: '#111827', minHeight: 520, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto' }}>
+            <div style={{ background: '#f8fafc', minHeight: 520, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: 24 }}>
               {urlFolha(modalFolha) ? (
-                <img
-                  src={urlFolha(modalFolha)}
-                  alt={`Folha ${dataCurta(modalFolha.data)}`}
-                  style={{ maxWidth: '100%', maxHeight: '88vh', objectFit: 'contain' }}
-                />
+                <img src={urlFolha(modalFolha)} alt={`Folha ${dataCurta(modalFolha.data)}`} style={{ maxWidth: '100%', maxHeight: '88vh', objectFit: 'contain' }} />
               ) : (
-                <div style={{ color: '#d1d5db', textAlign: 'center', padding: 24 }}>
-                  <div style={{ fontSize: 52, marginBottom: 10 }}>📄</div>
-                  <div>Esta folha não possui imagem vinculada.</div>
-                </div>
+                <CardResumoVisual folha={modalFolha} grande />
               )}
             </div>
 
