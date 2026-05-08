@@ -78,6 +78,8 @@ interface Linha {
   nome: string;
   equipe: string;
   empresa: string;
+  pix_tipo: string | null;
+  pix_chave: string | null;
   tipo_pagamento: string;
   valor_diaria: number;
   salario_base: number;
@@ -200,7 +202,7 @@ export default function PagamentoPage() {
 
     const { data: funcs } = await supabase
       .from("funcionarios")
-      .select("id,nome,equipe,valor_diaria,salario_base,empresa")
+      .select("id,nome,equipe,valor_diaria,salario_base,empresa,pix_tipo,pix_chave")
       .eq("equipe", equipe)
       .eq("ativo", true)
       .order("nome");
@@ -279,6 +281,8 @@ export default function PagamentoPage() {
         nome: func.nome,
         equipe: func.equipe,
         empresa: func.empresa || "",
+        pix_tipo: func.pix_tipo || "",
+        pix_chave: func.pix_chave || "",
         tipo_pagamento: "DIÁRIA",
         valor_diaria: valorDiaria,
         salario_base: salarioBase,
@@ -397,7 +401,7 @@ export default function PagamentoPage() {
     const linhasResumo = linhas.map((l) => {
       const calc = calcRow(l, getEd(l.func_id));
 
-      return `${l.nome}	${formatR$(calc.contracheque)}	${formatR$(calc.horaExtra)}`;
+      return `${l.nome}	${l.pix_tipo || "—"}	${l.pix_chave || "—"}	${formatR$(calc.contracheque)}	${formatR$(calc.horaExtra)}`;
     });
 
     const totalContracheque = linhas.reduce(
@@ -412,10 +416,10 @@ export default function PagamentoPage() {
     const texto = [
       `RESUMO PAGAMENTO FINAL — ${equipe} — ${nomeMes(mes)}`,
       "",
-      "FUNCIONÁRIO	TOTAL CONTRACHEQUE	HORA EXTRA",
+      "FUNCIONÁRIO	PIX	CHAVE PIX	TOTAL CONTRACHEQUE	HORA EXTRA",
       ...linhasResumo,
       "",
-      `TOTAL	${formatR$(totalContracheque)}	${formatR$(totalHoraExtra)}`,
+      `TOTAL			${formatR$(totalContracheque)}	${formatR$(totalHoraExtra)}`,
     ].join("\n");
 
     navigator.clipboard.writeText(texto);
@@ -1161,6 +1165,28 @@ export default function PagamentoPage() {
                     </th>
                     <th
                       style={{
+                        textAlign: "left",
+                        padding: "8px 10px",
+                        background: "#f3f4f6",
+                        color: "#374151",
+                        fontSize: 11,
+                      }}
+                    >
+                      PIX
+                    </th>
+                    <th
+                      style={{
+                        textAlign: "left",
+                        padding: "8px 10px",
+                        background: "#f3f4f6",
+                        color: "#374151",
+                        fontSize: 11,
+                      }}
+                    >
+                      CHAVE PIX
+                    </th>
+                    <th
+                      style={{
                         textAlign: "right",
                         padding: "8px 10px",
                         background: "#eff6ff",
@@ -1206,6 +1232,28 @@ export default function PagamentoPage() {
                         <td
                           style={{
                             padding: "8px 10px",
+                            fontSize: 12,
+                            borderBottom: "1px solid #e5e7eb",
+                            color: "#374151",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {l.pix_tipo || "—"}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 10px",
+                            fontSize: 12,
+                            borderBottom: "1px solid #e5e7eb",
+                            color: "#374151",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {l.pix_chave || "—"}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 10px",
                             textAlign: "right",
                             fontSize: 12,
                             borderBottom: "1px solid #e5e7eb",
@@ -1241,6 +1289,8 @@ export default function PagamentoPage() {
                     >
                       TOTAL
                     </td>
+                    <td style={{ padding: "9px 10px" }}></td>
+                    <td style={{ padding: "9px 10px" }}></td>
                     <td
                       style={{
                         padding: "9px 10px",

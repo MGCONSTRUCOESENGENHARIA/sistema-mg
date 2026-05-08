@@ -7,6 +7,8 @@ interface Linha {
   func_id: string
   nome: string
   equipe: string
+  pix_tipo: string | null
+  pix_chave: string | null
   valor_diaria: number
   salario_base: number
   total_diarias: number
@@ -41,7 +43,7 @@ export default function AdiantamentoPage() {
 
     const { data: funcs } = await supabase
       .from('funcionarios')
-      .select('id,nome,equipe,valor_diaria,salario_base')
+      .select('id,nome,equipe,valor_diaria,salario_base,pix_tipo,pix_chave')
       .eq('equipe', equipe)
       .eq('ativo', true)
       .order('nome')
@@ -117,6 +119,8 @@ export default function AdiantamentoPage() {
         func_id: func.id,
         nome: func.nome,
         equipe: func.equipe,
+        pix_tipo: func.pix_tipo || '',
+        pix_chave: func.pix_chave || '',
         valor_diaria: valorDiaria,
         salario_base: salarioBase,
         total_diarias: totalDiarias,
@@ -218,16 +222,16 @@ export default function AdiantamentoPage() {
   function copiarResumo() {
     const linhasResumo = linhas.map(l => {
       const ed = getEd(l.func_id, l.descontos)
-      return `${l.nome}\t${formatR$(adiantamentoLiquido(l))}\t${formatR$(horaExtra(l))}\t${formatR$(ed.complemento || 0)}`
+      return `${l.nome}\t${l.pix_tipo || '—'}\t${l.pix_chave || '—'}\t${formatR$(adiantamentoLiquido(l))}\t${formatR$(horaExtra(l))}\t${formatR$(ed.complemento || 0)}`
     })
 
     const texto = [
       `RESUMO ADIANTAMENTO — ${equipe} — ${nomeMes(mes)}`,
       '',
-      'FUNCIONÁRIO\tADIANTAMENTO\tHORA EXTRA\tCOMPLEMENTO',
+      'FUNCIONÁRIO\tPIX\tCHAVE PIX\tADIANTAMENTO\tHORA EXTRA\tCOMPLEMENTO',
       ...linhasResumo,
       '',
-      `TOTAL\t${formatR$(totalAdiantLiquido)}\t${formatR$(totalHoraExtra)}\t${formatR$(totalComplemento)}`,
+      `TOTAL\t\t\t${formatR$(totalAdiantLiquido)}\t${formatR$(totalHoraExtra)}\t${formatR$(totalComplemento)}`,
     ].join('\n')
 
     navigator.clipboard.writeText(texto)
@@ -491,15 +495,15 @@ export default function AdiantamentoPage() {
             </div>
 
             <div style={{ padding: 16, overflow: 'auto' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 720 }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 980 }}>
                 <thead>
                   <tr>
-                    {['FUNCIONÁRIO', 'ADIANTAMENTO', 'HORA EXTRA', 'COMPLEMENTO'].map((h, i) => (
+                    {['FUNCIONÁRIO', 'PIX', 'CHAVE PIX', 'ADIANTAMENTO', 'HORA EXTRA', 'COMPLEMENTO'].map((h, i) => (
                       <th key={h} style={{
                         background: i === 0 ? '#1a3a5c' : '#374151',
                         color: '#fff',
                         padding: '9px 10px',
-                        textAlign: i === 0 ? 'left' : 'right',
+                        textAlign: i <= 2 ? 'left' : 'right',
                         fontSize: 11,
                         whiteSpace: 'nowrap',
                       }}>
@@ -516,6 +520,8 @@ export default function AdiantamentoPage() {
                     return (
                       <tr key={l.func_id} style={{ background: bg }}>
                         <td style={{ padding: '8px 10px', fontSize: 12, fontWeight: 600, color: '#1a3a5c', borderBottom: '1px solid #e5e7eb' }}>{l.nome}</td>
+                        <td style={{ padding: '8px 10px', fontSize: 12, borderBottom: '1px solid #e5e7eb', color: '#374151', fontWeight: 600 }}>{l.pix_tipo || '—'}</td>
+                        <td style={{ padding: '8px 10px', fontSize: 12, borderBottom: '1px solid #e5e7eb', color: '#374151', fontWeight: 600 }}>{l.pix_chave || '—'}</td>
                         <td style={{ padding: '8px 10px', fontSize: 12, textAlign: 'right', borderBottom: '1px solid #e5e7eb', color: '#065f46', fontWeight: 700 }}>{formatR$(adiantamentoLiquido(l))}</td>
                         <td style={{ padding: '8px 10px', fontSize: 12, textAlign: 'right', borderBottom: '1px solid #e5e7eb', color: '#92400e', fontWeight: 700 }}>{formatR$(horaExtra(l))}</td>
                         <td style={{ padding: '8px 10px', fontSize: 12, textAlign: 'right', borderBottom: '1px solid #e5e7eb', color: '#1e40af', fontWeight: 700 }}>{formatR$(ed.complemento || 0)}</td>
@@ -525,6 +531,8 @@ export default function AdiantamentoPage() {
 
                   <tr style={{ background: '#1a3a5c', fontWeight: 800 }}>
                     <td style={{ padding: '10px', color: '#fff', fontSize: 12 }}>TOTAL {equipe}</td>
+                    <td style={{ padding: '10px', color: '#fff', fontSize: 13 }}></td>
+                    <td style={{ padding: '10px', color: '#fff', fontSize: 13 }}></td>
                     <td style={{ padding: '10px', color: '#86efac', fontSize: 13, textAlign: 'right' }}>{formatR$(totalAdiantLiquido)}</td>
                     <td style={{ padding: '10px', color: '#fed7aa', fontSize: 13, textAlign: 'right' }}>{formatR$(totalHoraExtra)}</td>
                     <td style={{ padding: '10px', color: '#bfdbfe', fontSize: 13, textAlign: 'right' }}>{formatR$(totalComplemento)}</td>
