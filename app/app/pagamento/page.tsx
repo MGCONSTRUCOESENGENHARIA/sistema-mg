@@ -226,16 +226,16 @@ export default function PagamentoPage() {
       presencas = pres || [];
     }
 
-    let adiantamentos: any[] = [];
+    let ajustesAdiantamento: any[] = [];
 
     if (comp?.id) {
-      const { data: adt } = await supabase
-        .from("pagamentos")
-        .select("funcionario_id,total_pagamento")
+      const { data: ajAdt } = await supabase
+        .from("pagamento_ajustes")
+        .select("funcionario_id,complemento")
         .eq("competencia_id", comp.id)
         .eq("tipo", "adiantamento");
 
-      adiantamentos = adt || [];
+      ajustesAdiantamento = ajAdt || [];
     }
 
     const resultado: Linha[] = funcs.map((func: any) => {
@@ -263,7 +263,16 @@ export default function PagamentoPage() {
       });
 
       const diasUteis = totalDiarias + faltas + ausentes;
-      const adtObj = adiantamentos.find((a) => a.funcionario_id === func.id);
+      const salarioBase = Number(func.salario_base || 0);
+      const valorDiaria = Number(func.valor_diaria || 0);
+      const ajusteAdiantamento = ajustesAdiantamento.find(
+        (a) => a.funcionario_id === func.id,
+      );
+      const complementoAdiantamento = Number(
+        ajusteAdiantamento?.complemento || 0,
+      );
+      const adiantamentoParaDesconto =
+        salarioBase * 0.5 + complementoAdiantamento;
 
       return {
         func_id: func.id,
@@ -271,15 +280,15 @@ export default function PagamentoPage() {
         equipe: func.equipe,
         empresa: func.empresa || "",
         tipo_pagamento: "DIÁRIA",
-        valor_diaria: Number(func.valor_diaria || 0),
-        salario_base: Number(func.salario_base || 0),
+        valor_diaria: valorDiaria,
+        salario_base: salarioBase,
         total_diarias: totalDiarias,
         extras_folha: extrasfolha,
         dias_uteis: diasUteis,
         faltas,
         ausentes,
-        extra_folha_valor: extrasfolha * Number(func.valor_diaria || 0),
-        adiantamento_valor: Number(adtObj?.total_pagamento || 0),
+        extra_folha_valor: extrasfolha * valorDiaria,
+        adiantamento_valor: adiantamentoParaDesconto,
         presencas_datas: pAll.map((p) => ({ data: p.data, tipo: p.tipo })),
       };
     });
@@ -1102,6 +1111,22 @@ export default function PagamentoPage() {
                   }}
                 >
                   Copiar
+                </button>
+
+                <button
+                  onClick={() => window.print()}
+                  style={{
+                    background: "rgba(255,255,255,.14)",
+                    color: "#fff",
+                    border: "1px solid rgba(255,255,255,.35)",
+                    borderRadius: 8,
+                    padding: "7px 12px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: 12,
+                  }}
+                >
+                  Imprimir
                 </button>
 
                 <button
