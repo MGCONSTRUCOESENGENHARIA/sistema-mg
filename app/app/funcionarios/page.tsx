@@ -13,6 +13,9 @@ interface Func {
   salario_base: number
   ativo: boolean
   empresa: string
+  pix_tipo?: string
+  pix_chave?: string
+  pix_observacao?: string
 }
 
 const EMPRESAS: Record<string, { cor: string; bg: string; sigla: string }> = {
@@ -41,6 +44,9 @@ export default function FuncionariosPage() {
     valor_diaria: '',
     salario_base: '',
     empresa: '',
+    pix_tipo: '',
+    pix_chave: '',
+    pix_observacao: '',
   })
 
   useEffect(() => {
@@ -83,6 +89,9 @@ export default function FuncionariosPage() {
       valor_diaria: parseFloat(form.valor_diaria) || 0,
       salario_base: parseFloat(form.salario_base) || 0,
       empresa: form.empresa || 'NÃO REGISTRADO',
+      pix_tipo: form.pix_tipo || null,
+      pix_chave: form.pix_chave.trim() || null,
+      pix_observacao: form.pix_observacao.trim() || null,
       ativo: true,
     }
 
@@ -112,6 +121,9 @@ export default function FuncionariosPage() {
       valor_diaria: '',
       salario_base: '',
       empresa: '',
+      pix_tipo: '',
+      pix_chave: '',
+      pix_observacao: '',
     })
 
     await carregar()
@@ -132,6 +144,9 @@ export default function FuncionariosPage() {
         valor_diaria: modal.valor_diaria,
         salario_base: modal.salario_base,
         empresa: modal.empresa,
+        pix_tipo: modal.pix_tipo || null,
+        pix_chave: modal.pix_chave || null,
+        pix_observacao: modal.pix_observacao || null,
       })
       .eq('id', modal.id)
 
@@ -278,12 +293,12 @@ export default function FuncionariosPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #f3f4f6' }}>
-              {['Nome', 'Empresa', 'Equipe', 'Função', 'Diária', 'Salário Base', 'Status', 'Ações'].map((h, i) => (
+              {['Nome', 'Empresa', 'Equipe', 'Função', 'Diária', 'Salário Base', 'PIX', 'Status', 'Ações'].map((h, i) => (
                 <th
                   key={i}
                   style={{
                     padding: '12px 16px',
-                    textAlign: i >= 4 && i <= 5 ? 'right' : i === 6 || i === 7 ? 'center' : 'left',
+                    textAlign: i >= 4 && i <= 5 ? 'right' : i === 7 || i === 8 ? 'center' : 'left',
                     fontSize: 12,
                     fontWeight: 700,
                     color: '#7c3aed',
@@ -299,7 +314,7 @@ export default function FuncionariosPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>Carregando...</td>
+                <td colSpan={9} style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>Carregando...</td>
               </tr>
             ) : lista.map(f => {
               const emp = EMPRESAS[f.empresa] || EMPRESAS['NÃO REGISTRADO']
@@ -321,6 +336,17 @@ export default function FuncionariosPage() {
                   <td style={{ padding: '12px 16px', fontSize: 13, color: '#6b7280' }}>{f.funcao || '—'}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, fontSize: 13, color: '#1f2937' }}>{formatR$(f.valor_diaria)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: '#6b7280' }}>{formatR$(f.salario_base)}</td>
+
+                  <td style={{ padding: '12px 16px', fontSize: 12, color: '#374151', whiteSpace: 'nowrap' }}>
+                    {f.pix_chave ? (
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#166534' }}>{f.pix_tipo || 'PIX'}</div>
+                        <div style={{ color: '#6b7280', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.pix_chave}</div>
+                      </div>
+                    ) : (
+                      <span style={{ color: '#9ca3af' }}>—</span>
+                    )}
+                  </td>
 
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <span style={{ background: '#d1fae5', color: '#065f46', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>Ativo</span>
@@ -349,7 +375,7 @@ export default function FuncionariosPage() {
 
             {!loading && lista.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>Nenhum funcionário encontrado.</td>
+                <td colSpan={9} style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}>Nenhum funcionário encontrado.</td>
               </tr>
             )}
           </tbody>
@@ -358,7 +384,7 @@ export default function FuncionariosPage() {
 
       {modal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 480, overflow: 'hidden' }}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 560, overflow: 'hidden' }}>
             <div style={{ padding: '18px 22px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1f2937' }}>Editar Funcionário</h2>
               <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 20 }}>×</button>
@@ -403,6 +429,29 @@ export default function FuncionariosPage() {
                   ))}
                 </select>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Tipo PIX</label>
+                  <select value={modal.pix_tipo || ''} onChange={e => setModal(m => m ? { ...m, pix_tipo: e.target.value } : m)} style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, outline: 'none' }}>
+                    <option value="">Selecione...</option>
+                    <option value="CPF">CPF</option>
+                    <option value="TELEFONE">Telefone</option>
+                    <option value="EMAIL">E-mail</option>
+                    <option value="ALEATORIA">Aleatória</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Chave PIX</label>
+                  <input value={modal.pix_chave || ''} onChange={e => setModal(m => m ? { ...m, pix_chave: e.target.value } : m)} style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Observação PIX</label>
+                <input value={modal.pix_observacao || ''} onChange={e => setModal(m => m ? { ...m, pix_observacao: e.target.value } : m)} style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
             </div>
 
             <div style={{ padding: '14px 22px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -418,7 +467,7 @@ export default function FuncionariosPage() {
 
       {novoForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 480, overflow: 'hidden' }}>
+          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 560, overflow: 'hidden' }}>
             <div style={{ padding: '18px 22px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1f2937' }}>Novo Funcionário</h2>
               <button onClick={() => setNovoForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 20 }}>×</button>
@@ -465,6 +514,29 @@ export default function FuncionariosPage() {
                     <option key={e} value={e}>{e}</option>
                   ))}
                 </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Tipo PIX</label>
+                  <select value={form.pix_tipo} onChange={e => setForm(f => ({ ...f, pix_tipo: e.target.value }))} style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, outline: 'none' }}>
+                    <option value="">Selecione...</option>
+                    <option value="CPF">CPF</option>
+                    <option value="TELEFONE">Telefone</option>
+                    <option value="EMAIL">E-mail</option>
+                    <option value="ALEATORIA">Aleatória</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Chave PIX</label>
+                  <input value={form.pix_chave} onChange={e => setForm(f => ({ ...f, pix_chave: e.target.value }))} style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Observação PIX</label>
+                <input value={form.pix_observacao} onChange={e => setForm(f => ({ ...f, pix_observacao: e.target.value }))} style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </div>
 
