@@ -502,6 +502,70 @@ export default function PagamentoPage() {
 
   return (
     <div>
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 8mm;
+          }
+
+          html,
+          body {
+            background: #ffffff !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          .print-resumo,
+          .print-resumo * {
+            visibility: visible !important;
+          }
+
+          .print-resumo {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            overflow: visible !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+          }
+
+          .print-resumo-scroll {
+            overflow: visible !important;
+            padding: 10px !important;
+          }
+
+          .print-resumo table {
+            width: 100% !important;
+            min-width: 0 !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto !important;
+          }
+
+          .print-resumo tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+          }
+
+          .print-resumo th,
+          .print-resumo td {
+            font-size: 9px !important;
+            padding: 5px 6px !important;
+          }
+
+          .no-print {
+            display: none !important;
+            visibility: hidden !important;
+          }
+        }
+      `}</style>
+
       <div
         style={{
           display: "flex",
@@ -1070,6 +1134,7 @@ export default function PagamentoPage() {
           onClick={() => setMostrarResumo(false)}
         >
           <div
+            className="print-resumo"
             style={{
               background: "white",
               borderRadius: 16,
@@ -1100,7 +1165,7 @@ export default function PagamentoPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div className="no-print" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <button
                   onClick={copiarResumo}
                   style={{
@@ -1148,7 +1213,7 @@ export default function PagamentoPage() {
               </div>
             </div>
 
-            <div style={{ overflow: "auto", padding: 16 }}>
+            <div className="print-resumo-scroll" style={{ overflow: "auto", padding: 16 }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
