@@ -20,28 +20,20 @@ interface Linha {
 }
 function calcularLinha(l: Linha): Linha {
   const saldoVT = l.recebido_anterior - l.valor_gasto_quinzena
-  if (l.tipo_passagem === 'REEMBOLSO') {
-    return {
-      ...l,
-      saldo_vt: saldoVT,
-      valor_projetado: 0,
-      total_passagem: l.valor_gasto_quinzena + l.adicional,
-    }
-  }
-  if (l.tipo_passagem === 'PRA FRENTE') {
-    const valorProjetado = l.dias_projetados * l.valor_fixo
-    return {
-      ...l,
-      saldo_vt: saldoVT,
-      valor_projetado: valorProjetado,
-      total_passagem: saldoVT + valorProjetado + l.adicional,
-    }
-  }
+  const valorProjetado = l.tipo_passagem === 'PRA FRENTE'
+    ? l.dias_projetados * l.valor_fixo
+    : 0
+
+  // REGRA CORRETA DA PASSAGEM:
+  // Dia 16 = valor gasto nas obras da 1ª quinzena
+  // Dia 01 = valor gasto nas obras da 2ª quinzena
+  // O sábado extra também entra, porque ele vem da tabela presencas como SABADO_EXTRA
+  // e é somado em valor_gasto_quinzena junto com os dias NORMAL.
   return {
     ...l,
-    saldo_vt: 0,
-    valor_projetado: 0,
-    total_passagem: l.adicional,
+    saldo_vt: saldoVT,
+    valor_projetado: valorProjetado,
+    total_passagem: l.valor_gasto_quinzena + l.adicional,
   }
 }
 export default function PassagemCafePage() {
