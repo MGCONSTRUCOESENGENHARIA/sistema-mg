@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { mesAtual, formatR$, diasDoMes, formatDate, fim1Quinzena, AUSENCIAS } from '@/lib/utils'
+import { mesAtual, formatR$, formatDate, AUSENCIAS } from '@/lib/utils'
 const CAFE_DIA = 10
 interface Linha {
   func_id: string
@@ -18,22 +18,37 @@ interface Linha {
   valor_projetado: number
   total_passagem: number
 }
+
+function diasCorridosDoMes(mes: string) {
+  const [ano, mesNum] = mes.split('-').map(Number)
+  const ultimoDia = new Date(ano, mesNum, 0).getDate()
+  return Array.from({ length: ultimoDia }, (_, i) => new Date(ano, mesNum - 1, i + 1, 12, 0, 0))
+}
+
 function calcularLinha(l: Linha): Linha {
   const saldoVT = l.recebido_anterior - l.valor_gasto_quinzena
-  const valorProjetado = l.tipo_passagem === 'PRA FRENTE'
-    ? l.dias_projetados * l.valor_fixo
-    : 0
-
-  // REGRA CORRETA DA PASSAGEM:
-  // Dia 16 = valor gasto nas obras da 1ª quinzena
-  // Dia 01 = valor gasto nas obras da 2ª quinzena
-  // O sábado extra também entra, porque ele vem da tabela presencas como SABADO_EXTRA
-  // e é somado em valor_gasto_quinzena junto com os dias NORMAL.
+  if (l.tipo_passagem === 'REEMBOLSO') {
+    return {
+      ...l,
+      saldo_vt: saldoVT,
+      valor_projetado: 0,
+      total_passagem: l.valor_gasto_quinzena + l.adicional,
+    }
+  }
+  if (l.tipo_passagem === 'PRA FRENTE') {
+    const valorProjetado = l.dias_projetados * l.valor_fixo
+    return {
+      ...l,
+      saldo_vt: saldoVT,
+      valor_projetado: valorProjetado,
+      total_passagem: saldoVT + valorProjetado + l.adicional,
+    }
+  }
   return {
     ...l,
-    saldo_vt: saldoVT,
-    valor_projetado: valorProjetado,
-    total_passagem: l.valor_gasto_quinzena + l.adicional,
+    saldo_vt: 0,
+    valor_projetado: 0,
+    total_passagem: l.adicional,
   }
 }
 export default function PassagemCafePage() {
@@ -65,9 +80,10 @@ export default function PassagemCafePage() {
       setLoading(false)
       return
     }
-    const diasMes = diasDoMes(mes)
-    const f1 = fim1Quinzena(diasMes)
-    const diasPeriodo = quinzena === 1 ? diasMes.slice(0, f1 + 1) : diasMes.slice(f1 + 1)
+    // Usa dias corridos do mês para NÃO deixar sábado extra fora do cálculo.
+    // 1ª quinzena: dia 01 ao dia 15. 2ª quinzena: dia 16 ao último dia do mês.
+    const diasMes = diasCorridosDoMes(mes)
+    const diasPeriodo = diasMes.filter(d => quinzena === 1 ? d.getDate() <= 15 : d.getDate() >= 16)
     const ids = funcs.map((f: any) => f.id)
     let presencas: any[] = []
     if (comp?.id) {
@@ -100,50 +116,32 @@ export default function PassagemCafePage() {
       const pqFunci = passQuinzena.find(p => p.funcionario_id === func.id)
       let valorGasto = 0
       let diasTrabalhados = 0
-      let totalDiasCafe = 0
+      let totalCafe = 0
       let ultimoValorPraFrente = 0
-
       presFunci.forEach(p => {
         if (['FALTA', ...AUSENCIAS].includes(p.tipo)) return
-
-        // Só conta presença normal ou sábado extra com obra vinculada
+        // Só conta se tem obra vinculada (NORMAL ou SABADO_EXTRA)
         if (!p.obra_id) return
         if (p.tipo !== 'NORMAL' && p.tipo !== 'SABADO_EXTRA') return
-
         const temDuasObras = !!p.obra2_id
-
-        // Regra principal:
-        // - 1 obra no dia = 1 diária, salvo se vier fração específica
-        // - 2 obras no dia = 0,5 + 0,5 = 1 diária inteira
-        // Isso também corrige registros antigos salvos com fracao2 vazia ou fracao1 = 1.
-        const fracao1 = temDuasObras ? 0.5 : Number(p.fracao ?? 1)
-        const fracao2 = temDuasObras ? 0.5 : 0
+        const fracao1 = temDuasObras ? 0.5 : Number(p.fracao || 1)
+        const fracao2 = temDuasObras ? 0.5 : Number(p.fracao2 || 0)
         const soma = fracao1 + fracao2
-
-        if (soma <= 0) return
-
-        // Café da quinzena:
-        // Dia 16 = (1ªQ + Ex1) × R$10
-        // Dia 01 = (2ªQ + Ex2) × R$10
+        if (soma === 0) return
         diasTrabalhados += soma
-        totalDiasCafe += soma
-
-        // Passagem da quinzena:
-        // soma o valor gasto nas obras do período selecionado
+        totalCafe += CAFE_DIA * soma
         const fop1 = p.obra_id
           ? passDB?.find(x => x.funcionario_id === func.id && x.obra_id === p.obra_id)
           : null
         const fop2 = p.obra2_id
           ? passDB?.find(x => x.funcionario_id === func.id && x.obra_id === p.obra2_id)
           : null
-
         if (fop1) {
           valorGasto += Number(fop1.valor_passagem || 0) * fracao1
           if (fop1.tipo_passagem === 'PRA FRENTE') {
             ultimoValorPraFrente = Number(fop1.valor_passagem || 0)
           }
         }
-
         if (fop2) {
           valorGasto += Number(fop2.valor_passagem || 0) * fracao2
           if (fop2.tipo_passagem === 'PRA FRENTE') {
@@ -151,8 +149,6 @@ export default function PassagemCafePage() {
           }
         }
       })
-
-      const totalCafe = totalDiasCafe * CAFE_DIA
       const tiposFunc = passDB?.filter(x => x.funcionario_id === func.id) || []
       const tipos = tiposFunc.map(x => x.tipo_passagem)
       const counts: Record<string, number> = {}
@@ -334,7 +330,7 @@ export default function PassagemCafePage() {
         Passagem & Café — {equipe} · {quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena'}
       </h1>
       <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-        Campos em <span style={{ background: '#fefce8', border: '1px solid #fbbf24', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>amarelo</span> são editáveis · Café Dia 16 = (1ªQ + Ex1) × R$10 · Café Dia 01 = (2ªQ + Ex2) × R$10
+        Campos em <span style={{ background: '#fefce8', border: '1px solid #fbbf24', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>amarelo</span> são editáveis · Café = R$10/dia trabalhado
       </p>
       {msg && (
         <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: 10, color: '#14532d', fontSize: 13 }}>
