@@ -398,9 +398,11 @@ export default function PresencaPage() {
       if (!p) return
       if (p.tipo==='FALTA') { faltas++; return }
       if (p.tipo==='AUSENTE') { aus++; return }
+      if (!p.obra_id) return
       const soma = (p.fracao||0)+(p.fracao2||0)
+      if (soma === 0) return
       if (p.tipo==='SABADO_EXTRA') { di<=fim1Q ? q1ex+=soma : q2ex+=soma; return }
-      di<=fim1Q ? q1+=soma : q2+=soma
+      if (p.tipo==='NORMAL') { di<=fim1Q ? q1+=soma : q2+=soma; return }
     })
     return {q1,q2,q1ex,q2ex,faltas,aus,tot:q1+q2}
   }
