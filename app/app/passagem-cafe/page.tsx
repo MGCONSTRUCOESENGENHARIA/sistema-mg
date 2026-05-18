@@ -26,7 +26,7 @@ function diasCorridosDoMes(mes: string) {
 }
 
 function calcularLinha(l: Linha): Linha {
-  const saldoVT = l.recebido_anterior - l.valor_gasto_quinzena
+  const saldoVT = l.valor_gasto_quinzena - l.recebido_anterior
   if (l.tipo_passagem === 'REEMBOLSO') {
     return {
       ...l,
