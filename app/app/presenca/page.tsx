@@ -342,8 +342,8 @@ export default function PresencaPage() {
     setModal({ funcId, funcNome, data, atual })
     if (atual) {
       setFormTipo(atual.tipo); setFormObra(atual.obra_id || '')
-      setFormFracao(String(atual.fracao || 1)); setFormObra2(atual.obra2_id || '')
-      setFormFracao2(String(atual.fracao2 || ''))
+      setFormFracao(String(atual.obra2_id ? 0.5 : (atual.fracao || 1))); setFormObra2(atual.obra2_id || '')
+      setFormFracao2(String(atual.obra2_id ? 0.5 : (atual.fracao2 || '')))
     } else {
       const d = new Date(data + 'T12:00')
       setFormTipo(d.getDay() === 6 ? 'SABADO_EXTRA' : 'NORMAL')
@@ -356,10 +356,19 @@ export default function PresencaPage() {
     if (!modal || !compId) return
     if ((formTipo==='NORMAL'||formTipo==='SABADO_EXTRA') && !formObra) { setFormErro('Selecione a obra.'); return }
     setSalvando(true)
+    const temDuasObras = !!formObra2
+
     const payload: any = {
-      competencia_id: compId, funcionario_id: modal.funcId, data: modal.data, tipo: formTipo,
-      obra_id: formObra || null, fracao: parseFloat(formFracao) || null,
-      obra2_id: formObra2 || null, fracao2: parseFloat(formFracao2) || null,
+      competencia_id: compId,
+      funcionario_id: modal.funcId,
+      data: modal.data,
+      tipo: formTipo,
+      obra_id: formObra || null,
+      fracao: (formTipo === 'NORMAL' || formTipo === 'SABADO_EXTRA')
+        ? (temDuasObras ? 0.5 : (parseFloat(formFracao) || 1))
+        : null,
+      obra2_id: temDuasObras ? formObra2 : null,
+      fracao2: temDuasObras ? 0.5 : null,
     }
     try {
       const chave = `${modal.funcId}|${modal.data}`
@@ -399,7 +408,7 @@ export default function PresencaPage() {
       if (p.tipo==='FALTA') { faltas++; return }
       if (p.tipo==='AUSENTE') { aus++; return }
       if (!p.obra_id) return
-      const soma = (p.fracao||0)+(p.fracao2||0)
+      const soma = p.obra2_id ? 1 : (p.fracao || 1)
       if (soma === 0) return
       if (p.tipo==='SABADO_EXTRA') { di<=fim1Q ? q1ex+=soma : q2ex+=soma; return }
       if (p.tipo==='NORMAL') { di<=fim1Q ? q1+=soma : q2+=soma; return }
@@ -605,7 +614,16 @@ export default function PresencaPage() {
                     <div>
                       <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>2ª Obra (opcional)</label>
                       <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }}
-                        value={formObra2} onChange={e => setFormObra2(e.target.value)}>
+                        value={formObra2} onChange={e => {
+                          const value = e.target.value
+                          setFormObra2(value)
+                          if (value) {
+                            setFormFracao('0.5')
+                            setFormFracao2('0.5')
+                          } else {
+                            setFormFracao2('')
+                          }
+                        }}>
                         <option value="">Nenhuma</option>
                         {obras.filter(o=>o.id!==formObra).map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
                       </select>
