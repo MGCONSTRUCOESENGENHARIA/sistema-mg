@@ -112,9 +112,13 @@ export default function PassagemCafePage() {
       let ultimoValorPraFrente = 0
       presFunci.forEach(p => {
         if (['FALTA', ...AUSENCIAS].includes(p.tipo)) return
+        // Só conta se tem obra vinculada (NORMAL ou SABADO_EXTRA)
+        if (!p.obra_id) return
+        if (p.tipo !== 'NORMAL' && p.tipo !== 'SABADO_EXTRA') return
         const fracao1 = Number(p.fracao || 0)
         const fracao2 = Number(p.fracao2 || 0)
         const soma = fracao1 + fracao2
+        if (soma === 0) return
         diasTrabalhados += soma
         totalCafe += CAFE_DIA * soma
         const fop1 = p.obra_id
