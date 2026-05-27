@@ -125,14 +125,18 @@ export default function PresencaPage() {
       comp = nova
     }
     setCompId(comp?.id || null)
-    const [{ data: fs }, { data: os }, { data: ps }] = await Promise.all([
+    const [{ data: fs }, { data: os }] = await Promise.all([
       supabase.from('funcionarios').select('id,nome,equipe').eq('equipe', equipe).eq('ativo', true).order('nome'),
       supabase.from('obras').select('id,codigo,nome').eq('status', 'ATIVA').order('nome'),
-      supabase.from('presencas')
-        .select('id,funcionario_id,data,tipo,obra_id,fracao,obra2_id,fracao2,obras:obra_id(nome,codigo),obras2:obra2_id(nome,codigo)')
-        .eq('competencia_id', comp?.id || '')
-        .limit(10000),
     ])
+    const ids = (fs || []).map((f: any) => f.id)
+    const { data: ps } = ids.length > 0
+      ? await supabase.from('presencas')
+          .select('id,funcionario_id,data,tipo,obra_id,fracao,obra2_id,fracao2,obras:obra_id(nome,codigo),obras2:obra2_id(nome,codigo)')
+          .eq('competencia_id', comp?.id || '')
+          .in('funcionario_id', ids)
+          .limit(10000)
+      : { data: [] }
     setFuncs(fs || [])
     setObras(os || [])
     const mapa: Record<string, Pres> = {}
