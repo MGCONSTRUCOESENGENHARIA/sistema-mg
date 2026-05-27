@@ -2,16 +2,12 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { diasDoMes, formatDate, formatBR, mesAtual } from '@/lib/utils'
-
 type PresencaTipo = 'NORMAL' | 'FALTA' | 'ATESTADO' | 'AUSENTE' | 'SAIU' | 'SABADO_EXTRA' | 'X' | 'FERIADO'
-
 interface Func { id: string; nome: string; equipe: string }
 interface Obra { id: string; codigo: string; nome: string }
 interface Pres { id: string; funcionario_id: string; data: string; tipo: PresencaTipo; obra_id?: string; fracao?: number; obra2_id?: string; fracao2?: number; obras?: any; obras2?: any }
 interface Modal { funcId: string; funcNome: string; data: string; atual?: Pres }
 interface LinhaPrev { nomeOriginal: string; funcId: string | null; funcNome: string; dias: { data: string; raw: string; tipo: PresencaTipo; obra_id?: string; fracao?: number; obra2_id?: string; fracao2?: number }[]; erros: string[] }
-
-// Normalização de obras
 const NORM_OBRAS: Record<string, string> = {
   'BLL MANGABEIRAS':'BLL MANGABEIRAS','BLL':'BLL MANGABEIRAS',
   'CIDADE JARDIM':'CIDADE JARDIM','CJ':'CIDADE JARDIM',
@@ -29,12 +25,10 @@ const NORM_OBRAS: Record<string, string> = {
   'TRÊS MARIAS':'TRÊS MARIAS','3MAR':'TRÊS MARIAS',
   'CONTENÇÃO LUZ E CIA':'CONTENÇÃO LUZ E CIA','LUZ':'CONTENÇÃO LUZ E CIA',
 }
-
 function normNomeObra(s: string): string | null {
   const u = s.trim().toUpperCase()
   return NORM_OBRAS[u] || null
 }
-
 function similaridade(a: string, b: string): number {
   a = a.toLowerCase().trim()
   b = b.toLowerCase().trim()
@@ -45,7 +39,6 @@ function similaridade(a: string, b: string): number {
   const match = partsA.filter(p => partsB.some(q => q.startsWith(p) || p.startsWith(q))).length
   return match / Math.max(partsA.length, partsB.length)
 }
-
 function parseCelula(raw: string, obrasDB: Obra[]): { tipo: PresencaTipo; obra_id?: string; fracao?: number; obra2_id?: string; fracao2?: number; erro?: string } {
   const u = raw.trim().toUpperCase()
   if (!u || u === 'X') return { tipo: 'NORMAL' }
@@ -53,7 +46,6 @@ function parseCelula(raw: string, obrasDB: Obra[]): { tipo: PresencaTipo; obra_i
   if (u === 'ATESTADO') return { tipo: 'ATESTADO' }
   if (u === 'AUSENTE') return { tipo: 'AUSENTE' }
   if (u === 'SAIU') return { tipo: 'SAIU' }
-
   function findObra(nome: string): string | null {
     const norm = normNomeObra(nome)
     if (norm) {
@@ -63,8 +55,6 @@ function parseCelula(raw: string, obrasDB: Obra[]): { tipo: PresencaTipo; obra_i
     const found = obrasDB.find(o => o.nome.toUpperCase().includes(nome.toUpperCase()) || nome.toUpperCase().includes(o.codigo.toUpperCase()))
     return found?.id || null
   }
-
-  // "1/2 OBRA" ou "1/2 OBRA + OBRA2"
   if (u.startsWith('1/2 ') || u.startsWith('0.5 ') || u.startsWith('0,5 ')) {
     const resto = u.replace(/^(1\/2|0[.,]5)\s+/, '')
     if (resto.includes('+')) {
@@ -79,8 +69,6 @@ function parseCelula(raw: string, obrasDB: Obra[]): { tipo: PresencaTipo; obra_i
     if (!id) return { tipo: 'NORMAL', erro: `Obra não encontrada: ${resto}` }
     return { tipo: 'NORMAL', obra_id: id, fracao: 0.5 }
   }
-
-  // "OBRA/0,5 + OBRA2/0,5" ou "OBRA + OBRA2/0,5"
   if (u.includes('+')) {
     const partes = u.split('+').map(p => p.trim())
     const parse1 = partes[0].includes('/') ? partes[0].split('/') : [partes[0], '1']
@@ -93,8 +81,6 @@ function parseCelula(raw: string, obrasDB: Obra[]): { tipo: PresencaTipo; obra_i
     if (!id2) return { tipo: 'NORMAL', erro: `Obra não encontrada: ${parse2[0]}` }
     return { tipo: 'NORMAL', obra_id: id1, fracao: f1, obra2_id: id2, fracao2: f2 }
   }
-
-  // "OBRA/0,5"
   if (u.includes('/')) {
     const [nomeObra, fracStr] = u.split('/')
     const id = findObra(nomeObra.trim())
@@ -102,13 +88,10 @@ function parseCelula(raw: string, obrasDB: Obra[]): { tipo: PresencaTipo; obra_i
     if (!id) return { tipo: 'NORMAL', erro: `Obra não encontrada: ${nomeObra}` }
     return { tipo: 'NORMAL', obra_id: id, fracao: frac }
   }
-
-  // Obra inteira
   const id = findObra(u)
   if (!id) return { tipo: 'NORMAL', erro: `Obra não encontrada: ${u}` }
   return { tipo: 'NORMAL', obra_id: id, fracao: 1 }
 }
-
 export default function PresencaPage() {
   const [equipe, setEquipe] = useState<'ARMAÇÃO' | 'CARPINTARIA'>('ARMAÇÃO')
   const [mes, setMes] = useState(mesAtual())
@@ -130,15 +113,10 @@ export default function PresencaPage() {
   const [importando, setImportando] = useState(false)
   const [importMsg, setImportMsg] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
-
   const dias = diasDoMes(mes)
   const nomeDia = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
   const fim1Q = dias.findIndex(d => d.getDate() > 15) - 1
-
   useEffect(() => { carregar() }, [equipe, mes])
-
-
-
   async function carregar() {
     setLoading(true)
     let { data: comp } = await supabase.from('competencias').select('id,status').eq('mes_ano', mes).maybeSingle()
@@ -150,7 +128,10 @@ export default function PresencaPage() {
     const [{ data: fs }, { data: os }, { data: ps }] = await Promise.all([
       supabase.from('funcionarios').select('id,nome,equipe').eq('equipe', equipe).eq('ativo', true).order('nome'),
       supabase.from('obras').select('id,codigo,nome').eq('status', 'ATIVA').order('nome'),
-      supabase.from('presencas').select('id,funcionario_id,data,tipo,obra_id,fracao,obra2_id,fracao2,obras:obra_id(nome,codigo),obras2:obra2_id(nome,codigo)').eq('competencia_id', comp?.id || ''),
+      supabase.from('presencas')
+        .select('id,funcionario_id,data,tipo,obra_id,fracao,obra2_id,fracao2,obras:obra_id(nome,codigo),obras2:obra2_id(nome,codigo)')
+        .eq('competencia_id', comp?.id || '')
+        .limit(10000),
     ])
     setFuncs(fs || [])
     setObras(os || [])
@@ -159,60 +140,40 @@ export default function PresencaPage() {
     setPresMap(mapa)
     setLoading(false)
   }
-
-  // ── IMPORTAÇÃO EXCEL ──
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setImportMsg('Lendo planilha...')
-
     const XLSX = await import('xlsx')
     const buffer = await file.arrayBuffer()
     const wb = XLSX.read(buffer, { type: 'array', cellDates: true })
-
-    // Procurar aba de presença
     const abaPresenca = wb.SheetNames.find(n => n.toUpperCase().includes('PRESENÇA') || n.toUpperCase().includes('PRESENCA'))
     if (!abaPresenca) { setImportMsg('❌ Aba "PRESENÇA" não encontrada na planilha.'); return }
-
     const ws = wb.Sheets[abaPresenca]
-    // raw:true preserva números seriais de data do Excel
     const data: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true })
-
-    // Linha 2 (idx=2) = cabeçalho com datas, Coluna 1 = nome funcionário
-    // Procurar linha do cabeçalho (que tem datas) — pode ser qualquer linha
     let headerRow: any[] = []
     let headerRowIdx = -1
     const colsDatas: { col: number; data: string }[] = []
-
     function parseDateCell(cell: any): string {
       if (!cell && cell !== 0) return ''
-      // Date object
       if (cell instanceof Date) return formatDate(cell)
-      // Número serial do Excel (ex: 46092 = 02/03/2026)
       if (typeof cell === 'number' && cell > 40000 && cell < 50000) {
-        // Excel epoch: 1 = 01/01/1900, com bug do ano 1900
         const d = new Date(Date.UTC(1899, 11, 30) + cell * 86400000)
         return formatDate(d)
       }
       const s = String(cell).trim()
-      // dd/mm/yyyy
       if (s.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
         const [dd, mm, yyyy] = s.split('/')
         return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`
       }
-      // dd/mm/yy
       if (s.match(/^\d{1,2}\/\d{1,2}\/\d{2}$/)) {
         const [dd, mm, yy] = s.split('/')
         return `20${yy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`
       }
-      // yyyy-mm-dd
       if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s
-      // ISO com hora: 2026-03-02T00:00:00
       if (s.match(/^\d{4}-\d{2}-\d{2}T/)) return s.substring(0, 10)
       return ''
     }
-
-    // Encontrar linha com datas do mês correto
     for (let ri = 0; ri < Math.min(10, data.length); ri++) {
       const row = data[ri] || []
       const datasEncontradas: { col: number; data: string }[] = []
@@ -227,62 +188,50 @@ export default function PresencaPage() {
         break
       }
     }
-
-    if (colsDatas.length === 0) { setImportMsg('❌ Não encontrei colunas de data para o mês ' + mes + '. Verifique se as datas estão no formato dd/mm/yyyy'); return }
-
-    // Processar linhas de funcionários (após o cabeçalho)
+    if (colsDatas.length === 0) { setImportMsg('❌ Não encontrei colunas de data para o mês ' + mes); return }
     const linhas: LinhaPrev[] = []
     for (let ri = headerRowIdx + 2; ri < data.length; ri++) {
       const row = data[ri]
       const nomeRaw = row[1] || row[0]
       if (!nomeRaw || typeof nomeRaw !== 'string' || !nomeRaw.trim()) continue
       if (nomeRaw.trim().toUpperCase() === 'FUNCIONÁRIO' || nomeRaw.trim().toUpperCase() === 'FUNCIONARIO') continue
-
       const nomeOrig = nomeRaw.trim()
-      // Buscar funcionário mais parecido
       let melhorFunc: Func | null = null
       let melhorSim = 0
       funcs.forEach(f => {
         const sim = similaridade(nomeOrig, f.nome)
         if (sim > melhorSim) { melhorSim = sim; melhorFunc = f }
       })
-
       const funcId = melhorSim >= 0.5 ? melhorFunc!.id : null
       const funcNome = melhorFunc?.nome || nomeOrig
       const erros: string[] = []
       if (!funcId) erros.push(`Funcionário não encontrado: "${nomeOrig}"`)
-
       const diasLinha: LinhaPrev['dias'] = []
       for (const { col, data: dataStr } of colsDatas) {
         const rawVal = row[col]
         if (!rawVal || String(rawVal).trim() === '') continue
         const raw = String(rawVal).trim()
         const up = raw.toUpperCase()
-        if (up === 'X') continue // sábado sem lançamento
-
+        if (up === 'X') continue
         const parsed = parseCelula(raw, obras)
         if (parsed.erro) erros.push(`${dataStr}: ${parsed.erro}`)
         else if (parsed.tipo !== 'NORMAL' || parsed.obra_id) {
           diasLinha.push({ data: dataStr, raw, ...parsed })
         }
       }
-
       if (diasLinha.length > 0 || erros.length > 0) {
         linhas.push({ nomeOriginal: nomeOrig, funcId, funcNome, dias: diasLinha, erros })
       }
     }
-
     setPreview(linhas)
     setImportMsg('')
     if (fileRef.current) fileRef.current.value = ''
   }
-
   async function confirmarImportacao() {
     if (!preview || !compId) return
     setImportando(true)
     setImportMsg('Importando...')
     let total = 0, erros = 0
-
     for (const linha of preview) {
       if (!linha.funcId) { erros++; continue }
       for (const d of linha.dias) {
@@ -292,31 +241,27 @@ export default function PresencaPage() {
           obra_id: d.obra_id || null, fracao: d.fracao || null,
           obra2_id: d.obra2_id || null, fracao2: d.fracao2 || null,
         }
-        // Verificar se já existe
-      const { data: existing } = await supabase.from('presencas')
-        .select('id').eq('funcionario_id', linha.funcId!).eq('data', d.data).maybeSingle()
-      let error = null
-      if (existing) {
-        const { error: e } = await supabase.from('presencas').update(payload).eq('id', existing.id)
-        error = e
-      } else {
-        const { error: e } = await supabase.from('presencas').insert(payload)
-        error = e
-      }
+        const { data: existing } = await supabase.from('presencas')
+          .select('id').eq('funcionario_id', linha.funcId!).eq('data', d.data).maybeSingle()
+        let error = null
+        if (existing) {
+          const { error: e } = await supabase.from('presencas').update(payload).eq('id', existing.id)
+          error = e
+        } else {
+          const { error: e } = await supabase.from('presencas').insert(payload)
+          error = e
+        }
         if (error) erros++
         else total++
       }
     }
-
     setPreview(null)
     await carregar()
     setImportando(false)
     setImportMsg(`✅ ${total} lançamentos importados!${erros > 0 ? ` ⚠️ ${erros} erros.` : ''}`)
     setTimeout(() => setImportMsg(''), 5000)
   }
-
   function getPres(funcId: string, data: string) { return presMap[`${funcId}|${data}`] }
-
   function celLabel(p?: Pres) {
     if (!p) return ''
     if (p.tipo === 'X' || p.tipo === 'FERIADO') return 'X'
@@ -327,7 +272,6 @@ export default function PresencaPage() {
     const f2 = p.fracao2 ? `+${o2}/${p.fracao2}` : ''
     return `${o1}${f1}${f2}`
   }
-
   function celBg(p?: Pres, isSab = false) {
     if (!p) return isSab ? '#fff7ed' : '#fff'
     if (p.tipo === 'FALTA') return '#fee2e2'
@@ -336,7 +280,6 @@ export default function PresencaPage() {
     if (p.tipo === 'SABADO_EXTRA') return '#fed7aa'
     return '#dcfce7'
   }
-
   function abrirModal(funcId: string, funcNome: string, data: string) {
     const atual = getPres(funcId, data)
     setModal({ funcId, funcNome, data, atual })
@@ -351,22 +294,15 @@ export default function PresencaPage() {
     }
     setFormErro('')
   }
-
   async function salvar() {
     if (!modal || !compId) return
     if ((formTipo==='NORMAL'||formTipo==='SABADO_EXTRA') && !formObra) { setFormErro('Selecione a obra.'); return }
     setSalvando(true)
     const temDuasObras = !!formObra2
-
     const payload: any = {
-      competencia_id: compId,
-      funcionario_id: modal.funcId,
-      data: modal.data,
-      tipo: formTipo,
+      competencia_id: compId, funcionario_id: modal.funcId, data: modal.data, tipo: formTipo,
       obra_id: formObra || null,
-      fracao: (formTipo === 'NORMAL' || formTipo === 'SABADO_EXTRA')
-        ? (temDuasObras ? 0.5 : (parseFloat(formFracao) || 1))
-        : null,
+      fracao: (formTipo === 'NORMAL' || formTipo === 'SABADO_EXTRA') ? (temDuasObras ? 0.5 : (parseFloat(formFracao) || 1)) : null,
       obra2_id: temDuasObras ? formObra2 : null,
       fracao2: temDuasObras ? 0.5 : null,
     }
@@ -392,14 +328,12 @@ export default function PresencaPage() {
       setSalvando(false)
     }
   }
-
   async function remover() {
     if (!modal?.atual) return
     await supabase.from('presencas').delete().eq('id', modal.atual.id)
     setPresMap(prev => { const next = {...prev}; delete next[`${modal.funcId}|${modal.data}`]; return next })
     setModal(null)
   }
-
   function calcTot(funcId: string) {
     let q1=0,q2=0,q1ex=0,q2ex=0,faltas=0,aus=0
     dias.forEach((d,di) => {
@@ -415,60 +349,45 @@ export default function PresencaPage() {
     })
     return {q1,q2,q1ex,q2ex,faltas,aus,tot:q1+q2}
   }
-
   const funcsFiltradas = funcs.filter(f => !busca || f.nome.toLowerCase().includes(busca.toLowerCase()))
   return (
     <div>
-      {/* BOTÕES EQUIPE */}
       <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
-        <button
-          onClick={() => setEquipe('ARMAÇÃO')}
-          style={{ padding:'7px 18px', borderRadius:8, border:'2px solid #1a3a5c', cursor:'pointer', fontWeight:700, fontSize:13, background: equipe==='ARMAÇÃO'?'#1a3a5c':'#fff', color: equipe==='ARMAÇÃO'?'#fff':'#1a3a5c' }}>
+        <button onClick={() => setEquipe('ARMAÇÃO')} style={{ padding:'7px 18px', borderRadius:8, border:'2px solid #1a3a5c', cursor:'pointer', fontWeight:700, fontSize:13, background: equipe==='ARMAÇÃO'?'#1a3a5c':'#fff', color: equipe==='ARMAÇÃO'?'#fff':'#1a3a5c' }}>
           Armação ({equipe==='ARMAÇÃO'?funcs.length:'...'})
         </button>
-        <button
-          onClick={() => setEquipe('CARPINTARIA')}
-          style={{ padding:'7px 18px', borderRadius:8, border:'2px solid #1a3a5c', cursor:'pointer', fontWeight:700, fontSize:13, background: equipe==='CARPINTARIA'?'#1a3a5c':'#fff', color: equipe==='CARPINTARIA'?'#fff':'#1a3a5c' }}>
+        <button onClick={() => setEquipe('CARPINTARIA')} style={{ padding:'7px 18px', borderRadius:8, border:'2px solid #1a3a5c', cursor:'pointer', fontWeight:700, fontSize:13, background: equipe==='CARPINTARIA'?'#1a3a5c':'#fff', color: equipe==='CARPINTARIA'?'#fff':'#1a3a5c' }}>
           Carpintaria ({equipe==='CARPINTARIA'?funcs.length:'...'})
         </button>
-        <input type="month" value={mes} onChange={e => setMes(e.target.value)}
-          style={{ border:'1px solid #d1d5db', borderRadius:6, padding:'6px 10px', fontSize:13 }} />
+        <input type="month" value={mes} onChange={e => setMes(e.target.value)} style={{ border:'1px solid #d1d5db', borderRadius:6, padding:'6px 10px', fontSize:13 }} />
         <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={handleFileChange} />
-          <button onClick={() => fileRef.current?.click()}
-            style={{ padding:'7px 16px', borderRadius:8, border:'2px solid #2e7d32', background:'#2e7d32', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13 }}>
+          <button onClick={() => fileRef.current?.click()} style={{ padding:'7px 16px', borderRadius:8, border:'2px solid #2e7d32', background:'#2e7d32', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13 }}>
             📥 Importar Excel
           </button>
         </div>
       </div>
-
       <div style={{ marginBottom:10, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
         <h1 style={{ fontSize:18, fontWeight:700, color:'#1a3a5c' }}>Grade de Presença — {equipe}</h1>
         <span style={{ fontSize:12, color:'#9ca3af' }}>{funcsFiltradas.length} funcionários · {dias.length} dias úteis</span>
       </div>
-
       {importMsg && (
-        <div style={{ background: importMsg.includes('❌')?'#fef2f2': importMsg.includes('⚠')?'#fffbeb':'#f0fdf4', border:`1px solid ${importMsg.includes('❌')?'#fca5a5':importMsg.includes('⚠')?'#fde68a':'#86efac'}`, borderRadius:8, padding:'10px 14px', marginBottom:12, color: importMsg.includes('❌')?'#7f1d1d':importMsg.includes('⚠')?'#78350f':'#14532d', fontSize:13 }}>
+        <div style={{ background: importMsg.includes('❌')?'#fef2f2':importMsg.includes('⚠')?'#fffbeb':'#f0fdf4', border:`1px solid ${importMsg.includes('❌')?'#fca5a5':importMsg.includes('⚠')?'#fde68a':'#86efac'}`, borderRadius:8, padding:'10px 14px', marginBottom:12, color: importMsg.includes('❌')?'#7f1d1d':importMsg.includes('⚠')?'#78350f':'#14532d', fontSize:13 }}>
           {importMsg}
         </div>
       )}
-
-      {/* PREVIEW DA IMPORTAÇÃO */}
       {preview && (
         <div style={{ background:'#fff', border:'2px solid #2e7d32', borderRadius:12, padding:20, marginBottom:16 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
             <div>
               <div style={{ fontWeight:700, color:'#1a3a5c', fontSize:15 }}>📋 Preview da importação — {equipe}</div>
               <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
-                {preview.filter(l=>l.funcId).length} funcionários encontrados ·{' '}
-                {preview.reduce((s,l)=>s+l.dias.length,0)} lançamentos ·{' '}
-                {preview.filter(l=>l.erros.length>0).length} com erros
+                {preview.filter(l=>l.funcId).length} funcionários · {preview.reduce((s,l)=>s+l.dias.length,0)} lançamentos · {preview.filter(l=>l.erros.length>0).length} com erros
               </div>
             </div>
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={() => setPreview(null)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid #6b7280', background:'#fff', color:'#6b7280', cursor:'pointer', fontSize:13 }}>Cancelar</button>
-              <button onClick={confirmarImportacao} disabled={importando}
-                style={{ padding:'7px 16px', borderRadius:8, border:'none', background:'#2e7d32', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13 }}>
+              <button onClick={confirmarImportacao} disabled={importando} style={{ padding:'7px 16px', borderRadius:8, border:'none', background:'#2e7d32', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13 }}>
                 {importando ? 'Importando...' : '✅ Confirmar Importação'}
               </button>
             </div>
@@ -487,9 +406,7 @@ export default function PresencaPage() {
                 {preview.map((l, i) => (
                   <tr key={i} style={{ background: l.erros.length>0 ? '#fff7ed' : i%2===0?'#fff':'#f9fafb' }}>
                     <td style={{ padding:'5px 10px', color:'#374151' }}>{l.nomeOriginal}</td>
-                    <td style={{ padding:'5px 10px', fontWeight:600, color: l.funcId?'#166534':'#dc2626' }}>
-                      {l.funcNome} {!l.funcId && '❌'}
-                    </td>
+                    <td style={{ padding:'5px 10px', fontWeight:600, color: l.funcId?'#166534':'#dc2626' }}>{l.funcNome} {!l.funcId && '❌'}</td>
                     <td style={{ padding:'5px 10px', textAlign:'center', fontWeight:700, color:'#1a3a5c' }}>{l.dias.length}</td>
                     <td style={{ padding:'5px 10px', color:'#dc2626', fontSize:11 }}>{l.erros.join(' | ') || '—'}</td>
                   </tr>
@@ -499,12 +416,9 @@ export default function PresencaPage() {
           </div>
         </div>
       )}
-
       <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:8, padding:'10px 14px', marginBottom:12 }}>
-        <input type="text" placeholder="🔍 Buscar funcionário..." value={busca} onChange={e => setBusca(e.target.value)}
-          style={{ border:'1px solid #d1d5db', borderRadius:6, padding:'6px 10px', fontSize:13, width:260 }} />
+        <input type="text" placeholder="🔍 Buscar funcionário..." value={busca} onChange={e => setBusca(e.target.value)} style={{ border:'1px solid #d1d5db', borderRadius:6, padding:'6px 10px', fontSize:13, width:260 }} />
       </div>
-
       {loading ? (
         <div style={{ textAlign:'center', padding:48, color:'#9ca3af' }}>Carregando...</div>
       ) : (
@@ -545,8 +459,7 @@ export default function PresencaPage() {
                       const p = getPres(func.id, key)
                       const label = celLabel(p)
                       return (
-                        <td key={di}
-                          onClick={() => abrirModal(func.id, func.nome, key)}
+                        <td key={di} onClick={() => abrirModal(func.id, func.nome, key)}
                           style={{ padding:'3px 2px', textAlign:'center', fontSize:9, cursor:'pointer', minWidth:65, maxWidth:65, background:celBg(p,sab), borderBottom:'1px solid #f3f4f6', verticalAlign:'middle' }}>
                           <span style={{ display:'block', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', padding:'0 2px', fontWeight:p?600:400, color:p&&p.tipo==='FALTA'?'#dc2626':p&&p.tipo==='X'?'#dc2626':p&&p.tipo==='ATESTADO'?'#854d0e':p&&['AUSENTE','SAIU'].includes(p.tipo)?'#6b7280':p?'#166534':'#d1d5db' }}>
                             {label||(sab?'·':'')}
@@ -568,8 +481,6 @@ export default function PresencaPage() {
           </table>
         </div>
       )}
-
-      {/* MODAL */}
       {modal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:50, animation:'modalBg .2s ease', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:420, maxHeight:'90vh', overflowY:'auto' }}>
@@ -584,7 +495,7 @@ export default function PresencaPage() {
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
                   {(['NORMAL','SABADO_EXTRA','X','FALTA','ATESTADO','AUSENTE','SAIU'] as any[]).map(t => (
                     <button key={t} onClick={() => setFormTipo(t)}
-                      style={{ padding:'6px 4px', borderRadius:6, border:formTipo===t?'2px solid #1a3a5c':'1px solid #e5e7eb', background:formTipo===t?'#1a3a5c':'#fff', color:formTipo===t?'#fff': t==='X'?'#dc2626':'#374151', cursor:'pointer', fontSize:11, fontWeight:500 }}>
+                      style={{ padding:'6px 4px', borderRadius:6, border:formTipo===t?'2px solid #1a3a5c':'1px solid #e5e7eb', background:formTipo===t?'#1a3a5c':'#fff', color:formTipo===t?'#fff':t==='X'?'#dc2626':'#374151', cursor:'pointer', fontSize:11, fontWeight:500 }}>
                       {t==='NORMAL'?'Normal':t==='SABADO_EXTRA'?'Sáb Extra':t==='FALTA'?'Falta':t==='ATESTADO'?'Atestado':t==='AUSENTE'?'Ausente':t==='X'?'X':'Saiu'}
                     </button>
                   ))}
@@ -595,16 +506,14 @@ export default function PresencaPage() {
                   <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:10 }}>
                     <div>
                       <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Obra *</label>
-                      <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }}
-                        value={formObra} onChange={e => setFormObra(e.target.value)}>
+                      <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }} value={formObra} onChange={e => setFormObra(e.target.value)}>
                         <option value="">Selecione...</option>
                         {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
                       </select>
                     </div>
                     <div>
                       <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Fração</label>
-                      <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }}
-                        value={formFracao} onChange={e => setFormFracao(e.target.value)}>
+                      <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }} value={formFracao} onChange={e => setFormFracao(e.target.value)}>
                         <option value="1">1 (inteira)</option>
                         <option value="0.5">0,5 (meia)</option>
                       </select>
@@ -613,17 +522,8 @@ export default function PresencaPage() {
                   <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:10 }}>
                     <div>
                       <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>2ª Obra (opcional)</label>
-                      <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }}
-                        value={formObra2} onChange={e => {
-                          const value = e.target.value
-                          setFormObra2(value)
-                          if (value) {
-                            setFormFracao('0.5')
-                            setFormFracao2('0.5')
-                          } else {
-                            setFormFracao2('')
-                          }
-                        }}>
+                      <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }} value={formObra2}
+                        onChange={e => { const v=e.target.value; setFormObra2(v); if(v){setFormFracao('0.5');setFormFracao2('0.5')}else{setFormFracao2('')} }}>
                         <option value="">Nenhuma</option>
                         {obras.filter(o=>o.id!==formObra).map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
                       </select>
@@ -632,8 +532,7 @@ export default function PresencaPage() {
                       {formObra2 && (
                         <>
                           <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:4 }}>Fração 2</label>
-                          <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }}
-                            value={formFracao2} onChange={e => setFormFracao2(e.target.value)}>
+                          <select style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:8, padding:'8px 10px', fontSize:13 }} value={formFracao2} onChange={e => setFormFracao2(e.target.value)}>
                             <option value="0.5">0,5</option>
                           </select>
                         </>
@@ -658,5 +557,4 @@ export default function PresencaPage() {
       )}
     </div>
   )
-
 }
