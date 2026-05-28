@@ -236,6 +236,27 @@ export default function PresencaPage() {
     setImportando(true)
     setImportMsg('Importando...')
     let total = 0, erros = 0
+
+    // Coleta todos os funcIds válidos que vêm no preview
+    const funcIdsValidos = preview.filter(l => l.funcId).map(l => l.funcId!)
+
+    // Para cada funcionário da planilha, apaga TODAS as presenças do mês
+    // antes de reinserir — evita "fantasmas" no banco
+    if (funcIdsValidos.length > 0) {
+      // Busca os ids das presenças existentes para esses funcionários nessa competência
+      const { data: presExistentes } = await supabase
+        .from('presencas')
+        .select('id')
+        .eq('competencia_id', compId)
+        .in('funcionario_id', funcIdsValidos)
+
+      if (presExistentes && presExistentes.length > 0) {
+        const ids = presExistentes.map(p => p.id)
+        await supabase.from('presencas').delete().in('id', ids)
+      }
+    }
+
+    // Agora insere tudo do zero
     for (const linha of preview) {
       if (!linha.funcId) { erros++; continue }
       for (const d of linha.dias) {
@@ -245,16 +266,7 @@ export default function PresencaPage() {
           obra_id: d.obra_id || null, fracao: d.fracao || null,
           obra2_id: d.obra2_id || null, fracao2: d.fracao2 || null,
         }
-        const { data: existing } = await supabase.from('presencas')
-          .select('id').eq('funcionario_id', linha.funcId!).eq('data', d.data).maybeSingle()
-        let error = null
-        if (existing) {
-          const { error: e } = await supabase.from('presencas').update(payload).eq('id', existing.id)
-          error = e
-        } else {
-          const { error: e } = await supabase.from('presencas').insert(payload)
-          error = e
-        }
+        const { error } = await supabase.from('presencas').insert(payload)
         if (error) erros++
         else total++
       }
