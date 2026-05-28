@@ -130,13 +130,22 @@ export default function PresencaPage() {
       supabase.from('obras').select('id,codigo,nome').eq('status', 'ATIVA').order('nome'),
     ])
     const ids = (fs || []).map((f: any) => f.id)
-    const { data: ps } = ids.length > 0
-      ? await supabase.from('presencas')
+    let ps: any[] = []
+    if (ids.length > 0) {
+      let from = 0
+      const pageSize = 1000
+      while (true) {
+        const { data: page } = await supabase.from('presencas')
           .select('id,funcionario_id,data,tipo,obra_id,fracao,obra2_id,fracao2,obras:obra_id(nome,codigo),obras2:obra2_id(nome,codigo)')
           .eq('competencia_id', comp?.id || '')
           .in('funcionario_id', ids)
-          .limit(10000)
-      : { data: [] }
+          .range(from, from + pageSize - 1)
+        if (!page || page.length === 0) break
+        ps = [...ps, ...page]
+        if (page.length < pageSize) break
+        from += pageSize
+      }
+    }
     setFuncs(fs || [])
     setObras(os || [])
     const mapa: Record<string, Pres> = {}
