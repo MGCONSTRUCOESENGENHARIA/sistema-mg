@@ -109,6 +109,42 @@ export default function PassagemCafePage() {
         .in('funcionario_id', ids)
       passQuinzena = pq || []
     }
+
+    // Busca quinzena anterior para pré-preencher recebido_ant automaticamente
+    // 1ª quinzena atual → usa 2ª quinzena do mês anterior
+    // 2ª quinzena atual → usa 1ª quinzena do mesmo mês
+    let passQuinzenaAnt: any[] = []
+    if (quinzena === 2) {
+      // Quinzena anterior é a 1ª do mesmo mês
+      if (comp?.id) {
+        const { data: pqAnt } = await supabase
+          .from('passagens_quinzena')
+          .select('funcionario_id,valor_proj,adicional,recebido_ant')
+          .eq('competencia_id', comp.id)
+          .eq('quinzena', 1)
+          .in('funcionario_id', ids)
+        passQuinzenaAnt = pqAnt || []
+      }
+    } else {
+      // Quinzena anterior é a 2ª do mês anterior
+      const [ano, mesNum] = mes.split('-').map(Number)
+      const dataMesAnt = new Date(ano, mesNum - 2, 1)
+      const mesAntStr = `${dataMesAnt.getFullYear()}-${String(dataMesAnt.getMonth() + 1).padStart(2, '0')}`
+      const { data: compAnt } = await supabase
+        .from('competencias')
+        .select('id')
+        .eq('mes_ano', mesAntStr)
+        .maybeSingle()
+      if (compAnt?.id) {
+        const { data: pqAnt } = await supabase
+          .from('passagens_quinzena')
+          .select('funcionario_id,valor_proj,adicional,recebido_ant')
+          .eq('competencia_id', compAnt.id)
+          .eq('quinzena', 2)
+          .in('funcionario_id', ids)
+        passQuinzenaAnt = pqAnt || []
+      }
+    }
     const resultado: Linha[] = funcs.map((func: any) => {
       const presFunci = presencas
         .filter(p => p.funcionario_id === func.id)
@@ -157,7 +193,15 @@ export default function PassagemCafePage() {
       })
       const tipoFinal =
         Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'MG'
-      const recebidoAnt = Number(pqFunci?.recebido_ant ?? 0)
+      // Se já foi salvo manualmente, usa o valor salvo.
+      // Senão, pré-preenche com valor_proj + adicional da quinzena anterior.
+      const pqAntFunci = passQuinzenaAnt.find(p => p.funcionario_id === func.id)
+      const recebidoAntAutomatic = pqAntFunci
+        ? Number(pqAntFunci.valor_proj || 0) + Number(pqAntFunci.adicional || 0)
+        : 0
+      const recebidoAnt = pqFunci?.recebido_ant != null
+        ? Number(pqFunci.recebido_ant)
+        : recebidoAntAutomatic
       const diasProj = Number(pqFunci?.dias_proj ?? (tipoFinal === 'PRA FRENTE' ? diasTrabalhados : 0))
       const adicional = Number(pqFunci?.adicional ?? 0)
       const valorFixo = Number(
