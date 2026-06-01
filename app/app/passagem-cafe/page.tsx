@@ -86,38 +86,67 @@ function calcularCafeDaQuinzena(presFunci: any[], mes: string, quinzena: 1 | 2) 
 }
 
 
-function removerPresencasDuplicadasPorData(presFunci: any[]) {
-  // A grade de presença mostra apenas 1 registro por funcionário + data.
-  // Então a passagem também precisa usar só 1 registro por dia,
-  // senão presença duplicada escondida no banco soma passagem a mais.
+function obterPresencasDaGrade(presFunciTodas: any[], mes: string) {
+  // A aba Passagem & Café precisa usar a MESMA base da Grade de Presença.
+  // A grade mostra apenas 1 célula por funcionário + data.
+  // Então aqui:
+  // 1. Montamos um mapa por data;
+  // 2. Percorremos somente as datas que a grade exibe em diasDoMes(mes);
+  // 3. Retornamos só uma presença por dia, na mesma ordem da grade.
+  const dias = diasDoMes(mes);
   const mapa: Record<string, any> = {};
-  presFunci.forEach((p) => {
+
+  presFunciTodas.forEach((p) => {
     const data = String(p.data).substring(0, 10);
     mapa[data] = { ...p, data };
   });
-  return Object.values(mapa).sort((a: any, b: any) =>
-    String(a.data).localeCompare(String(b.data)),
+
+  return dias
+    .map((d) => mapa[formatDate(d)])
+    .filter(Boolean);
+}
+
+function presencaPertenceQuinzenaDaGrade(p: any, mes: string, quinzena: 1 | 2) {
+  // Usa exatamente o corte da Grade de Presença:
+  // 1ª quinzena = colunas até dia 15
+  // 2ª quinzena = colunas após dia 15
+  const dias = diasDoMes(mes);
+  const fim1Q = dias.findIndex((d) => d.getDate() > 15) - 1;
+  const idx = dias.findIndex((d) => formatDate(d) === String(p.data).substring(0, 10));
+
+  if (idx >= 0) {
+    return quinzena === 1 ? idx <= fim1Q : idx > fim1Q;
+  }
+
+  // Segurança caso apareça alguma data fora da grade.
+  const dia = new Date(String(p.data) + "T12:00:00").getDate();
+  return quinzena === 1 ? dia <= 15 : dia > 15;
+}
+
+function valorMatrizPassagem(funcId: string, obraId: string | null | undefined, passDB: any[]) {
+  if (!obraId) return null;
+  return (
+    passDB?.find((x) => x.funcionario_id === funcId && x.obra_id === obraId) ||
+    null
   );
 }
 
 function calcularValorPassagemDaPresenca(p: any, funcId: string, passDB: any[]) {
-  // Regra da passagem:
+  // Regra da passagem usando a Grade de Presença:
   // - 1 diária em 1 obra: valor da matriz daquela obra × 1
   // - 0,5 diária em 1 obra: valor da matriz daquela obra × 0,5
-  // - 2 obras no mesmo dia: valor obra 1 ÷ 2 + valor obra 2 ÷ 2
+  // - 2 obras no mesmo dia: valor obra 1 × 0,5 + valor obra 2 × 0,5
+  // Importante: diferente do café, a passagem USA fração e USA matriz por obra.
   const temDuasObras = !!p.obra2_id;
-  const fracao1 = temDuasObras ? 0.5 : Number(p.fracao || 1);
-  const fracao2 = temDuasObras ? 0.5 : Number(p.fracao2 || 0);
 
-  const fop1 = p.obra_id
-    ? passDB?.find((x) => x.funcionario_id === funcId && x.obra_id === p.obra_id)
-    : null;
-  const fop2 = p.obra2_id
-    ? passDB?.find((x) => x.funcionario_id === funcId && x.obra_id === p.obra2_id)
-    : null;
+  const fracao1 = temDuasObras ? 0.5 : Number(p.fracao ?? 1);
+  const fracao2 = temDuasObras ? 0.5 : Number(p.fracao2 ?? 0);
 
-  const valor1 = fop1 ? Number(fop1.valor_passagem || 0) * fracao1 : 0;
-  const valor2 = fop2 ? Number(fop2.valor_passagem || 0) * fracao2 : 0;
+  const fop1 = valorMatrizPassagem(funcId, p.obra_id, passDB);
+  const fop2 = valorMatrizPassagem(funcId, p.obra2_id, passDB);
+
+  const valor1 = Number(fop1?.valor_passagem || 0) * fracao1;
+  const valor2 = Number(fop2?.valor_passagem || 0) * fracao2;
 
   return {
     valor: valor1 + valor2,
@@ -262,7 +291,7 @@ export default function PassagemCafePage() {
       const presFunciTodas = presencas
         .filter((p) => p.funcionario_id === func.id)
         .sort((a, b) => String(a.data).localeCompare(String(b.data)));
-      const presFunci = removerPresencasDuplicadasPorData(presFunciTodas);
+      const presFunci = obterPresencasDaGrade(presFunciTodas, mes);
       const pqFunci = passQuinzena.find((p) => p.funcionario_id === func.id);
       let valorGasto = 0;
       let diasTrabalhados = 0;
@@ -273,9 +302,7 @@ export default function PassagemCafePage() {
         if (!p.obra_id) return;
         if (p.tipo !== "NORMAL" && p.tipo !== "SABADO_EXTRA") return;
 
-        const dia = new Date(String(p.data) + "T12:00:00").getDate();
-        if (quinzena === 1 && dia > 15) return;
-        if (quinzena === 2 && dia <= 15) return;
+        if (!presencaPertenceQuinzenaDaGrade(p, mes, quinzena)) return;
 
         const calculo = calcularValorPassagemDaPresenca(p, func.id, passDB || []);
         if (calculo.dias === 0) return;
