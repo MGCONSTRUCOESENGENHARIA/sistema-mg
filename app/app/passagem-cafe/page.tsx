@@ -20,6 +20,47 @@ interface Linha {
 }
 
 
+
+function calcularTotaisPresencaCafe(presFunci: any[], mes: string) {
+  const diasMes = diasCorridosDoMes(mes)
+  const primeiroDiaSegundaQuinzena = diasMes.findIndex(d => d.getDate() > 15)
+  const fim1Q = primeiroDiaSegundaQuinzena === -1 ? diasMes.length - 1 : primeiroDiaSegundaQuinzena - 1
+
+  let q1 = 0
+  let q2 = 0
+  let ex1 = 0
+  let ex2 = 0
+
+  presFunci.forEach(p => {
+    if (['FALTA', ...AUSENCIAS].includes(p.tipo)) return
+    if (!p.obra_id) return
+    if (p.tipo !== 'NORMAL' && p.tipo !== 'SABADO_EXTRA') return
+
+    const dataStr = String(p.data).substring(0, 10)
+    const indiceDia = diasMes.findIndex(d => formatDate(d) === dataStr)
+    if (indiceDia < 0) return
+
+    // Mesma lógica da aba Presença:
+    // - Quando tem duas obras no mesmo dia, conta 1 diária no total.
+    // - Quando tem só uma obra com fração 0.5, conta meia diária.
+    const soma = p.obra2_id ? 1 : Number(p.fracao || 1)
+    if (soma === 0) return
+
+    if (p.tipo === 'SABADO_EXTRA') {
+      if (indiceDia <= fim1Q) ex1 += soma
+      else ex2 += soma
+      return
+    }
+
+    if (p.tipo === 'NORMAL') {
+      if (indiceDia <= fim1Q) q1 += soma
+      else q2 += soma
+    }
+  })
+
+  return { q1, q2, ex1, ex2 }
+}
+
 function calcularLinha(l: Linha): Linha {
   const saldoVT = l.valor_gasto_quinzena - l.recebido_anterior
   if (l.tipo_passagem === 'REEMBOLSO') {
@@ -149,8 +190,13 @@ export default function PassagemCafePage() {
         .filter(p => p.funcionario_id === func.id)
         .sort((a, b) => String(a.data).localeCompare(String(b.data)))
       const pqFunci = passQuinzena.find(p => p.funcionario_id === func.id)
+      const totaisCafe = calcularTotaisPresencaCafe(presFunci, mes)
+      const diasCafeQuinzena = quinzena === 1
+        ? totaisCafe.q1 + totaisCafe.ex1
+        : totaisCafe.q2 + totaisCafe.ex2
+
       let valorGasto = 0
-      let diasTrabalhados = 0
+      let diasTrabalhados = diasCafeQuinzena
       let ultimoValorPraFrente = 0
 
       presFunci.forEach(p => {
@@ -172,7 +218,6 @@ export default function PassagemCafePage() {
         const somaPresenca = fracao1 + fracao2
         if (somaPresenca === 0) return
 
-        diasTrabalhados += somaPresenca
         const fop1 = p.obra_id
           ? passDB?.find(x => x.funcionario_id === func.id && x.obra_id === p.obra_id)
           : null
@@ -229,7 +274,7 @@ export default function PassagemCafePage() {
           : null
 
       const valorFixo = Number(valorFixoSalvo ?? valorFixoAutomatico)
-      const totalCafe = diasTrabalhados * CAFE_DIA
+      const totalCafe = diasCafeQuinzena * CAFE_DIA
       const linhaBase: Linha = {
         func_id: func.id,
         nome: func.nome,
@@ -405,7 +450,7 @@ export default function PassagemCafePage() {
         Passagem & Café — {equipe} · {quinzena === 1 ? '1ª Quinzena' : '2ª Quinzena'}
       </h1>
       <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-        Campos em <span style={{ background: '#fefce8', border: '1px solid #fbbf24', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>amarelo</span> são editáveis · Café = R$10/dia trabalhado
+        Campos em <span style={{ background: '#fefce8', border: '1px solid #fbbf24', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>amarelo</span> são editáveis · Café = (1Q + Ex1) ou (2Q + Ex2) × R$10
       </p>
       {msg && (
         <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: 10, color: '#14532d', fontSize: 13 }}>
