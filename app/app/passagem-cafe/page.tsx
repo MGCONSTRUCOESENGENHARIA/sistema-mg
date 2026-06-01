@@ -87,11 +87,12 @@ export default function PassagemCafePage() {
     const ids = funcs.map((f: any) => f.id)
     let presencas: any[] = []
     if (comp?.id) {
+      // Busca TODAS as presenças do mês para capturar sábados extras (Ex1/Ex2)
+      // O filtro por quinzena é feito na hora de calcular via tipo SABADO_EXTRA
       const { data: pres } = await supabase
         .from('presencas')
         .select('funcionario_id,data,tipo,fracao,fracao2,obra_id,obra2_id')
         .eq('competencia_id', comp.id)
-        .in('data', diasPeriodo.map(d => formatDate(d)))
         .in('funcionario_id', ids)
       presencas = pres || []
     }
@@ -154,11 +155,22 @@ export default function PassagemCafePage() {
       let diasTrabalhados = 0
       let totalCafe = 0
       let ultimoValorPraFrente = 0
+      const diasPeriodoStr = new Set(diasPeriodo.map(d => formatDate(d)))
       presFunci.forEach(p => {
         if (['FALTA', ...AUSENCIAS].includes(p.tipo)) return
-        // Só conta se tem obra vinculada (NORMAL ou SABADO_EXTRA)
         if (!p.obra_id) return
         if (p.tipo !== 'NORMAL' && p.tipo !== 'SABADO_EXTRA') return
+        // NORMAL: só conta se a data está no período da quinzena
+        // SABADO_EXTRA: Ex1 conta na 1ª quinzena, Ex2 conta na 2ª quinzena
+        // Como não temos tipo Ex1/Ex2 separado, usamos a data para identificar:
+        // sábados extras do mês inteiro são separados pelos dois primeiros (Ex1) e demais (Ex2)
+        if (p.tipo === 'NORMAL' && !diasPeriodoStr.has(String(p.data))) return
+        // Para SABADO_EXTRA: divide pelo dia — até dia 15 = Ex1 (1ª quinzena), após = Ex2 (2ª quinzena)
+        if (p.tipo === 'SABADO_EXTRA') {
+          const dia = new Date(String(p.data) + 'T12:00:00').getDate()
+          if (quinzena === 1 && dia > 15) return
+          if (quinzena === 2 && dia <= 15) return
+        }
         const temDuasObras = !!p.obra2_id
         const fracao1 = temDuasObras ? 0.5 : Number(p.fracao || 1)
         const fracao2 = temDuasObras ? 0.5 : Number(p.fracao2 || 0)
@@ -274,11 +286,21 @@ export default function PassagemCafePage() {
       valor_proj: linhaCalculada.valor_projetado,
       adicional: linhaCalculada.adicional,
     }
-    const { error } = await supabase
+    const { data: existing } = await supabase
       .from('passagens_quinzena')
-      .upsert(payload, {
-        onConflict: 'competencia_id,funcionario_id,quinzena',
-      })
+      .select('id')
+      .eq('competencia_id', competenciaId)
+      .eq('funcionario_id', linhaCalculada.func_id)
+      .eq('quinzena', quinzena)
+      .maybeSingle()
+    let error = null
+    if (existing) {
+      const { error: e } = await supabase.from('passagens_quinzena').update(payload).eq('id', existing.id)
+      error = e
+    } else {
+      const { error: e } = await supabase.from('passagens_quinzena').insert(payload)
+      error = e
+    }
     if (error) throw new Error(error.message)
   }
   async function salvarLinha(l: Linha) {
