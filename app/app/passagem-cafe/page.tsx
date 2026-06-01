@@ -83,18 +83,23 @@ export default function PassagemCafePage() {
     // Usa dias corridos do mês para NÃO deixar sábado extra fora do cálculo.
     // 1ª quinzena: dia 01 ao dia 15. 2ª quinzena: dia 16 ao último dia do mês.
     const diasMes = diasCorridosDoMes(mes)
-    const diasPeriodo = diasMes.filter(d => quinzena === 1 ? d.getDate() <= 15 : d.getDate() >= 16)
     const ids = funcs.map((f: any) => f.id)
     let presencas: any[] = []
     if (comp?.id) {
-      // Busca TODAS as presenças do mês para capturar sábados extras (Ex1/Ex2)
-      // O filtro por quinzena é feito na hora de calcular via tipo SABADO_EXTRA
-      const { data: pres } = await supabase
-        .from('presencas')
-        .select('funcionario_id,data,tipo,fracao,fracao2,obra_id,obra2_id')
-        .eq('competencia_id', comp.id)
-        .in('funcionario_id', ids)
-      presencas = pres || []
+      // Busca TODAS as presenças do mês — filtramos por quinzena na hora de calcular
+      let from = 0
+      while (true) {
+        const { data: page } = await supabase
+          .from('presencas')
+          .select('funcionario_id,data,tipo,fracao,fracao2,obra_id,obra2_id')
+          .eq('competencia_id', comp.id)
+          .in('funcionario_id', ids)
+          .range(from, from + 999)
+        if (!page || page.length === 0) break
+        presencas = [...presencas, ...page]
+        if (page.length < 1000) break
+        from += 1000
+      }
     }
     const { data: passDB } = await supabase
       .from('funcionario_obra_passagem')
@@ -155,22 +160,16 @@ export default function PassagemCafePage() {
       let diasTrabalhados = 0
       let totalCafe = 0
       let ultimoValorPraFrente = 0
-      const diasPeriodoStr = new Set(diasPeriodo.map(d => formatDate(d)))
       presFunci.forEach(p => {
         if (['FALTA', ...AUSENCIAS].includes(p.tipo)) return
         if (!p.obra_id) return
         if (p.tipo !== 'NORMAL' && p.tipo !== 'SABADO_EXTRA') return
-        // NORMAL: só conta se a data está no período da quinzena
-        // SABADO_EXTRA: Ex1 conta na 1ª quinzena, Ex2 conta na 2ª quinzena
-        // Como não temos tipo Ex1/Ex2 separado, usamos a data para identificar:
-        // sábados extras do mês inteiro são separados pelos dois primeiros (Ex1) e demais (Ex2)
-        if (p.tipo === 'NORMAL' && !diasPeriodoStr.has(String(p.data))) return
-        // Para SABADO_EXTRA: divide pelo dia — até dia 15 = Ex1 (1ª quinzena), após = Ex2 (2ª quinzena)
-        if (p.tipo === 'SABADO_EXTRA') {
-          const dia = new Date(String(p.data) + 'T12:00:00').getDate()
-          if (quinzena === 1 && dia > 15) return
-          if (quinzena === 2 && dia <= 15) return
-        }
+        // Filtra por quinzena:
+        // NORMAL: dia 01-15 = 1ª quinzena, dia 16+ = 2ª quinzena
+        // SABADO_EXTRA: dia 01-15 = Ex1 (1ª quinzena), dia 16+ = Ex2 (2ª quinzena)
+        const dia = new Date(String(p.data) + 'T12:00:00').getDate()
+        if (quinzena === 1 && dia > 15) return
+        if (quinzena === 2 && dia <= 15) return
         const temDuasObras = !!p.obra2_id
         const fracao1 = temDuasObras ? 0.5 : Number(p.fracao || 1)
         const fracao2 = temDuasObras ? 0.5 : Number(p.fracao2 || 0)
