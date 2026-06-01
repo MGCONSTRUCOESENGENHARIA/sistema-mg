@@ -29,6 +29,14 @@ function diasCorridosDoMes(mes: string) {
   )
 }
 
+
+function diariaCafe(p: any) {
+  // IMPORTANTE: se lançou 2 obras no mesmo dia, continua sendo 1 diária de café.
+  // Exemplo: BLL/0.5 + V3V/0.5 = 1 diária, nunca 1.5.
+  if (p.obra2_id) return 1
+  return Number(p.fracao ?? 1)
+}
+
 function calcularTotaisPresencaCafe(presFunci: any[], mes: string) {
   const diasMes = diasCorridosDoMes(mes)
   const primeiroDiaSegundaQuinzena = diasMes.findIndex(d => d.getDate() > 15)
@@ -51,7 +59,7 @@ function calcularTotaisPresencaCafe(presFunci: any[], mes: string) {
     // Mesma lógica da aba Presença:
     // - Quando tem duas obras no mesmo dia, conta 1 diária no total.
     // - Quando tem só uma obra com fração 0.5, conta meia diária.
-    const soma = p.obra2_id ? 1 : Number(p.fracao || 1)
+    const soma = diariaCafe(p)
     if (soma === 0) return
 
     if (p.tipo === 'SABADO_EXTRA') {
@@ -223,8 +231,8 @@ export default function PassagemCafePage() {
         const temDuasObras = !!p.obra2_id
         const fracao1 = temDuasObras ? 0.5 : Number(p.fracao || 1)
         const fracao2 = temDuasObras ? 0.5 : Number(p.fracao2 || 0)
-        const somaPresenca = fracao1 + fracao2
-        if (somaPresenca === 0) return
+        const somaCafe = diariaCafe(p)
+        if (somaCafe === 0) return
 
         const fop1 = p.obra_id
           ? passDB?.find(x => x.funcionario_id === func.id && x.obra_id === p.obra_id)
