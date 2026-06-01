@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { mesAtual, formatR$, formatDate, AUSENCIAS } from "@/lib/utils";
+import { mesAtual, formatR$, formatDate, AUSENCIAS, diasDoMes } from "@/lib/utils";
 const CAFE_DIA = 10;
 interface Linha {
   func_id: string;
@@ -28,55 +28,61 @@ function diasCorridosDoMes(mes: string) {
   );
 }
 
-function diariaCafe(p: any) {
-  // Mesma regra da aba Presença:
-  // - 2 obras no mesmo dia = 1 diária de café no total
-  // - 1 obra com fração 0.5 = meia diária
-  if (p.obra2_id) return 1;
-  return Number(p.fracao || 1);
-}
+function calcularTotaisCafeIgualGradePresenca(presFunci: any[], mes: string) {
+  // Esta função copia a regra da aba Grade de Presença.
+  // O café NÃO usa passagem, NÃO usa reembolso e NÃO soma por obra.
+  // Ele só pega os totais da presença:
+  // 1ª quinzena = 1Q + Ex1
+  // 2ª quinzena = 2Q + Ex2
+  const dias = diasDoMes(mes);
+  const fim1Q = dias.findIndex((d) => d.getDate() > 15) - 1;
+  const mapaPresenca: Record<string, any> = {};
 
-function calcularCafeDaQuinzena(presFunci: any[], quinzena: 1 | 2) {
+  // Igual à grade: se houver mais de um registro para o mesmo dia,
+  // fica valendo apenas 1 funcionário + 1 data.
+  presFunci.forEach((p) => {
+    const data = String(p.data).substring(0, 10);
+    mapaPresenca[data] = { ...p, data };
+  });
+
   let q1 = 0;
   let q2 = 0;
-  let ex1 = 0;
-  let ex2 = 0;
+  let q1ex = 0;
+  let q2ex = 0;
 
-  presFunci.forEach((p) => {
-    if (["FALTA", ...AUSENCIAS].includes(p.tipo)) return;
+  dias.forEach((d, di) => {
+    const data = formatDate(d);
+    const p = mapaPresenca[data];
+    if (!p) return;
+    if (p.tipo === "FALTA") return;
+    if (["AUSENTE", "AUS", "SAIU", "ATESTADO", "FERIADO", "X", ...AUSENCIAS].includes(p.tipo)) return;
     if (!p.obra_id) return;
     if (p.tipo !== "NORMAL" && p.tipo !== "SABADO_EXTRA") return;
 
-    const dia = new Date(
-      String(p.data).substring(0, 10) + "T12:00:00",
-    ).getDate();
-    const soma = diariaCafe(p);
+    // Regra EXATA da grade de presença:
+    // - se tem duas obras no mesmo dia: conta 1 dia total
+    // - se tem uma obra com fração 0.5: conta 0.5
+    // - se tem uma obra inteira: conta 1
+    const soma = p.obra2_id ? 1 : Number(p.fracao || 1);
     if (soma === 0) return;
 
     if (p.tipo === "SABADO_EXTRA") {
-      if (dia <= 15) ex1 += soma;
-      else ex2 += soma;
+      di <= fim1Q ? (q1ex += soma) : (q2ex += soma);
       return;
     }
 
     if (p.tipo === "NORMAL") {
-      if (dia <= 15) q1 += soma;
-      else q2 += soma;
+      di <= fim1Q ? (q1 += soma) : (q2 += soma);
     }
   });
 
-  return quinzena === 1 ? (q1 + ex1) * CAFE_DIA : (q2 + ex2) * CAFE_DIA;
+  return { q1, q2, q1ex, q2ex };
 }
 
-function removerDuplicadasPresencas(presencas: any[]) {
-  // A aba Presença mostra somente 1 lançamento por funcionário/data usando a chave funcionário|data.
-  // Aqui fazemos igual, para o Café não somar registros duplicados escondidos no banco.
-  const mapa: Record<string, any> = {};
-  presencas.forEach((p) => {
-    const data = String(p.data).substring(0, 10);
-    mapa[`${p.funcionario_id}|${data}`] = { ...p, data };
-  });
-  return Object.values(mapa);
+function calcularCafeDaQuinzena(presFunci: any[], mes: string, quinzena: 1 | 2) {
+  const t = calcularTotaisCafeIgualGradePresenca(presFunci, mes);
+  const diasCafe = quinzena === 1 ? t.q1 + t.q1ex : t.q2 + t.q2ex;
+  return diasCafe * CAFE_DIA;
 }
 
 function calcularLinha(l: Linha): Linha {
@@ -155,7 +161,6 @@ export default function PassagemCafePage() {
         from += 1000;
       }
     }
-    presencas = removerDuplicadasPresencas(presencas);
 
     const { data: passDB } = await supabase
       .from("funcionario_obra_passagem")
@@ -214,7 +219,7 @@ export default function PassagemCafePage() {
       const pqFunci = passQuinzena.find((p) => p.funcionario_id === func.id);
       let valorGasto = 0;
       let diasTrabalhados = 0;
-      const totalCafe = calcularCafeDaQuinzena(presFunci, quinzena);
+      const totalCafe = calcularCafeDaQuinzena(presFunci, mes, quinzena);
       let ultimoValorPraFrente = 0;
       presFunci.forEach((p) => {
         if (["FALTA", ...AUSENCIAS].includes(p.tipo)) return;
