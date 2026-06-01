@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { mesAtual, formatR$, AUSENCIAS } from '@/lib/utils'
+import { mesAtual, formatR$, formatDate, AUSENCIAS } from '@/lib/utils'
 const CAFE_DIA = 10
 interface Linha {
   func_id: string
@@ -20,6 +20,14 @@ interface Linha {
 }
 
 
+function diasCorridosDoMes(mes: string) {
+  const [ano, mesNum] = mes.split('-').map(Number)
+  const ultimoDia = new Date(ano, mesNum, 0).getDate()
+  return Array.from(
+    { length: ultimoDia },
+    (_, i) => new Date(ano, mesNum - 1, i + 1, 12, 0, 0)
+  )
+}
 
 function calcularTotaisPresencaCafe(presFunci: any[], mes: string) {
   const diasMes = diasCorridosDoMes(mes)
