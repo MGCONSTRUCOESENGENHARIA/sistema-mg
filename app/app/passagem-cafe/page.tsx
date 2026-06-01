@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { mesAtual, formatR$, formatDate, AUSENCIAS } from '@/lib/utils'
+import { mesAtual, formatR$, AUSENCIAS } from '@/lib/utils'
 const CAFE_DIA = 10
 interface Linha {
   func_id: string
@@ -19,11 +19,6 @@ interface Linha {
   total_passagem: number
 }
 
-function diasCorridosDoMes(mes: string) {
-  const [ano, mesNum] = mes.split('-').map(Number)
-  const ultimoDia = new Date(ano, mesNum, 0).getDate()
-  return Array.from({ length: ultimoDia }, (_, i) => new Date(ano, mesNum - 1, i + 1, 12, 0, 0))
-}
 
 function calcularLinha(l: Linha): Linha {
   const saldoVT = l.valor_gasto_quinzena - l.recebido_anterior
@@ -80,9 +75,7 @@ export default function PassagemCafePage() {
       setLoading(false)
       return
     }
-    // Usa dias corridos do mês para NÃO deixar sábado extra fora do cálculo.
-    // 1ª quinzena: dia 01 ao dia 15. 2ª quinzena: dia 16 ao último dia do mês.
-    const diasMes = diasCorridosDoMes(mes)
+    // 1ª quinzena: dias 01 a 15 + Ex1. 2ª quinzena: dias 16 ao fim do mês + Ex2.
     const ids = funcs.map((f: any) => f.id)
     let presencas: any[] = []
     if (comp?.id) {
@@ -158,25 +151,28 @@ export default function PassagemCafePage() {
       const pqFunci = passQuinzena.find(p => p.funcionario_id === func.id)
       let valorGasto = 0
       let diasTrabalhados = 0
-      let totalCafe = 0
       let ultimoValorPraFrente = 0
+
       presFunci.forEach(p => {
         if (['FALTA', ...AUSENCIAS].includes(p.tipo)) return
         if (!p.obra_id) return
         if (p.tipo !== 'NORMAL' && p.tipo !== 'SABADO_EXTRA') return
-        // Filtra por quinzena:
-        // NORMAL: dia 01-15 = 1ª quinzena, dia 16+ = 2ª quinzena
-        // SABADO_EXTRA: dia 01-15 = Ex1 (1ª quinzena), dia 16+ = Ex2 (2ª quinzena)
+
+        // Café deve considerar o total da presença da quinzena:
+        // 1ª quinzena = dias 1Q + Ex1. 2ª quinzena = dias 2Q + Ex2.
+        // Como NORMAL e SABADO_EXTRA já vêm na tabela de presenças, filtramos pela data
+        // e somamos a fração do dia trabalhado.
         const dia = new Date(String(p.data) + 'T12:00:00').getDate()
-        if (quinzena === 1 && dia > 15) return
-        if (quinzena === 2 && dia <= 15) return
+        const pertenceAQuinzena = quinzena === 1 ? dia <= 15 : dia >= 16
+        if (!pertenceAQuinzena) return
+
         const temDuasObras = !!p.obra2_id
         const fracao1 = temDuasObras ? 0.5 : Number(p.fracao || 1)
         const fracao2 = temDuasObras ? 0.5 : Number(p.fracao2 || 0)
-        const soma = fracao1 + fracao2
-        if (soma === 0) return
-        diasTrabalhados += soma
-        totalCafe += CAFE_DIA * soma
+        const somaPresenca = fracao1 + fracao2
+        if (somaPresenca === 0) return
+
+        diasTrabalhados += somaPresenca
         const fop1 = p.obra_id
           ? passDB?.find(x => x.funcionario_id === func.id && x.obra_id === p.obra_id)
           : null
@@ -215,11 +211,25 @@ export default function PassagemCafePage() {
         : recebidoAntAutomatic
       const diasProj = Number(pqFunci?.dias_proj ?? (tipoFinal === 'PRA FRENTE' ? diasTrabalhados : 0))
       const adicional = Number(pqFunci?.adicional ?? 0)
-      const valorFixo = Number(
+
+      const valorFixoAutomatico = Number(
         ultimoValorPraFrente ||
         tiposFunc.find(x => x.tipo_passagem === 'PRA FRENTE')?.valor_passagem ||
         0
       )
+
+      // Valor fixo por dia:
+      // - Se já existe valor_proj salvo para a quinzena, o sistema recalcula o valor fixo
+      //   usando valor_proj / dias_proj. Assim, quando você editar manualmente o valor fixo
+      //   e salvar, ele não volta para o automático ao recarregar a tela.
+      // - Se ainda não existe valor salvo, usa o valor automático vindo da passagem/obra.
+      const valorFixoSalvo =
+        pqFunci?.valor_proj != null && diasProj > 0
+          ? Number(pqFunci.valor_proj) / diasProj
+          : null
+
+      const valorFixo = Number(valorFixoSalvo ?? valorFixoAutomatico)
+      const totalCafe = diasTrabalhados * CAFE_DIA
       const linhaBase: Linha = {
         func_id: func.id,
         nome: func.nome,
