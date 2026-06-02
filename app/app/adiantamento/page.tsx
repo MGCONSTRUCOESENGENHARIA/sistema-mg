@@ -108,13 +108,6 @@ export default function AdiantamentoPage() {
         .filter((a: any) => a.avulsos?.funcionario_id === func.id)
         .reduce((s: number, a: any) => s + Number(a.valor || 0), 0)
 
-      const editFunci = editando[func.id] || {
-        complemento: 0,
-        descontos: descFunci,
-      }
-
-      const total = adiantamento + extraFolhaValor + editFunci.complemento - editFunci.descontos
-
       return {
         func_id: func.id,
         nome: func.nome,
@@ -127,9 +120,9 @@ export default function AdiantamentoPage() {
         extras_folha: extrasFolha,
         extra_folha_valor: extraFolhaValor,
         adiantamento,
-        complemento: editFunci.complemento,
-        descontos: editFunci.descontos,
-        total_pagamento: total,
+        complemento: 0,
+        descontos: descFunci,
+        total_pagamento: 0,
       }
     })
 
@@ -149,7 +142,7 @@ export default function AdiantamentoPage() {
 
     const newEdit: typeof editando = {}
     resultado.forEach(l => {
-      const aj = ajustes.find(a => a.funcionario_id === l.func_id)
+      const aj = ajustes.find((a: any) => a.funcionario_id === l.func_id)
       newEdit[l.func_id] = aj
         ? {
             complemento: Number(aj.complemento || 0),
