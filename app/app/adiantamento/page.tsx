@@ -262,7 +262,7 @@ export default function AdiantamentoPage() {
 
   const totalDiarias = linhas.reduce((s, l) => s + l.total_diarias, 0)
   const totalExtras = linhas.reduce((s, l) => s + l.extras_folha, 0)
-  const totalAdiant = linhas.reduce((s, l) => s + l.adiantamento, 0)
+  const totalAdiant = linhas.reduce((s, l) => s + adiantamentoBase(l), 0)
   const totalDesc = linhas.reduce((s, l) => s + Number(getEd(l.func_id, l.descontos).descontos || 0), 0)
   const totalAdiantLiquido = linhas.reduce((s, l) => s + adiantamentoLiquido(l), 0)
   const totalHoraExtra = linhas.reduce((s, l) => s + horaExtra(l), 0)
@@ -415,31 +415,37 @@ export default function AdiantamentoPage() {
                     </td>
 
                     <td style={{ padding: '4px 6px', textAlign: 'center', background: '#f0fdf4' }}>
-                      <input
-                        type="number" step="0.01"
-                        style={{ ...inputStyle, border: '1px solid #6ee7b7', background: '#f0fdf4', color: '#065f46', width: 100 }}
-                        value={ed.adiantamento != null ? ed.adiantamento : l.adiantamento}
-                        title={ed.adiantamento != null ? '✏️ Valor editado manualmente' : '🔄 Calculado automaticamente'}
-                        onChange={e => setEdit(l.func_id, 'adiantamento', parseFloat(e.target.value) || 0)}
-                      />
-                      {ed.adiantamento != null && (
-                        <span title="Limpar edição" style={{ cursor: 'pointer', marginLeft: 2, color: '#9ca3af', fontSize: 10 }}
-                          onClick={() => setEdit(l.func_id, 'adiantamento', null as any)}>↺</span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#065f46' }}>R$</span>
+                        <input
+                          type="number" step="0.01"
+                          style={{ ...inputStyle, border: `1px solid ${ed.adiantamento != null ? '#059669' : '#6ee7b7'}`, background: ed.adiantamento != null ? '#dcfce7' : '#f0fdf4', color: '#065f46', width: 85 }}
+                          value={ed.adiantamento != null ? ed.adiantamento : l.adiantamento}
+                          title={ed.adiantamento != null ? '✏️ Valor editado manualmente — clique ↺ para voltar ao automático' : '🔄 Calculado automaticamente'}
+                          onChange={e => setEdit(l.func_id, 'adiantamento', parseFloat(e.target.value) || 0)}
+                        />
+                        {ed.adiantamento != null && (
+                          <span title="Voltar ao automático" style={{ cursor: 'pointer', color: '#9ca3af', fontSize: 11 }}
+                            onClick={() => setEdit(l.func_id, 'adiantamento', null as any)}>↺</span>
+                        )}
+                      </div>
                     </td>
 
                     <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
-                      <input
-                        type="number" step="0.01"
-                        style={{ ...inputStyle, border: '1px solid #fcd34d', background: '#fff7ed', color: '#92400e', width: 100 }}
-                        value={ed.hora_extra != null ? ed.hora_extra : horaExtra(l)}
-                        title={ed.hora_extra != null ? '✏️ Valor editado manualmente' : '🔄 Calculado automaticamente'}
-                        onChange={e => setEdit(l.func_id, 'hora_extra', parseFloat(e.target.value) || 0)}
-                      />
-                      {ed.hora_extra != null && (
-                        <span title="Limpar edição" style={{ cursor: 'pointer', marginLeft: 2, color: '#9ca3af', fontSize: 10 }}
-                          onClick={() => setEdit(l.func_id, 'hora_extra', null as any)}>↺</span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>R$</span>
+                        <input
+                          type="number" step="0.01"
+                          style={{ ...inputStyle, border: `1px solid ${ed.hora_extra != null ? '#d97706' : '#fcd34d'}`, background: ed.hora_extra != null ? '#fef3c7' : '#fff7ed', color: '#92400e', width: 85 }}
+                          value={ed.hora_extra != null ? ed.hora_extra : horaExtra(l)}
+                          title={ed.hora_extra != null ? '✏️ Valor editado manualmente — clique ↺ para voltar ao automático' : '🔄 Calculado automaticamente'}
+                          onChange={e => setEdit(l.func_id, 'hora_extra', parseFloat(e.target.value) || 0)}
+                        />
+                        {ed.hora_extra != null && (
+                          <span title="Voltar ao automático" style={{ cursor: 'pointer', color: '#9ca3af', fontSize: 11 }}
+                            onClick={() => setEdit(l.func_id, 'hora_extra', null as any)}>↺</span>
+                        )}
+                      </div>
                     </td>
 
                     <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
