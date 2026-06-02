@@ -18,8 +18,6 @@ interface Linha {
   complemento: number
   descontos: number
   total_pagamento: number
-  hora_extra_manual: number | null
-  adiantamento_manual: number | null
 }
 
 export default function AdiantamentoPage() {
@@ -27,7 +25,7 @@ export default function AdiantamentoPage() {
   const [mes, setMes] = useState(mesAtual())
   const [linhas, setLinhas] = useState<Linha[]>([])
   const [loading, setLoading] = useState(true)
-  const [editando, setEditando] = useState<Record<string, { complemento: number; descontos: number; hora_extra: number | null; adiantamento: number | null }>>({})
+  const [editando, setEditando] = useState<Record<string, { complemento: number; descontos: number; valor_diaria: number | null }>>({})
   const [msg, setMsg] = useState('')
   const [modalFunc, setModalFunc] = useState<any>(null)
   const [mostrarResumo, setMostrarResumo] = useState(false)
@@ -156,14 +154,12 @@ export default function AdiantamentoPage() {
         ? {
             complemento: Number(aj.complemento || 0),
             descontos: Number(aj.descontos || l.descontos || 0),
-            hora_extra: aj.hora_extra_manual != null ? Number(aj.hora_extra_manual) : null,
-            adiantamento: aj.adiantamento_manual != null ? Number(aj.adiantamento_manual) : null,
+            valor_diaria: aj.valor_diaria != null ? Number(aj.valor_diaria) : null,
           }
         : {
             complemento: 0,
             descontos: Number(l.descontos || 0),
-            hora_extra: null,
-            adiantamento: null,
+            valor_diaria: null,
           }
     })
 
@@ -191,8 +187,7 @@ export default function AdiantamentoPage() {
       hora_extra: 0,
       complemento: Number(newEd.complemento || 0),
       descontos: Number(newEd.descontos || 0),
-      hora_extra_manual: newEd.hora_extra ?? null,
-      adiantamento_manual: newEd.adiantamento ?? null,
+      valor_diaria: newEd.valor_diaria != null ? Number(newEd.valor_diaria) : null,
       atualizado_em: new Date().toISOString(),
     }
     if (existing) {
@@ -200,9 +195,14 @@ export default function AdiantamentoPage() {
     } else {
       await supabase.from('pagamento_ajustes').insert(payload)
     }
+
+    // Salva valor_diaria direto no funcionário se foi editado
+    if (newEd.valor_diaria != null) {
+      await supabase.from('funcionarios').update({ valor_diaria: newEd.valor_diaria }).eq('id', funcId)
+    }
   }
 
-  function setEdit(funcId: string, field: 'complemento' | 'descontos' | 'hora_extra' | 'adiantamento', val: number | null) {
+  function setEdit(funcId: string, field: 'complemento' | 'descontos' | 'valor_diaria', val: number | null) {
     setEditando(ed => {
       const newEd = {
         ...(ed[funcId] || { complemento: 0, descontos: 0 }),
@@ -217,22 +217,21 @@ export default function AdiantamentoPage() {
   }
 
   function getEd(funcId: string, descontosPadrao = 0) {
-    return editando[funcId] || { complemento: 0, descontos: descontosPadrao, hora_extra: null, adiantamento: null }
+    return editando[funcId] || { complemento: 0, descontos: descontosPadrao, valor_diaria: null }
+  }
+  
+  function getValorDiaria(linha: Linha) {
+    const ed = getEd(linha.func_id)
+    return ed.valor_diaria != null ? ed.valor_diaria : linha.valor_diaria
   }
 
   function horaExtra(linha: Linha) {
-    const ed = getEd(linha.func_id, linha.descontos)
-    return ed.hora_extra != null ? ed.hora_extra : linha.extras_folha * linha.valor_diaria
-  }
-  
-  function adiantamentoBase(linha: Linha) {
-    const ed = getEd(linha.func_id, linha.descontos)
-    return ed.adiantamento != null ? ed.adiantamento : linha.adiantamento
+    return linha.extras_folha * getValorDiaria(linha)
   }
 
   function adiantamentoLiquido(linha: Linha) {
     const ed = getEd(linha.func_id, linha.descontos)
-    return adiantamentoBase(linha) - Number(ed.descontos || 0)
+    return linha.adiantamento - Number(ed.descontos || 0)
   }
 
   function recalcular(linha: Linha) {
@@ -262,7 +261,7 @@ export default function AdiantamentoPage() {
 
   const totalDiarias = linhas.reduce((s, l) => s + l.total_diarias, 0)
   const totalExtras = linhas.reduce((s, l) => s + l.extras_folha, 0)
-  const totalAdiant = linhas.reduce((s, l) => s + adiantamentoBase(l), 0)
+  const totalAdiant = linhas.reduce((s, l) => s + l.adiantamento, 0)
   const totalDesc = linhas.reduce((s, l) => s + Number(getEd(l.func_id, l.descontos).descontos || 0), 0)
   const totalAdiantLiquido = linhas.reduce((s, l) => s + adiantamentoLiquido(l), 0)
   const totalHoraExtra = linhas.reduce((s, l) => s + horaExtra(l), 0)
@@ -406,46 +405,28 @@ export default function AdiantamentoPage() {
                       {l.extras_folha.toFixed(1)}
                     </td>
 
-                    <td style={{ padding: '7px 10px', textAlign: 'right', fontSize: 12 }}>
-                      {formatR$(l.valor_diaria)}
+                    <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>R$</span>
+                        <input
+                          type="number" step="0.01"
+                          style={{ ...inputStyle, width: 70, border: '1px solid #fbbf24', background: '#fefce8', color: '#374151' }}
+                          value={getValorDiaria(l)}
+                          onChange={e => setEdit(l.func_id, 'valor_diaria', parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
                     </td>
 
                     <td style={{ padding: '7px 10px', textAlign: 'right', fontSize: 12 }}>
                       {formatR$(l.salario_base)}
                     </td>
 
-                    <td style={{ padding: '4px 6px', textAlign: 'center', background: '#f0fdf4' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#065f46' }}>R$</span>
-                        <input
-                          type="number" step="0.01"
-                          style={{ ...inputStyle, border: `1px solid ${ed.adiantamento != null ? '#059669' : '#6ee7b7'}`, background: ed.adiantamento != null ? '#dcfce7' : '#f0fdf4', color: '#065f46', width: 85 }}
-                          value={ed.adiantamento != null ? ed.adiantamento : l.adiantamento}
-                          title={ed.adiantamento != null ? '✏️ Valor editado manualmente — clique ↺ para voltar ao automático' : '🔄 Calculado automaticamente'}
-                          onChange={e => setEdit(l.func_id, 'adiantamento', parseFloat(e.target.value) || 0)}
-                        />
-                        {ed.adiantamento != null && (
-                          <span title="Voltar ao automático" style={{ cursor: 'pointer', color: '#9ca3af', fontSize: 11 }}
-                            onClick={() => setEdit(l.func_id, 'adiantamento', null as any)}>↺</span>
-                        )}
-                      </div>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: '#065f46', background: '#f0fdf4', fontSize: 13 }}>
+                      {formatR$(l.adiantamento)}
                     </td>
 
-                    <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>R$</span>
-                        <input
-                          type="number" step="0.01"
-                          style={{ ...inputStyle, border: `1px solid ${ed.hora_extra != null ? '#d97706' : '#fcd34d'}`, background: ed.hora_extra != null ? '#fef3c7' : '#fff7ed', color: '#92400e', width: 85 }}
-                          value={ed.hora_extra != null ? ed.hora_extra : horaExtra(l)}
-                          title={ed.hora_extra != null ? '✏️ Valor editado manualmente — clique ↺ para voltar ao automático' : '🔄 Calculado automaticamente'}
-                          onChange={e => setEdit(l.func_id, 'hora_extra', parseFloat(e.target.value) || 0)}
-                        />
-                        {ed.hora_extra != null && (
-                          <span title="Voltar ao automático" style={{ cursor: 'pointer', color: '#9ca3af', fontSize: 11 }}
-                            onClick={() => setEdit(l.func_id, 'hora_extra', null as any)}>↺</span>
-                        )}
-                      </div>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: '#92400e', background: '#fff7ed', fontSize: 13 }}>
+                      {formatR$(horaExtra(l))}
                     </td>
 
                     <td style={{ padding: '4px 6px', textAlign: 'center', background: '#fff7ed' }}>
