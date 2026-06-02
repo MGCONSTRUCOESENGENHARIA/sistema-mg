@@ -48,13 +48,22 @@ export default function PassagensPage() {
       // Obras com presença neste mês para esta equipe
       const { data: comp } = await supabase.from('competencias').select('id').eq('mes_ano', mes).maybeSingle()
       if (comp?.id) {
-        const { data: pres } = await supabase
-          .from('presencas')
-          .select('funcionario_id,obra_id,obra2_id')
-          .eq('competencia_id', comp.id)
-          .in('funcionario_id', ids)
+        let pres: any[] = []
+        let from = 0
+        while (true) {
+          const { data: page } = await supabase
+            .from('presencas')
+            .select('funcionario_id,obra_id,obra2_id')
+            .eq('competencia_id', comp.id)
+            .in('funcionario_id', ids)
+            .range(from, from + 999)
+          if (!page || page.length === 0) break
+          pres = [...pres, ...page]
+          if (page.length < 1000) break
+          from += 1000
+        }
         const obraSet = new Set<string>()
-        pres?.forEach((p: any) => {
+        pres.forEach((p: any) => {
           if (p.obra_id) obraSet.add(`${p.funcionario_id}|${p.obra_id}`)
           if (p.obra2_id) obraSet.add(`${p.funcionario_id}|${p.obra2_id}`)
         })
